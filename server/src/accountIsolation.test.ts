@@ -11,7 +11,7 @@ const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 const allMigrations = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
   .map(file => read('../../supabase/migrations', file)).join('\n');
 
-const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress'];
+const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries'];
 
 // Route handlers, split on the app.get/app.post declarations.
 const handlers = indexSource.split(/\n(?=app\.(?:get|post)\()/).filter(chunk => chunk.startsWith('app.'))
@@ -31,7 +31,7 @@ describe('API routes keep each learner\'s data separate', () => {
   it('filters every read of a learner-owned table by the verified learner id', () => {
     for (const handler of handlers) {
       const reads = [...handler.source.matchAll(/\.from\('([a-z_]+)'\)([\s\S]*?)(?=\.from\(|\n\}\);|$)/g)]
-        .filter(match => LEARNER_TABLES.includes(match[1]));
+        .filter(match => LEARNER_TABLES.includes(match[1]) && !match[2].includes('.insert('));
       for (const read of reads) {
         expect(read[2], `${handler.route} → ${read[1]}`).toContain(".eq('user_id', req.learnerId!)");
       }
@@ -136,5 +136,15 @@ describe('mastery summaries are computed only from the rows passed in', () => {
     const b = buildMastery([{ scenario_id: 'TQ-SYN-002', outcome: 'risk-exceeded', submitted_at: at(1) }]);
     expect(a.skills.find(s => s.skillId === 'risk-management')!.successRate).toBe(100);
     expect(b.skills.find(s => s.skillId === 'risk-management')!.successRate).toBe(0);
+  });
+});
+
+describe('decision journal database privacy', () => {
+  it('enables row-level security and restricts every journal operation to the owning learner', () => {
+    expect(allMigrations).toMatch(/alter table public\.decision_journal_entries enable row level security/i);
+    expect(allMigrations).toMatch(/create policy "Learners read own decision journal" on public\.decision_journal_entries\s+for select to authenticated using \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners create own decision journal" on public\.decision_journal_entries\s+for insert to authenticated with check \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners update own decision journal" on public\.decision_journal_entries\s+for update to authenticated using \(auth\.uid\(\) = user_id\) with check \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners delete own decision journal" on public\.decision_journal_entries\s+for delete to authenticated using \(auth\.uid\(\) = user_id\)/i);
   });
 });
