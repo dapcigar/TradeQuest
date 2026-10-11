@@ -49,7 +49,7 @@ describe('scenario catalogue matches the seeded scenarios', () => {
   });
 
   it('gives every skill at least three scenarios so answers cannot simply be memorised', () => {
-    for (const skill of SKILL_CATALOGUE) expect(skill.scenarioIds.length).toBeGreaterThanOrEqual(3);
+    for (const skill of SKILL_CATALOGUE) expect(skill.scenarioIds.length).toBeGreaterThanOrEqual(5);
   });
 });
 
