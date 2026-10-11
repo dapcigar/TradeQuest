@@ -167,6 +167,12 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   return res.status(500).json({ error: 'Unexpected server error.' });
 });
 
-app.listen(env.PORT, () => {
-  if (env.NODE_ENV !== 'production') console.log(`TradeQuest API listening on :${env.PORT}`);
-});
+export { app };
+
+// Vercel imports this module as a serverless handler. Local development and
+// the existing Node start command still listen on PORT.
+if (process.env.VERCEL !== '1') {
+  app.listen(env.PORT, () => {
+    if (env.NODE_ENV !== 'production') console.log(`TradeQuest API listening on :${env.PORT}`);
+  });
+}
