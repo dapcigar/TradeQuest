@@ -23,14 +23,15 @@ describe('describeEvidence', () => {
 });
 
 describe('describeTransfer', () => {
-  const base = { attempts: 1, positiveDecisions: 1, successRate: 100, confidence: 'not-enough-evidence' };
+  const base = { attempts: 1, positiveDecisions: 1, successRate: 100, confidence: 'not-enough-evidence', transferConfidence: 'not-enough-evidence' };
 
   it('reports missing transfer evidence plainly', () => {
     expect(describeTransfer({ ...base, transferAttempts: 0, transferPositiveDecisions: 0 })).toBe('No transfer evidence yet');
   });
 
-  it('reports counts of new-scenario decisions', () => {
+  it('reports counts and cautious confidence for new-scenario decisions', () => {
     expect(describeTransfer({ ...base, transferAttempts: 2, transferPositiveDecisions: 1 })).toContain('1 of 2');
+    expect(describeTransfer({ ...base, transferAttempts: 3, transferPositiveDecisions: 2, transferConfidence: 'early-signal' })).toContain('early signal');
   });
 });
 
