@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
 import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
+import { buildMastery } from './mastery.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -83,6 +84,16 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
     return res.status(400).json({ error: 'Progress event could not be recorded.' });
   }
   return res.status(200).json({ result: data });
+});
+
+app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('chart_dojo_attempts')
+    .select('scenario_id, outcome, submitted_at')
+    .eq('user_id', req.learnerId!)
+    .order('submitted_at', { ascending: false })
+    .limit(100);
+  if (error) return res.status(500).json({ error: 'Mastery signals could not be loaded.' });
+  return res.json(buildMastery(data ?? []));
 });
 
 app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
