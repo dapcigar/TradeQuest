@@ -55,7 +55,8 @@ create policy "Read own progress" on public.learner_progress
 revoke insert, update, delete on public.lesson_attempts from anon, authenticated;
 revoke insert, update, delete on public.learner_progress from anon, authenticated;
 revoke all on public.lessons from anon, authenticated;
-grant select on public.lessons to authenticated;
+-- Grant only client-safe columns. A table-level SELECT grant would expose answer_key.
+grant select (id, version, title, published, content, xp_reward, created_at) on public.lessons to authenticated;
 grant select on public.lesson_attempts, public.learner_progress to authenticated;
 
 create or replace function public.submit_lesson_attempt(
