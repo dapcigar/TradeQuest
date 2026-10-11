@@ -1,7 +1,8 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { env } from './env.js';
-import { supabase } from './supabase.js';
+import { getBearerToken } from './auth.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -15,23 +16,31 @@ app.use((req, res, next) => {
   next();
 });
 
-type AuthedRequest = Request & { learnerId?: string };
+type AuthedRequest = Request & { learnerId?: string; learnerDb?: SupabaseClient };
 
 async function requireLearner(req: AuthedRequest, res: Response, next: NextFunction) {
-  const header = req.header('authorization');
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required.' });
-  const token = header.slice('Bearer '.length).trim();
-  if (!token || token.length > 8192) return res.status(401).json({ error: 'Invalid session token.' });
-  const { data, error } = await supabase.auth.getUser(token);
+  const token = getBearerToken(req.header('authorization'));
+  if (!token) return res.status(401).json({ error: 'Authentication required.' });
+
+  // Create a request-scoped client. Supabase/PostgREST calls now carry this
+  // learner's JWT, so RLS and auth.uid() evaluate the real user identity.
+  // Never use a service-role key for learner requests.
+  const learnerDb = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data, error } = await learnerDb.auth.getUser(token);
   if (error || !data.user) return res.status(401).json({ error: 'Session is invalid or expired.' });
   req.learnerId = data.user.id;
+  req.learnerDb = learnerDb;
   next();
 }
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'tradequest-api' }));
 
 app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Response) => {
-  const { data, error } = await supabase.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle();
+  const { data, error } = await req.learnerDb!.from('learner_progress')
+    .select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle();
   if (error) return res.status(500).json({ error: 'Could not load progress.' });
   return res.json({ progress: data ?? { xp: 0, lessons_completed: [], updated_at: null } });
 });
@@ -49,7 +58,7 @@ const attemptSchema = z.object({
 app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = attemptSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid attempt payload.', details: parsed.error.flatten() });
-  const { data, error } = await supabase.rpc('submit_lesson_attempt', {
+  const { data, error } = await req.learnerDb!.rpc('submit_lesson_attempt', {
     p_lesson_id: parsed.data.lessonId,
     p_lesson_version: parsed.data.lessonVersion,
     p_attempt_id: parsed.data.attemptId,
@@ -58,6 +67,7 @@ app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: 
   if (error) {
     if (error.code === 'P0002') return res.status(404).json({ error: 'Published lesson version not found.' });
     if (error.code === '23505') return res.status(409).json({ error: 'Attempt ID already used with different content.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     return res.status(400).json({ error: 'Attempt could not be accepted.' });
   }
   return res.status(200).json({ result: data });
