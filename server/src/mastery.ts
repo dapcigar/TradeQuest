@@ -2,6 +2,8 @@ export type MasteryAttempt = { scenario_id: string; outcome: string; submitted_a
 export type LessonMasteryAttempt = { lesson_id: string; score: number; passed: boolean; submitted_at?: string };
 export type RiskPracticeEvent = { event_key: string; recorded_at?: string };
 
+const REVIEW_AFTER_DAYS = 14;
+
 const SKILLS = [
   { scenarioId: 'TQ-SYN-001', skillId: 'planning', label: 'Plan before entry', description: 'Define a reason to enter and what would invalidate the idea.' },
   { scenarioId: 'TQ-SYN-002', skillId: 'risk-management', label: 'Keep risk within budget', description: 'Size a position so a possible loss fits the stated risk budget.' },
@@ -14,32 +16,57 @@ const POSITIVE_OUTCOMES: Record<string, string[]> = {
   'TQ-SYN-003': ['evidence-led'],
 };
 
-export function buildMastery(attempts: MasteryAttempt[], lessonAttempts: LessonMasteryAttempt[] = [], progressEvents: RiskPracticeEvent[] = []) {
+function validTimestamp(value?: string): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function buildMastery(
+  attempts: MasteryAttempt[],
+  lessonAttempts: LessonMasteryAttempt[] = [],
+  progressEvents: RiskPracticeEvent[] = [],
+  now: Date = new Date(),
+) {
+  const reviewCutoff = now.getTime() - REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000;
   const skills = SKILLS.map(skill => {
     const relevant = attempts.filter(attempt => attempt.scenario_id === skill.scenarioId);
     const positive = relevant.filter(attempt => POSITIVE_OUTCOMES[skill.scenarioId].includes(attempt.outcome)).length;
     const count = relevant.length;
+    const timestamps = relevant.map(attempt => validTimestamp(attempt.submitted_at)).filter((value): value is number => value !== null);
+    const lastPractisedMs = timestamps.length ? Math.max(...timestamps) : null;
+    const lastPractisedAt = lastPractisedMs === null ? null : new Date(lastPractisedMs).toISOString();
+    const reviewStatus = count === 0 ? 'not-yet-practised'
+      : lastPractisedMs === null ? 'date-unavailable'
+        : lastPractisedMs <= reviewCutoff ? 'review-due' : 'recently-practised';
     return {
       skillId: skill.skillId, scenarioId: skill.scenarioId, label: skill.label,
       description: skill.description, attempts: count, positiveDecisions: positive,
       successRate: count ? Math.round((positive / count) * 100) : null,
       confidence: count >= 5 ? 'building' : count >= 3 ? 'early-signal' : 'not-enough-evidence',
+      lastPractisedAt,
+      reviewStatus,
     };
   });
-  const recommended = [...skills].sort((a, b) => {
+  const dueSkills = skills.filter(skill => skill.reviewStatus === 'review-due');
+  const pool = dueSkills.length ? dueSkills : skills;
+  const recommended = [...pool].sort((a, b) => {
     if (a.attempts !== b.attempts) return a.attempts - b.attempts;
     if (a.successRate === null && b.successRate !== null) return -1;
     if (b.successRate === null && a.successRate !== null) return 1;
     return (a.successRate ?? 0) - (b.successRate ?? 0);
   })[0];
+  const reason = recommended.reviewStatus === 'review-due'
+    ? 'Revisit this skill: your last recorded practice was at least 14 days ago.'
+    : recommended.attempts === 0 ? 'Start here: you have not practised this skill yet.'
+      : recommended.confidence === 'not-enough-evidence' ? 'Build a little more evidence with another practice attempt.'
+        : 'This skill is your best next practice target based on your practice history.';
   return {
     skills,
     recommendation: {
       scenarioId: recommended.scenarioId, skillId: recommended.skillId, title: recommended.label,
-      reason: recommended.attempts === 0 ? 'Start here: you have not practised this skill yet.'
-        : recommended.confidence === 'not-enough-evidence' ? 'Build a little more evidence with another practice attempt.'
-          : 'This skill is your best next practice target based on your recent attempts.',
-      attempts: recommended.attempts, confidence: recommended.confidence,
+      reason, attempts: recommended.attempts, confidence: recommended.confidence,
+      reviewStatus: recommended.reviewStatus,
     },
     learningSignals: [
       {
@@ -67,6 +94,6 @@ export function buildMastery(attempts: MasteryAttempt[], lessonAttempts: LessonM
       },
     ],
     sampleSize: attempts.length + lessonAttempts.length,
-    note: 'Practice signals are learning prompts, not predictions of trading performance. Risk calculator use measures participation only, not decision quality.',
+    note: 'Practice signals are learning prompts, not predictions of trading performance. Skills last practised 14 or more days ago are suggested for review. Risk calculator use measures participation only, not decision quality.',
   };
 }
