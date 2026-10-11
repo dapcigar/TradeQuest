@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptiveEvidence, assessAdaptiveAnswer, nextAdaptiveVariant } from './adaptivePractice';
+import { adaptiveEvidence, assessAdaptiveAnswer, nextAdaptiveVariant } from './AdaptivePractice';
 
 describe('adaptive practice engine', () => {
   it('marks risk-first answers positively and rejects unknown choices', () => {
