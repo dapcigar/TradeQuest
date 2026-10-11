@@ -20,7 +20,8 @@ Copy `.env.example` to `.env.local` for Vite development. Set `VITE_SUPABASE_URL
 Apply in order:
 1. `supabase/migrations/202610110001_m2_learner_progress.sql`
 2. `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
-3. `supabase/seed/dev_spread_lesson.sql`
+3. `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
+4. `supabase/seed/dev_spread_lesson.sql`
 
 Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins. Test with at least two separate users. Verify RLS isolation, progress event idempotency, quiz attempt retries and XP awards in a disposable project before production use.
 

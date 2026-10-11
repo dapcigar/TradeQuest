@@ -55,7 +55,7 @@ app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Respo
 
 const progressEventSchema = z.object({
   eventId: z.string().uuid(),
-  eventKey: z.enum(['foundations-lesson-01', 'risk-tool-used-v1']),
+  eventKey: z.enum(['foundations-lesson-01', 'risk-tool-used-v1', 'chart-dojo-scenario-01']),
 }).strict();
 
 app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: Response) => {

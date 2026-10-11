@@ -156,7 +156,7 @@ function App() {
     setProgress(p => awardProgressXPOnce(p, actionId, amount));
   }
 
-  async function recordAccountEvent(eventKey: 'foundations-lesson-01' | 'risk-tool-used-v1') {
+  async function recordAccountEvent(eventKey: 'foundations-lesson-01' | 'risk-tool-used-v1' | 'chart-dojo-scenario-01') {
     if (!session) return false;
     try {
       const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/progress-events', {
@@ -319,7 +319,7 @@ function App() {
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} accountMode={Boolean(session)} />}
-          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
+          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={async () => { if (session) return recordAccountEvent('chart-dojo-scenario-01'); awardXPOnce('chart-dojo-synthetic-001', 15); return true; }} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} />}
@@ -383,10 +383,10 @@ function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitt
 }
 
 function PracticeView({ choice, setChoice, revealed, setRevealed, onAward }: {
-  choice: string | null; setChoice: (s: string) => void; revealed: boolean; setRevealed: (b: boolean) => void; onAward: () => void;
+  choice: string | null; setChoice: (s: string) => void; revealed: boolean; setRevealed: (b: boolean) => void; onAward: () => Promise<boolean>;
 }) {
   const [awarded, setAwarded] = useState(false);
-  function reveal() { setRevealed(true); if (!awarded) { onAward(); setAwarded(true); } }
+  async function reveal() { if (revealed || !choice) return; if (!awarded) { const saved = await onAward(); if (!saved) return; setAwarded(true); } setRevealed(true); }
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> PRACTICE LAB 01</div><h1>Welcome to the <span>chart dojo.</span></h1><p>Slow down, read what is visible, make a plan, then reveal the next chapter. No rush, no real money.</p></div>
     <div className="practice-layout"><section className="chart-panel"><div className="chart-panel-head"><div><span className="chart-instrument">SYNTHETIC · TEACHING SCENARIO</span><h2>Gold / USD <span className="chart-symbol">XAU/USD · SIMULATED</span></h2></div><span className="timeframe-chip">1H <ChevronDown size={13} /></span></div><div className="chart-legend"><span><i className="legend-dot green" /> Illustrative up candle</span><span><i className="legend-dot red" /> Illustrative down candle</span><span className="chart-disclosure"><LockKeyhole size={12} /> Not live prices</span></div><div className="chart-wrap"><CandleChart /></div><div className="chart-footer"><span>SCENARIO TQ-SYN-001</span><span>Prices are fictional</span></div></section>
       <aside className="scenario-panel"><div className="scenario-number">DECISION POINT 01 <span>+15 XP</span></div><h2>What would you do next?</h2><p>The illustrative candles have been moving higher. You have no defined entry, stop, or reason that would invalidate the idea.</p><div className="scenario-rule"><ShieldCheck size={17} /><span><strong>Think risk-first</strong> — a chart direction alone is not a complete plan.</span></div><div className="scenario-options">{[['wait','Wait for more evidence and define risk first'],['buy','Buy now because the trend looks strong'],['skip','Skip the trade; the setup is unclear']].map(([id,label]) => <button key={id} className={`scenario-option ${choice === id ? 'selected' : ''}`} onClick={() => { setChoice(id); setRevealed(false); }}><span className="scenario-radio">{choice === id ? <span /> : null}</span>{label}</button>)}</div><button className="btn-primary full-button" onClick={reveal} disabled={!choice || revealed}>{revealed ? 'Scenario revealed' : 'Reveal feedback'} <ArrowRight size={15} /></button>{revealed && <div className="scenario-feedback"><CheckCircle2 size={18} /><div><strong>{choice === 'wait' || choice === 'skip' ? 'A disciplined choice.' : 'Momentum is not a plan.'}</strong><p>{choice === 'buy' ? 'Entering without an invalidation point leaves risk undefined. A strong-looking chart does not guarantee continuation.' : 'Waiting or declining an unclear setup protects your decision process. Define what would prove the idea wrong before considering an entry.'}</p></div></div>}</aside>
