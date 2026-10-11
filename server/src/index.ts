@@ -1,6 +1,5 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { z } from 'zod';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
 import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
