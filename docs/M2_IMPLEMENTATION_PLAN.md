@@ -24,10 +24,11 @@ Apply in order:
 4. `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
 5. `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
 6. `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
-7. `supabase/migrations/202610110008_foundations_milestone_requires_quiz.sql`
-8. `supabase/migrations/202610110009_chart_dojo_scenario_variants.sql`
-9. `supabase/migrations/202610110010_chart_dojo_transfer_depth.sql`
-10. `supabase/migrations/202610110011_risk_budget_reasoning.sql`
+7. `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
+8. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
+9. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
+10. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
+11. `supabase/migrations/20261011190000_risk_budget_reasoning.sql` (already applied manually to the dev project; reconcile its ledger entry before using `supabase db push`)
 11. `supabase/seed/dev_spread_lesson.sql`
 
 Migration 006 seeds three synthetic scenarios and creates a published-scenario read API. Authenticated learners can read published scenario prompts/choices, but not answer keys. Attempt records store the exact scenario version used. The first Chart Dojo XP milestone remains one-time per learner.
@@ -52,7 +53,7 @@ npm run api:build
 
 For real database behaviour, use a **disposable Supabase project** and two dedicated test users; do not use production credentials or personal learner accounts.
 
-1. Apply migrations 001–006, then 008–011 in filename order, then run `supabase/seed/dev_spread_lesson.sql`.
+1. Apply migrations 001–006, then the timestamped migrations 007–011 in filename order, then run `supabase/seed/dev_spread_lesson.sql`. On the existing dev project, do not re-run the risk-budget SQL: it was applied manually and must be reconciled in the migration ledger first.
 2. Configure `server/.env` with the disposable project's URL and public/anon key, then start the API with `npm run api:dev`.
 3. Obtain fresh access tokens for test users A and B. Treat them as secrets and never commit them or print them in CI logs.
 4. In a separate shell, set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`; run `npm test`.
@@ -106,17 +107,25 @@ The opt-in integration suite writes attempts and progress events. Run it against
 PR #36 is not considered complete until the remote migration mismatch is explained and the disposable-project integration suite has passed. Passing unit tests/builds and the live PR #35 scenario checks do not replace these gates.
 
 
-### Findings from the supplied migration ledger (2026-10-11)
+### Resolution applied on PR #36 branch (2026-10-11)
 
-The supplied version/name list shows these remote version IDs, which do not match the checked-in version prefixes:
+The remote dev ledger reported these versions as already applied, with version IDs different from the original local filenames. The corresponding SQL files have been renamed on this branch to match the existing remote versions exactly; SQL content is unchanged:
 
-| Remote version | Migration name | Checked-in file currently carrying that SQL |
-| --- | --- | --- |
-| `20261011170155` | `harden_grants_and_milestone_claims` | `202610110007_harden_grants_and_milestone_claims.sql` |
-| `20261011170834` | `foundations_milestone_requires_quiz` | `202610110008_foundations_milestone_requires_quiz.sql` |
-| `20261011175355` | `chart_dojo_scenario_variants` | `202610110009_chart_dojo_scenario_variants.sql` |
-| `20261011182406` | `chart_dojo_transfer_depth` | `202610110010_chart_dojo_transfer_depth.sql` |
+| Remote version | Migration file now checked in |
+| --- | --- |
+| `20261011170155` | `20261011170155_harden_grants_and_milestone_claims.sql` |
+| `20261011170834` | `20261011170834_foundations_milestone_requires_quiz.sql` |
+| `20261011175355` | `20261011175355_chart_dojo_scenario_variants.sql` |
+| `20261011182406` | `20261011182406_chart_dojo_transfer_depth.sql` |
 
-This is consistent with the Preview error: the remote ledger contains versions that are not present as local filename prefixes. The ledger list supplied also does not show the risk-budget migration from PR #35 (`202610110011_risk_budget_reasoning.sql`). That migration was reportedly applied manually in the Supabase SQL Editor, so its schema effects and its migration-ledger entry are separate concerns.
+The risk-budget migration was also applied manually to the dev database and verified by live scenario checks, but its version was absent from the supplied remote ledger. Its file is now named `20261011190000_risk_budget_reasoning.sql`, after the last recorded remote version. **This rename does not register it as applied.** Before running `supabase db push`, link the CLI to the same dev project, confirm the three risk-budget scenarios already exist and the migration completed successfully there, then register only this migration as applied:
 
-**Do not merge this documentation-only PR as the fix.** Before changing migration filenames or ledger rows, capture the full `supabase migration list` output with both local and remote columns, and confirm which Supabase project the Preview integration targets. If the rows above are confirmed as remote-only versions, rename the four local files to use their exact remote version prefixes (preserving SQL content), then separately reconcile the manually applied risk-budget migration using a unique, correctly ordered version. Only mark that version applied after confirming the SQL was fully applied to that same project. Do not re-run or mark unrelated migrations applied. Re-run `supabase migration list` afterward and require local/remote versions to align before closing the migration-integrity gate.
+```bash
+supabase migration list
+supabase migration repair --status applied 20261011190000
+supabase migration list
+```
+
+Run the repair command only against that confirmed dev project and only after verifying the migration's effects are already present. It changes migration history; it does not execute or validate the SQL. Do not run it against production or a different Preview project. Afterward, confirm local and remote versions align. If the Preview integration targets a different project, diagnose that project's ledger independently rather than assuming the dev project's history applies.
+
+The migration filename reconciliation fixes the known 007–010 version mismatch in this branch. PR #36 still requires CI validation and the disposable-project two-user integration suite before it is ready to merge.
