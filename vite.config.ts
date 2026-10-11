@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Vitest runs with its default 'node' environment; no `test` block needed.
+// Vitest uses its default 'node' environment; keep test configuration in Vitest config.
 export default defineConfig({
   plugins: [react()],
 });
