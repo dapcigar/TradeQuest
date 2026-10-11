@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
+import { assessSpreadAnswer } from './learning';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
@@ -60,6 +61,7 @@ function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [quizChoice, setQuizChoice] = useState<string | null>(null);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [riskEquity, setRiskEquity] = useState('10000');
   const [riskPercent, setRiskPercent] = useState('1');
   const [entry, setEntry] = useState('2350');
@@ -114,6 +116,7 @@ function App() {
   function submitQuiz() {
     if (!quizChoice) return;
     const correct = quizChoice === 'spread';
+    setQuizSubmitted(true);
     setProgress(p => ({ ...p, quizCorrect: correct || p.quizCorrect, xp: p.xp + (correct && !p.quizCorrect ? 30 : 0) }));
   }
 
@@ -171,7 +174,7 @@ function App() {
             progress={progress} completion={completion} onStart={() => setLessonOpen(true)}
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
-          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} onQuiz={() => document.getElementById('quick-quiz')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} quizChoice={quizChoice} setQuizChoice={setQuizChoice} submitQuiz={submitQuiz} />}
+          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} />}
           {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
@@ -222,15 +225,15 @@ function Overview({ progress, completion, onStart, onNavigate, onPractice }: {
   </>;
 }
 
-function LearningView({ progress, onOpen, onQuiz, quizChoice, setQuizChoice, submitQuiz }: {
-  progress: Progress; onOpen: () => void; onQuiz: () => void; quizChoice: string | null;
-  setQuizChoice: (s: string) => void; submitQuiz: () => void;
+function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitted, submitQuiz }: {
+  progress: Progress; onOpen: () => void; quizChoice: string | null;
+  setQuizChoice: (s: string) => void; quizSubmitted: boolean; submitQuiz: () => void;
 }) {
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> LEARN BY DOING</div><h1>Your learning <span>path.</span></h1><p>Short lessons, useful practice, and feedback that explains the why—not just the answer.</p></div>
     <div className="learning-layout"><div className="lesson-list">
-      {lessons.map((lesson, i) => <div className={`lesson-row ${i === 0 ? 'lesson-row-current' : ''}`} key={lesson.title}><div className={`lesson-marker ${lesson.color}`}>{i === 0 && progress.lessonComplete ? <Check size={17} /> : lesson.done ? <Check size={17} /> : String(i + 1).padStart(2, '0')}</div><div className="lesson-row-copy"><span className="lesson-row-meta">{lesson.meta}</span><h3>{lesson.title}</h3><span className="lesson-row-status">{i === 0 && progress.lessonComplete ? 'Completed · revisit any time' : i === 0 ? 'Ready when you are' : 'Next in your learning path'}</span></div><button className={i === 0 ? 'btn-dark' : 'btn-outline'} onClick={i === 0 ? onOpen : onQuiz}>{i === 0 ? (progress.lessonComplete ? 'Review' : 'Start') : 'Preview'} <ArrowRight size={14} /></button></div>)}
+      {lessons.map((lesson, i) => <div className={`lesson-row ${i === 0 ? 'lesson-row-current' : ''}`} key={lesson.title}><div className={`lesson-marker ${lesson.color}`}>{i === 0 && progress.lessonComplete ? <Check size={17} /> : lesson.done ? <Check size={17} /> : String(i + 1).padStart(2, '0')}</div><div className="lesson-row-copy"><span className="lesson-row-meta">{lesson.meta}</span><h3>{lesson.title}</h3><span className="lesson-row-status">{i === 0 && progress.lessonComplete ? 'Completed · revisit any time' : i === 0 ? 'Ready when you are' : 'Planned · not available in this prototype'}</span></div>{i === 0 ? <button className="btn-dark" onClick={onOpen}>{progress.lessonComplete ? 'Review' : 'Start'} <ArrowRight size={14} /></button> : <button className="btn-outline" disabled title="This lesson has not been implemented yet">Coming soon</button>}</div>)}
     </div><aside className="learning-aside"><div className="aside-card"><div className="aside-icon"><Target size={20} /></div><div className="eyebrow small-eyebrow">YOUR FIRST SKILL</div><h3>Understand the spread</h3><p>The difference between bid and ask is a real cost. Learn to spot it before thinking about profit.</p><div className="skill-meter"><span style={{ width: progress.quizCorrect ? '100%' : '15%' }} /></div><span className="skill-caption">{progress.quizCorrect ? 'Skill check passed' : 'Skill check not yet passed'}</span></div>
-      <div className="quiz-card" id="quick-quiz"><div className="quiz-kicker"><Sparkles size={14} /> QUICK CHECK</div><h3>What does the spread represent?</h3>{[['commission','A fixed fee charged by the broker'],['spread','The difference between bid and ask'],['leverage','The amount borrowed to amplify exposure']].map(([id,label]) => <button key={id} className={`quiz-option ${quizChoice === id ? 'selected' : ''} ${progress.quizCorrect && id === 'spread' ? 'correct' : ''}`} onClick={() => setQuizChoice(id)}><span className="radio-dot">{quizChoice === id ? <span /> : null}</span>{label}</button>)}<button className="btn-primary full-button" onClick={submitQuiz} disabled={!quizChoice}>Check answer <ArrowRight size={15} /></button>{quizChoice && <p className={quizChoice === 'spread' ? 'feedback good' : 'feedback'}>{quizChoice === 'spread' ? 'Correct. Bid and ask are different prices; that difference is a transaction cost to understand.' : 'Not quite. Look for the two prices available at the same moment: bid and ask.'}</p>}</div>
+      <div className="quiz-card" id="quick-quiz"><div className="quiz-kicker"><Sparkles size={14} /> QUICK CHECK</div><h3>What does the spread represent?</h3>{[['commission','A fixed fee charged by the broker'],['spread','The difference between bid and ask'],['leverage','The amount borrowed to amplify exposure']].map(([id,label]) => <button key={id} className={`quiz-option ${quizChoice === id ? 'selected' : ''} ${progress.quizCorrect && id === 'spread' ? 'correct' : ''}`} onClick={() => setQuizChoice(id)}><span className="radio-dot">{quizChoice === id ? <span /> : null}</span>{label}</button>)}<button className="btn-primary full-button" onClick={submitQuiz} disabled={!quizChoice || quizSubmitted}>{quizSubmitted ? 'Answer checked' : 'Check answer'} <ArrowRight size={15} /></button>{quizSubmitted && quizChoice && <><p className={assessSpreadAnswer(quizChoice)?.correct ? 'feedback good' : 'feedback'} role="status">{assessSpreadAnswer(quizChoice)?.message}</p>{assessSpreadAnswer(quizChoice)?.nextStep === 'retry' && <button className="btn-outline full-button" onClick={() => { setQuizChoice(''); }}>Try again</button>}</>}</div>
     </aside></div></>;
 }
 
