@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildMastery } from './mastery.js';
 import { SKILL_CATALOGUE } from './skillCatalogue.js';
 
-const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '202610110009_chart_dojo_scenario_variants.sql'];
+const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '202610110009_chart_dojo_scenario_variants.sql', '202610110010_chart_dojo_transfer_depth.sql'];
 const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 
 type SeedScenario = {
@@ -34,7 +34,7 @@ const isSound = (scenario: SeedScenario, choiceId: string) =>
 
 describe('scenario catalogue matches the seeded scenarios', () => {
   it('parses every seeded scenario', () => {
-    expect(seeded).toHaveLength(9);
+    expect(seeded).toHaveLength(15);
     for (const scenario of seeded) {
       expect(scenario.chartData).toBeTypeOf('object');
       expect(Array.isArray(scenario.choices)).toBe(true);
