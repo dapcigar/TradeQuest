@@ -82,7 +82,7 @@ describe('recall versus application', () => {
   });
 
   it('falls back to a seen scenario, and says so, when every variant has been seen', () => {
-    const ids = ['TQ-SYN-001', 'TQ-SYN-004', 'TQ-SYN-005', 'TQ-SYN-010', 'TQ-SYN-013', 'TQ-SYN-002', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-011', 'TQ-SYN-014', 'TQ-SYN-003', 'TQ-SYN-008', 'TQ-SYN-009', 'TQ-SYN-012', 'TQ-SYN-015'];
+    const ids = ['TQ-SYN-001', 'TQ-SYN-004', 'TQ-SYN-005', 'TQ-SYN-010', 'TQ-SYN-013', 'TQ-SYN-002', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-011', 'TQ-SYN-014', 'TQ-SYN-016', 'TQ-SYN-017', 'TQ-SYN-018', 'TQ-SYN-003', 'TQ-SYN-008', 'TQ-SYN-009', 'TQ-SYN-012', 'TQ-SYN-015'];
     const result = build(ids.map((scenario_id, i) => ({ scenario_id, outcome: 'disciplined', submitted_at: at(i) })));
     expect(result.recommendation.isNewScenario).toBe(false);
     expect(result.recommendation.reason).toContain('recall');
