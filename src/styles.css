@@ -82,3 +82,38 @@
 .journal-note p{font-size:11px;line-height:1.7;color:#687487;white-space:pre-wrap;margin:5px 0 0}
 @media(max-width:1000px){.journal-layout{grid-template-columns:1fr}}
 @media(max-width:560px){.journal-editor{padding:14px}.journal-entry{padding:12px}.journal-form-actions button{flex:1}.journal-entry-top h3{font-size:13px}}
+
+
+/* Spaced review queue */
+.review-gate{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.review-gate-icon,.review-featured-icon,.review-item-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:#e5f4eb;color:#357c60}
+.review-gate h2,.review-featured h2,.review-list-heading h2{font:700 17px Manrope,sans-serif;color:#24364a;margin:0}
+.review-gate p,.review-featured p,.review-list-heading p{font-size:11px;line-height:1.7;color:#778394;margin:7px 0 14px}
+.review-gate .btn-primary,.review-featured .btn-primary{display:inline-flex;align-items:center;gap:8px}
+.review-demo-note{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding-top:14px;border-top:1px solid #e8ece8;color:#718176;font-size:10px}
+.review-demo-note svg{color:#4a9274}
+.review-demo-note .btn-outline{margin-left:auto}
+.review-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:15px}
+.review-summary-card{padding:16px;background:#fff;border:1px solid #e4e8e4;border-radius:10px}
+.review-summary-card span{font:500 8px 'DM Mono',monospace;letter-spacing:.6px;color:#84908e}
+.review-summary-card strong{display:block;font:800 29px Manrope,sans-serif;color:#23374a;margin:9px 0 3px}
+.review-summary-card p{font-size:10px;line-height:1.5;color:#7d8795;margin:0}
+.review-featured{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;margin-bottom:24px}
+.review-featured-copy h2{margin-top:9px}
+.review-featured-copy p{margin-bottom:0}
+.review-list-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 0 12px}
+.review-list-heading p{margin-bottom:0}
+.review-list-heading>span{font-size:10px;color:#8a94a2;white-space:nowrap}
+.review-queue-list{display:grid;gap:9px}
+.review-queue-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:13px;align-items:center;padding:15px;background:#fff;border:1px solid #e4e8e4;border-radius:10px}
+.review-item-icon{width:36px;height:36px;background:#f0f2ff;color:#6679c8}
+.review-item-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.review-item-top h3{font:700 13px Manrope,sans-serif;color:#25384a;margin:0}
+.review-item-main>p{font-size:10px;line-height:1.6;color:#7b8795;margin:5px 0 8px}
+.review-status{font:600 8px 'DM Mono',monospace;color:#4b8a6d;background:#eaf5ee;border-radius:4px;padding:5px 7px}
+.review-status.due{color:#986d2f;background:#fff3dd}
+.review-item-meta{display:flex;flex-wrap:wrap;gap:6px 13px;font-size:9px;color:#8a94a2}
+.review-item-action{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.review-loading{display:flex;align-items:center;gap:10px;color:#718092;font-size:11px}
+.review-footnote{margin-top:16px}
+@media(max-width:760px){.review-summary-grid{grid-template-columns:1fr;gap:8px}.review-summary-card{display:grid;grid-template-columns:1fr auto;align-items:center;padding:12px}.review-summary-card strong{grid-column:2;grid-row:1/3;margin:0;font-size:24px}.review-featured{grid-template-columns:auto minmax(0,1fr)}.review-featured>.btn-primary{grid-column:1/-1;justify-content:center}.review-queue-item{grid-template-columns:auto minmax(0,1fr);gap:10px;padding:12px}.review-item-action{grid-column:2;justify-self:start}.review-demo-note .btn-outline{margin-left:0}.review-gate{padding:15px}}
