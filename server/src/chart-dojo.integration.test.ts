@@ -93,4 +93,73 @@ suite('Chart Dojo API integration (explicit opt-in; uses two dedicated test acco
     });
     expect(malformed.status).toBe(400);
   });
+
+  it('scores lesson answers on the server and does not award completion XP twice', async () => {
+    const payload = {
+      lessonId: 'spread-basics',
+      lessonVersion: '1',
+      attemptId: crypto.randomUUID(),
+      answers: [{ questionId: 'spread-definition', answerId: 'spread' }],
+    };
+
+    const first = await request('/v1/lesson-attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    expect(first.status).toBe(200);
+    const firstBody = await first.json() as {
+      result: { score: number; passed: boolean; xpAwarded: number; firstCompletion?: boolean; idempotentReplay: boolean };
+    };
+    expect(firstBody.result.score).toBe(100);
+    expect(firstBody.result.passed).toBe(true);
+    expect(firstBody.result.idempotentReplay).toBe(false);
+
+    const replay = await request('/v1/lesson-attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    expect(replay.status).toBe(200);
+    const replayBody = await replay.json() as {
+      result: { score: number; passed: boolean; xpAwarded: number; idempotentReplay: boolean };
+    };
+    expect(replayBody.result.idempotentReplay).toBe(true);
+    expect(replayBody.result.score).toBe(firstBody.result.score);
+    expect(replayBody.result.xpAwarded).toBe(firstBody.result.xpAwarded);
+
+    const secondPassingAttempt = await request('/v1/lesson-attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...payload,
+        attemptId: crypto.randomUUID(),
+      }),
+    });
+    expect(secondPassingAttempt.status).toBe(200);
+    const secondBody = await secondPassingAttempt.json() as {
+      result: { score: number; passed: boolean; xpAwarded: number; firstCompletion: boolean };
+    };
+    expect(secondBody.result.passed).toBe(true);
+    expect(secondBody.result.firstCompletion).toBe(false);
+    expect(secondBody.result.xpAwarded).toBe(0);
+  });
+
+  it('does not award a progress milestone more than once', async () => {
+    const eventKey = 'risk-tool-used-v1';
+    const first = await request('/v1/progress-events', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
+    });
+    expect(first.status).toBe(200);
+
+    const replay = await request('/v1/progress-events', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
+    });
+    expect(replay.status).toBe(200);
+    const replayBody = await replay.json() as {
+      result: { eventKey: string; xpAwarded: number; alreadyRecorded: boolean };
+    };
+    expect(replayBody.result.eventKey).toBe(eventKey);
+    expect(replayBody.result.xpAwarded).toBe(0);
+    expect(replayBody.result.alreadyRecorded).toBe(true);
+  });
 });
