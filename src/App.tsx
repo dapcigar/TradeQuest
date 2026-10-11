@@ -6,6 +6,7 @@ import {
   Wallet, X, Zap,
 } from 'lucide-react';
 import { calculateRisk } from './risk';
+import { normaliseProgress, awardProgressXPOnce } from './progress';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
@@ -22,17 +23,7 @@ const lessons = [
 function readProgress(): Progress {
   try {
     const raw = localStorage.getItem(progressKey);
-    if (!raw) return initialProgress;
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return initialProgress;
-    const value = parsed as Partial<Progress>;
-    return {
-      lessonComplete: value.lessonComplete === true,
-      quizCorrect: value.quizCorrect === true,
-      riskToolUsed: value.riskToolUsed === true,
-      xp: typeof value.xp === 'number' && Number.isFinite(value.xp) && value.xp >= 0 ? value.xp : initialProgress.xp,
-      awardedActions: Array.isArray(value.awardedActions) ? value.awardedActions.filter((id): id is string => typeof id === 'string').slice(0, 500) : [],
-    };
+    return normaliseProgress(raw ? JSON.parse(raw) as unknown : null, initialProgress);
   } catch {
     return initialProgress;
   }
@@ -112,10 +103,7 @@ function App() {
   };
 
   function awardXPOnce(actionId: string, amount: number) {
-    setProgress(p => {
-      if (p.awardedActions.includes(actionId)) return p;
-      return { ...p, xp: p.xp + amount, awardedActions: [...p.awardedActions, actionId] };
-    });
+    setProgress(p => awardProgressXPOnce(p, actionId, amount));
   }
 
   function markLessonComplete() {
