@@ -1,0 +1,35 @@
+name: Supabase integration tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify required repository secrets
+        env:
+          API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
+          USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+          USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+        run: |
+          test -n "$API_URL" || (echo "::error::Missing TRADEQUEST_TEST_API_URL secret"; exit 1)
+          test -n "$USER_A_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_A_TOKEN secret"; exit 1)
+          test -n "$USER_B_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_B_TOKEN secret"; exit 1)
+      - name: Install dependencies
+        run: npm install
+      - name: Run API integration suite against disposable Supabase environment
+        env:
+          TRADEQUEST_RUN_INTEGRATION_TESTS: "true"
+          TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
+          TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+          TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+        run: npm run test -- --reporter=verbose
