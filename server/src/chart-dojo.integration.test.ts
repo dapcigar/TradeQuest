@@ -210,3 +210,44 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(malformed.status).toBe(400);
   });
 });
+
+  it('keeps decision journal entries private and supports edit/delete', async () => {
+    const payload = {
+      title: 'Journal isolation test',
+      decision: 'waited',
+      scenarioId: 'TQ-SYN-001',
+      thesis: 'Wait for observable evidence.',
+      invalidation: 'The defined level fails.',
+      riskPlan: 'Pass if total exposure exceeds budget.',
+      reflection: 'No trade is a valid decision.',
+      lessonLearned: 'Write the invalidation first.',
+    };
+    const created = await request('/v1/decision-journal', userAToken!, { method: 'POST', body: JSON.stringify(payload) });
+    expect(created.status).toBe(201);
+    const createdBody = await created.json() as { entry: { id: string; title: string; user_id?: string } };
+    expect(createdBody.entry.title).toBe(payload.title);
+    expect(createdBody.entry.user_id).toBeUndefined();
+    const entryId = createdBody.entry.id;
+
+    const aList = await request('/v1/decision-journal', userAToken!);
+    const aBody = await aList.json() as { entries: Array<{ id: string; title: string }> };
+    expect(aBody.entries.some(entry => entry.id === entryId)).toBe(true);
+
+    const bList = await request('/v1/decision-journal', userBToken!);
+    const bBody = await bList.json() as { entries: Array<{ id: string }> };
+    expect(bBody.entries.some(entry => entry.id === entryId)).toBe(false);
+
+    const edited = await request('/v1/decision-journal/' + entryId, userAToken!, { method: 'PATCH', body: JSON.stringify({ title: 'Updated journal isolation test' }) });
+    expect(edited.status).toBe(200);
+    const editedBody = await edited.json() as { entry: { title: string } };
+    expect(editedBody.entry.title).toBe('Updated journal isolation test');
+
+    const forbiddenEdit = await request('/v1/decision-journal/' + entryId, userBToken!, { method: 'PATCH', body: JSON.stringify({ title: 'Attempted cross-account edit' }) });
+    expect(forbiddenEdit.status).toBe(404);
+
+    const deleted = await request('/v1/decision-journal/' + entryId, userAToken!, { method: 'DELETE' });
+    expect(deleted.status).toBe(204);
+    const afterDelete = await request('/v1/decision-journal', userAToken!);
+    const afterDeleteBody = await afterDelete.json() as { entries: Array<{ id: string }> };
+    expect(afterDeleteBody.entries.some(entry => entry.id === entryId)).toBe(false);
+  });
