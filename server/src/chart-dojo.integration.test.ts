@@ -124,6 +124,54 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(body.result.feedback).toContain('risk budget');
   });
 
+  it('aggregates combined mastery signals per account without leaking them to another learner', async () => {
+    const readMastery = async (token: string) => {
+      const response = await request('/v1/me/mastery', token);
+      expect(response.status).toBe(200);
+      return response.json() as Promise<{
+        skills: Array<{ scenarioId: string; attempts: number }>;
+        learningSignals: Array<{ signalId: string; attempts: number; successRate: number | null; measure: string }>;
+        sampleSize: number;
+      }>;
+    };
+
+    const beforeA = await readMastery(userAToken!);
+    const beforeB = await readMastery(userBToken!);
+    const uniqueAttemptId = crypto.randomUUID();
+
+    const dojo = await request('/v1/chart-dojo/attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({ attemptId: uniqueAttemptId, scenarioId: 'TQ-SYN-003', choiceId: 'wait' }),
+    });
+    expect(dojo.status).toBe(200);
+
+    const lesson = await request('/v1/lesson-attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({
+        lessonId: 'spread-basics',
+        lessonVersion: '1',
+        attemptId: crypto.randomUUID(),
+        answers: [{ questionId: 'spread-definition', answerId: 'spread' }],
+      }),
+    });
+    expect(lesson.status).toBe(200);
+
+    const afterA = await readMastery(userAToken!);
+    const afterB = await readMastery(userBToken!);
+    const skillA = afterA.skills.find(skill => skill.scenarioId === 'TQ-SYN-003');
+    const skillBeforeA = beforeA.skills.find(skill => skill.scenarioId === 'TQ-SYN-003');
+    const lessonA = afterA.learningSignals.find(signal => signal.signalId === 'spread-basics');
+    const lessonBeforeA = beforeA.learningSignals.find(signal => signal.signalId === 'spread-basics');
+    const riskSignalA = afterA.learningSignals.find(signal => signal.signalId === 'risk-tool-used-v1');
+
+    expect(skillA?.attempts).toBe((skillBeforeA?.attempts ?? 0) + 1);
+    expect(lessonA?.attempts).toBe((lessonBeforeA?.attempts ?? 0) + 1);
+    expect(afterA.sampleSize).toBeGreaterThan(beforeA.sampleSize);
+    expect(afterB).toEqual(beforeB);
+    expect(riskSignalA?.successRate).toBeNull();
+    expect(riskSignalA?.measure).toBe('milestone');
+  });
+
   it('rejects unauthenticated and malformed submissions', async () => {
     const unauthenticated = await fetch(`${apiUrl}/v1/chart-dojo/attempts`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
