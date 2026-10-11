@@ -11,8 +11,8 @@ export const progressEventSchema = z.object({
 
 export const chartDojoAttemptSchema = z.object({
   attemptId: z.string().uuid(),
-  scenarioId: z.literal('TQ-SYN-001'),
-  choiceId: z.enum(['wait', 'buy', 'skip']),
+  scenarioId: z.string().regex(/^TQ-SYN-[0-9]{3}$/),
+  choiceId: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
 }).strict();
 
 export const attemptSchema = z.object({
