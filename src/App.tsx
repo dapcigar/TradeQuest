@@ -13,6 +13,12 @@ import type { Session } from '@supabase/supabase-js';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
+type MasterySummary = {
+  skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string }>;
+  recommendation: { scenarioId: string; skillId: string; title: string; reason: string; attempts: number; confidence: string };
+  sampleSize: number;
+  note: string;
+};
 type DojoScenario = {
   scenarioId: string;
   version: string;
@@ -128,6 +134,9 @@ function App() {
   const [dojoScenarios, setDojoScenarios] = useState<DojoScenario[]>(demoDojoScenarios);
   const [activeScenarioId, setActiveScenarioId] = useState('TQ-SYN-001');
   const [dojoCatalogueMessage, setDojoCatalogueMessage] = useState('');
+  const [mastery, setMastery] = useState<MasterySummary | null>(null);
+  const [masteryMessage, setMasteryMessage] = useState('');
+
 
   useEffect(() => {
     if (!supabase) return;
@@ -201,6 +210,22 @@ function App() {
       .catch(error => { if (!cancelled) setDojoError(error instanceof Error ? error.message : 'Chart Dojo history could not load.'); });
     return () => { cancelled = true; };
   }, [session]);
+
+  useEffect(() => {
+    if (!session) { setMastery(null); setMasteryMessage(''); return; }
+    let cancelled = false;
+    fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/me/mastery', {
+      headers: { Authorization: 'Bearer ' + session.access_token },
+    }).then(async response => {
+      if (!response.ok) throw new Error('Your practice recommendations could not be loaded.');
+      return response.json() as Promise<MasterySummary>;
+    }).then(body => {
+      if (!cancelled) { setMastery(body); setMasteryMessage(''); }
+    }).catch(error => {
+      if (!cancelled) setMasteryMessage(error instanceof Error ? error.message : 'Your practice recommendations could not be loaded.');
+    });
+    return () => { cancelled = true; };
+  }, [session, dojoHistory.length]);
 
   const risk = useMemo(() => {
     try {
@@ -442,7 +467,7 @@ function App() {
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
-          {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} />}
+          {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} mastery={session ? mastery : null} masteryMessage={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
         </div>
         {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setAuthOpen(false); }}><section className="lesson-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div className="modal-top"><span className="modal-kicker"><LockKeyhole size={15} /> FREE LEARNER ACCOUNT</span><button className="icon-button" onClick={() => setAuthOpen(false)} aria-label="Close sign in"><X size={19} /></button></div><div className="modal-content"><div className="eyebrow small-eyebrow">{authMode === 'signin' ? 'WELCOME BACK' : 'START YOUR JOURNEY'}</div><h2 id="auth-title">{authMode === 'signin' ? 'Sign in to TradeQuest.' : 'Create your learner account.'}</h2><p>Account progress is separate from browser demo progress. Supabase Auth handles your password.</p>{!supabaseConfigured ? <p className="feedback" role="alert">Authentication is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your local environment.</p> : <form className="auth-form" onSubmit={handleAuthSubmit}><label className="field-label" htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} /><label className="field-label" htmlFor="auth-password">Password</label><input id="auth-password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={authPassword} onChange={e => setAuthPassword(e.target.value)} /><button className="btn-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'} <ArrowRight size={15} /></button></form>}{authMessage && <p className="feedback" role="status">{authMessage}</p>}<button className="text-link auth-switch" onClick={() => { setAuthMode(mode => mode === 'signin' ? 'signup' : 'signin'); setAuthMessage(''); }}>{authMode === 'signin' ? 'New to TradeQuest? Create an account' : 'Already registered? Sign in'}</button></div></section></div>}
       <footer className="site-footer"><span>TRADEQUEST <span className="footer-sep">/</span> LEARN THE PROCESS, NOT THE HYPE.</span><span>Educational simulation · No live market data · Not financial advice</span></footer>
@@ -564,14 +589,20 @@ function ChallengesView({ onPractice }: { onPractice: () => void }) {
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> LEARN WITH OTHERS</div><h1>Good decisions are <span>a team sport.</span></h1><p>Community quests reward reasoning, risk awareness, and reflection—not simulated profit leaderboards.</p></div><div className="challenge-grid"><div className="challenge-card"><div className="challenge-art art-teal"><div className="challenge-emblem"><ShieldCheck size={27} /></div><span>QUEST 001</span></div><div className="challenge-copy"><span className="tag tag-mint">BEGINNER · 10 MIN</span><h2>The patient explorer</h2><p>Review a fictional gold chart. Identify what evidence is missing before you would consider a trade.</p><div className="challenge-footer"><span><Award size={15} /> Process badge</span><button className="btn-dark" onClick={onPractice}>Try quest <ArrowRight size={14} /></button></div></div></div><div className="challenge-card"><div className="challenge-art art-violet"><div className="challenge-emblem"><Target size={27} /></div><span>QUEST 002</span></div><div className="challenge-copy"><span className="tag tag-violet">BEGINNER · 8 MIN</span><h2>Risk budget detective</h2><p>Compare two hypothetical plans and choose the one with a clearly defined, proportionate risk.</p><div className="challenge-footer"><span><Award size={15} /> Risk badge</span><button className="btn-dark" onClick={onPractice}>Try quest <ArrowRight size={14} /></button></div></div></div></div><div className="data-notice"><div className="notice-icon"><LockKeyhole size={17} /></div><div><strong>Community is being built carefully</strong><p>This starter has no public profiles, user submissions, or leaderboard backend yet. Challenges shown here are curated demo content.</p></div></div></>;
 }
 
-function ProgressView({ progress, accountProgress }: { progress: Progress; accountProgress: { xp: number; lessons_completed: string[]; events: string[] } | null }) {
+function ProgressView({ progress, accountProgress, mastery, masteryMessage, onPractice }: { progress: Progress; accountProgress: { xp: number; lessons_completed: string[]; events: string[] } | null; mastery: MasterySummary | null; masteryMessage: string; onPractice: (scenarioId: string) => void }) {
   const skills = [
     { title: 'Market foundations', description: 'Understand who buys and sells', complete: accountProgress ? accountProgress.events.includes('foundations-lesson-01') : progress.lessonComplete, icon: BookOpen },
     { title: 'Trading mechanics', description: 'Understand bid, ask, and spread', complete: accountProgress ? accountProgress.lessons_completed.includes('spread-basics') : progress.quizCorrect, icon: Activity },
     { title: 'Risk-first thinking', description: 'Estimate risk before a decision', complete: accountProgress ? accountProgress.events.includes('risk-tool-used-v1') : progress.riskToolUsed, icon: ShieldCheck },
     { title: 'Chart interpretation', description: 'Read a chart without predicting', complete: false, icon: BarChart3 },
   ];
-  return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> PROGRESS THAT MEANS SOMETHING</div><h1>Your skill <span>tree.</span></h1><p>Progress reflects practice you have completed—not a claim about future trading performance.</p></div><div className="skill-tree-grid">{skills.map((skill, i) => { const Icon = skill.icon; return <div className={`skill-node ${skill.complete ? 'skill-complete' : ''}`} key={skill.title}><div className="skill-node-top"><div className="skill-node-icon"><Icon size={21} /></div><span className={skill.complete ? 'skill-state state-done' : 'skill-state'}>{skill.complete ? 'PRACTISED' : 'TO EXPLORE'}</span></div><h2>{skill.title}</h2><p>{skill.description}</p><div className="skill-node-bottom"><span>{skill.complete ? 'Evidence recorded' : `Skill ${String(i + 1).padStart(2, '0')}`}</span>{skill.complete ? <CheckCircle2 size={17} /> : <LockKeyhole size={15} />}</div></div>; })}</div><div className="data-notice"><div className="notice-icon"><Award size={17} /></div><div><strong>Mastery takes more than one lucky answer</strong><p>{accountProgress ? 'These milestones are loaded from your learner account. Mastery will require evidence across multiple unseen exercises.' : 'Demo milestones are stored in this browser. Sign in to save supported milestones to your learner account.'}</p></div></div></>;
+  return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> PROGRESS THAT MEANS SOMETHING</div><h1>Your skill <span>tree.</span></h1><p>Progress reflects practice you have completed—not a claim about future trading performance.</p></div>
+    {accountProgress && <section className="panel mastery-panel" aria-labelledby="mastery-title"><div className="panel-heading"><div className="panel-heading-icon"><Target size={19} /></div><div><h2 id="mastery-title">Your next practice mission</h2><p>Recommendations are based on your practice history, not predictions about market outcomes.</p></div></div>
+      {masteryMessage && <p className="feedback" role="status">{masteryMessage}</p>}
+      {!mastery && !masteryMessage && <p role="status">Reviewing your recent practice…</p>}
+      {mastery && <><div className="mastery-recommendation"><span className="tag tag-mint">RECOMMENDED NEXT</span><h3>{mastery.recommendation.title}</h3><p>{mastery.recommendation.reason}</p><div className="mastery-meta"><span>{mastery.recommendation.attempts} attempt{mastery.recommendation.attempts === 1 ? '' : 's'} on this skill</span><span>{mastery.recommendation.confidence === 'not-enough-evidence' ? 'Low confidence · keep practising' : mastery.recommendation.confidence === 'early-signal' ? 'Early signal' : 'Building signal'}</span></div><button className="btn-primary" onClick={() => onPractice(mastery.recommendation.scenarioId)}>Practise this skill <ArrowRight size={15} /></button></div><div className="mastery-skill-list">{mastery.skills.map(skill => <div className="mastery-skill-row" key={skill.skillId}><div><strong>{skill.label}</strong><p>{skill.description}</p></div><span>{skill.attempts} tries · {skill.successRate === null ? 'No signal yet' : skill.successRate + '% positive decisions'}</span></div>)}</div><p className="form-footnote">{mastery.note} Small samples are not reliable measures of skill.</p></>}
+    </section>}
+    <div className="skill-tree-grid">{skills.map((skill, i) => { const Icon = skill.icon; return <div className={`skill-node ${skill.complete ? 'skill-complete' : ''}`} key={skill.title}><div className="skill-node-top"><div className="skill-node-icon"><Icon size={21} /></div><span className={skill.complete ? 'skill-state state-done' : 'skill-state'}>{skill.complete ? 'PRACTISED' : 'TO EXPLORE'}</span></div><h2>{skill.title}</h2><p>{skill.description}</p><div className="skill-node-bottom"><span>{skill.complete ? 'Evidence recorded' : `Skill ${String(i + 1).padStart(2, '0')}`}</span>{skill.complete ? <CheckCircle2 size={17} /> : <LockKeyhole size={15} />}</div></div>; })}</div><div className="data-notice"><div className="notice-icon"><Award size={17} /></div><div><strong>Mastery takes more than one lucky answer</strong><p>{accountProgress ? 'These milestones are loaded from your learner account. Mastery will require evidence across multiple unseen exercises.' : 'Demo milestones are stored in this browser. Sign in to save supported milestones to your learner account.'}</p></div></div></>;
 }
 
 function LessonModal({ onClose, onComplete, completed }: { onClose: () => void; onComplete: () => void; completed: boolean }) {
