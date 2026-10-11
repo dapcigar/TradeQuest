@@ -44,7 +44,7 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 6. Apply `supabase/seed/dev_spread_lesson.sql`.
 7. Start the API and Vite frontend and test with two separate test accounts.
 
-Do not apply migrations to production until the SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
+If migration 004 previously stopped with a policy-already-exists error, apply migration 005 after confirming the earlier migrations are present. It recreates the policy safely and redefines the RPC. Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
 
 ## Validation
 
