@@ -8,6 +8,8 @@ import {
 import { calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
 import { assessSpreadAnswer } from './learning';
+import { supabase, supabaseConfigured } from './supabase';
+import type { Session } from '@supabase/supabase-js';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
@@ -58,6 +60,15 @@ function CandleChart() {
 function App() {
   const [view, setView] = useState<View>('overview');
   const [progress, setProgress] = useState<Progress>(readProgress);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
+  const [accountProgress, setAccountProgress] = useState<{ xp: number; lessons_completed: string[] } | null>(null);
+  const [quizResult, setQuizResult] = useState<{ score: number; passed: boolean; xpAwarded: number; idempotentReplay?: boolean } | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [quizChoice, setQuizChoice] = useState<string | null>(null);
@@ -71,8 +82,42 @@ function App() {
   const [scenarioRevealed, setScenarioRevealed] = useState(false);
 
   useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) setSession(data.session); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setAccountProgress(null);
+      setQuizResult(null);
+    });
+    return () => { active = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (session) return;
     try { localStorage.setItem(progressKey, JSON.stringify(progress)); } catch { /* demo progress remains in memory */ }
-  }, [progress]);
+  }, [progress, session]);
+
+  useEffect(() => {
+    if (!session) { setAccountProgress(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/me/progress', {
+          headers: { Authorization: 'Bearer ' + session.access_token },
+        });
+        if (!response.ok) throw new Error('Progress could not be loaded. Check the API and database setup.');
+        const body = await response.json() as { progress?: { xp?: unknown; lessons_completed?: unknown } };
+        if (!cancelled) setAccountProgress({
+          xp: typeof body.progress?.xp === 'number' && Number.isFinite(body.progress.xp) ? body.progress.xp : 0,
+          lessons_completed: Array.isArray(body.progress?.lessons_completed) ? body.progress.lessons_completed.filter((x): x is string => typeof x === 'string') : [],
+        });
+      } catch (error) {
+        if (!cancelled) setAuthMessage(error instanceof Error ? error.message : 'Account progress could not load.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session]);
 
   const risk = useMemo(() => {
     try {
@@ -97,6 +142,7 @@ function App() {
     { id: 'progress', label: 'Skill tree', icon: Award },
   ];
 
+  const activeXp = session ? (accountProgress?.xp ?? 0) : progress.xp;
   const completed = Number(progress.lessonComplete) + Number(progress.quizCorrect);
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
@@ -113,11 +159,63 @@ function App() {
     setLessonOpen(false);
   }
 
-  function submitQuiz() {
+  async function submitQuiz() {
     if (!quizChoice) return;
-    const correct = quizChoice === 'spread';
     setQuizSubmitted(true);
+    setQuizResult(null);
+    if (session) {
+      try {
+        const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/lesson-attempts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({
+            lessonId: 'spread-basics', lessonVersion: '1', attemptId: crypto.randomUUID(),
+            answers: [{ questionId: 'spread-definition', answerId: quizChoice }],
+          }),
+        });
+        const body = await response.json() as { result?: { score: number; passed: boolean; xpAwarded: number; idempotentReplay?: boolean }; error?: string };
+        if (!response.ok || !body.result) throw new Error(body.error || 'The answer could not be saved.');
+        setQuizResult(body.result);
+        setProgress(p => ({ ...p, quizCorrect: body.result!.passed || p.quizCorrect }));
+        setAccountProgress(p => p ? {
+          ...p,
+          xp: p.xp + (body.result!.idempotentReplay ? 0 : body.result!.xpAwarded),
+          lessons_completed: body.result!.passed && !p.lessons_completed.includes('spread-basics') ? [...p.lessons_completed, 'spread-basics'] : p.lessons_completed,
+        } : p);
+      } catch (error) {
+        setAuthMessage(error instanceof Error ? error.message : 'The answer could not be saved.');
+      }
+      return;
+    }
+    const correct = quizChoice === 'spread';
     setProgress(p => ({ ...p, quizCorrect: correct || p.quizCorrect, xp: p.xp + (correct && !p.quizCorrect ? 30 : 0) }));
+  }
+
+  async function handleAuthSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    setAuthBusy(true); setAuthMessage('');
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword });
+        if (error) throw error;
+        if (!data.session) setAuthMessage('Account created. Check your email to confirm the address, then sign in.');
+        else { setSession(data.session); setAuthOpen(false); setAuthPassword(''); }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
+        if (error) throw error;
+        setSession(data.session); setAuthOpen(false); setAuthPassword('');
+      }
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'Authentication failed. Please try again.');
+    } finally { setAuthBusy(false); }
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) setAuthMessage(error.message);
+    else { setSession(null); setAccountProgress(null); setAuthMessage('Signed out. Browser demo progress remains separate from account progress.'); }
   }
 
   function calculateAndSaveRisk() {
@@ -142,7 +240,7 @@ function App() {
           <div className="world-top"><span className="world-tag"><Sparkles size={12} /> SEASON 01</span><span className="world-level">LVL 02</span></div>
           <div className="world-title">The Market<br />Frontier</div>
           <div className="world-bottom"><span>Explorer rank</span><span>02 / 10</span></div>
-          <div className="level-track"><span style={{ width: `${Math.min(100, (progress.xp % 200) / 2)}%` }} /></div>
+          <div className="level-track"><span style={{ width: `${Math.min(100, (activeXp % 200) / 2)}%` }} /></div>
         </div>
         <nav className="main-nav" aria-label="Main navigation">
           {navItems.map((item) => {
@@ -166,7 +264,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="topbar-left"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20} /></button><span className="breadcrumb">The Market Frontier</span><span className="crumb-slash">/</span><span className="breadcrumb-current">{titleMap[view]}</span></div>
-          <div className="topbar-right"><span className="data-pill"><span className="status-dot" /> SIMULATION MODE</span><div className="top-xp"><Zap size={15} fill="currentColor" /> {progress.xp} XP</div><button className="help-button" aria-label="About TradeQuest" title="TradeQuest is an educational simulator, not financial advice." onClick={() => window.alert('TradeQuest is for education only. No live prices, signals or real-money trading. Synthetic chart data is clearly labelled.') }><CircleHelp size={18} /></button></div>
+          <div className="topbar-right"><button className="btn-outline account-button" onClick={() => session ? void signOut() : (setAuthOpen(true), setAuthMessage(''))}>{session ? 'Sign out' : 'Sign in'}</button><span className="data-pill"><span className="status-dot" /> SIMULATION MODE</span><div className="top-xp"><Zap size={15} fill="currentColor" /> {activeXp} XP</div><button className="help-button" aria-label="About TradeQuest" title="TradeQuest is an educational simulator, not financial advice." onClick={() => window.alert('TradeQuest is for education only. No live prices, signals or real-money trading. Synthetic chart data is clearly labelled.') }><CircleHelp size={18} /></button></div>
         </header>
 
         <div className="page-content">
@@ -174,13 +272,14 @@ function App() {
             progress={progress} completion={completion} onStart={() => setLessonOpen(true)}
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
-          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} />}
+          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} accountMode={Boolean(session)} />}
           {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} />}
         </div>
-        <footer className="site-footer"><span>TRADEQUEST <span className="footer-sep">/</span> LEARN THE PROCESS, NOT THE HYPE.</span><span>Educational simulation · No live market data · Not financial advice</span></footer>
+        {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setAuthOpen(false); }}><section className="lesson-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div className="modal-top"><span className="modal-kicker"><LockKeyhole size={15} /> FREE LEARNER ACCOUNT</span><button className="icon-button" onClick={() => setAuthOpen(false)} aria-label="Close sign in"><X size={19} /></button></div><div className="modal-content"><div className="eyebrow small-eyebrow">{authMode === 'signin' ? 'WELCOME BACK' : 'START YOUR JOURNEY'}</div><h2 id="auth-title">{authMode === 'signin' ? 'Sign in to TradeQuest.' : 'Create your learner account.'}</h2><p>Account progress is separate from browser demo progress. Supabase Auth handles your password.</p>{!supabaseConfigured ? <p className="feedback" role="alert">Authentication is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your local environment.</p> : <form className="auth-form" onSubmit={handleAuthSubmit}><label className="field-label" htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} /><label className="field-label" htmlFor="auth-password">Password</label><input id="auth-password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={authPassword} onChange={e => setAuthPassword(e.target.value)} /><button className="btn-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'} <ArrowRight size={15} /></button></form>}{authMessage && <p className="feedback" role="status">{authMessage}</p>}<button className="text-link auth-switch" onClick={() => { setAuthMode(mode => mode === 'signin' ? 'signup' : 'signin'); setAuthMessage(''); }}>{authMode === 'signin' ? 'New to TradeQuest? Create an account' : 'Already registered? Sign in'}</button></div></section></div>}
+      <footer className="site-footer"><span>TRADEQUEST <span className="footer-sep">/</span> LEARN THE PROCESS, NOT THE HYPE.</span><span>Educational simulation · No live market data · Not financial advice</span></footer>
       </main>
 
       {lessonOpen && <LessonModal onClose={() => setLessonOpen(false)} onComplete={markLessonComplete} completed={progress.lessonComplete} />}
@@ -225,15 +324,15 @@ function Overview({ progress, completion, onStart, onNavigate, onPractice }: {
   </>;
 }
 
-function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitted, submitQuiz }: {
+function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitted, submitQuiz, quizResult, accountMode }: {
   progress: Progress; onOpen: () => void; quizChoice: string | null;
-  setQuizChoice: (s: string) => void; quizSubmitted: boolean; submitQuiz: () => void;
+  setQuizChoice: (s: string) => void; quizSubmitted: boolean; submitQuiz: () => void; quizResult: { score: number; passed: boolean; xpAwarded: number; idempotentReplay?: boolean } | null; accountMode: boolean;
 }) {
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> LEARN BY DOING</div><h1>Your learning <span>path.</span></h1><p>Short lessons, useful practice, and feedback that explains the why—not just the answer.</p></div>
     <div className="learning-layout"><div className="lesson-list">
       {lessons.map((lesson, i) => <div className={`lesson-row ${i === 0 ? 'lesson-row-current' : ''}`} key={lesson.title}><div className={`lesson-marker ${lesson.color}`}>{i === 0 && progress.lessonComplete ? <Check size={17} /> : lesson.done ? <Check size={17} /> : String(i + 1).padStart(2, '0')}</div><div className="lesson-row-copy"><span className="lesson-row-meta">{lesson.meta}</span><h3>{lesson.title}</h3><span className="lesson-row-status">{i === 0 && progress.lessonComplete ? 'Completed · revisit any time' : i === 0 ? 'Ready when you are' : 'Planned · not available in this prototype'}</span></div>{i === 0 ? <button className="btn-dark" onClick={onOpen}>{progress.lessonComplete ? 'Review' : 'Start'} <ArrowRight size={14} /></button> : <button className="btn-outline" disabled title="This lesson has not been implemented yet">Coming soon</button>}</div>)}
     </div><aside className="learning-aside"><div className="aside-card"><div className="aside-icon"><Target size={20} /></div><div className="eyebrow small-eyebrow">YOUR FIRST SKILL</div><h3>Understand the spread</h3><p>The difference between bid and ask is a real cost. Learn to spot it before thinking about profit.</p><div className="skill-meter"><span style={{ width: progress.quizCorrect ? '100%' : '15%' }} /></div><span className="skill-caption">{progress.quizCorrect ? 'Skill check passed' : 'Skill check not yet passed'}</span></div>
-      <div className="quiz-card" id="quick-quiz"><div className="quiz-kicker"><Sparkles size={14} /> QUICK CHECK</div><h3>What does the spread represent?</h3>{[['commission','A fixed fee charged by the broker'],['spread','The difference between bid and ask'],['leverage','The amount borrowed to amplify exposure']].map(([id,label]) => <button key={id} className={`quiz-option ${quizChoice === id ? 'selected' : ''} ${progress.quizCorrect && id === 'spread' ? 'correct' : ''}`} onClick={() => setQuizChoice(id)}><span className="radio-dot">{quizChoice === id ? <span /> : null}</span>{label}</button>)}<button className="btn-primary full-button" onClick={submitQuiz} disabled={!quizChoice || quizSubmitted}>{quizSubmitted ? 'Answer checked' : 'Check answer'} <ArrowRight size={15} /></button>{quizSubmitted && quizChoice && <><p className={assessSpreadAnswer(quizChoice)?.correct ? 'feedback good' : 'feedback'} role="status">{assessSpreadAnswer(quizChoice)?.message}</p>{assessSpreadAnswer(quizChoice)?.nextStep === 'retry' && <button className="btn-outline full-button" onClick={() => { setQuizChoice(''); }}>Try again</button>}</>}</div>
+      <div className="quiz-card" id="quick-quiz"><div className="quiz-kicker"><Sparkles size={14} /> QUICK CHECK</div><h3>What does the spread represent?</h3>{[['commission','A fixed fee charged by the broker'],['spread','The difference between bid and ask'],['leverage','The amount borrowed to amplify exposure']].map(([id,label]) => <button key={id} className={`quiz-option ${quizChoice === id ? 'selected' : ''} ${progress.quizCorrect && id === 'spread' ? 'correct' : ''}`} onClick={() => setQuizChoice(id)}><span className="radio-dot">{quizChoice === id ? <span /> : null}</span>{label}</button>)}<button className="btn-primary full-button" onClick={submitQuiz} disabled={!quizChoice || quizSubmitted}>{quizSubmitted ? 'Answer checked' : 'Check answer'} <ArrowRight size={15} /></button>{quizSubmitted && quizChoice && <><p className={accountMode ? (quizResult?.passed ? 'feedback good' : 'feedback') : (assessSpreadAnswer(quizChoice)?.correct ? 'feedback good' : 'feedback')} role="status">{accountMode ? (quizResult ? (quizResult.passed ? 'Server-checked: ' + quizResult.score + '%. You passed and earned ' + quizResult.xpAwarded + ' XP.' : 'Server-checked: ' + quizResult.score + '%. You need 80% to pass. Review the lesson and try again.') : 'Submitting your answer to the learning service…') : assessSpreadAnswer(quizChoice)?.message}</p>{(accountMode ? Boolean(quizResult && !quizResult.passed) : assessSpreadAnswer(quizChoice)?.nextStep === 'retry') && <button className="btn-outline full-button" onClick={() => { setQuizChoice(''); setQuizSubmitted(false); }}>Try again</button>}</>}</div>
     </aside></div></>;
 }
 
