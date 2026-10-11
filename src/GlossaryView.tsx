@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, Search, ShieldCheck } from 'lucide-react';
-import { filterGlossary, glossaryEntries, type GlossaryCategory } from './glossary';
+import { filterGlossary, glossaryEntries } from './glossary';
 
 const categories = ['All concepts', 'Foundations', 'Chart skills', 'Risk management', 'Practice evidence'] as const;
 
@@ -24,5 +24,3 @@ export default function GlossaryView() {
     <p className="glossary-disclaimer">Educational definitions only. Examples are illustrative, not live market quotes or instructions to trade.</p>
   </div>;
 }
-
-export type { GlossaryCategory };
