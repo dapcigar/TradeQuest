@@ -5,7 +5,6 @@ export const progressEventSchema = z.object({
   eventKey: z.enum([
     'foundations-lesson-01',
     'risk-tool-used-v1',
-    'chart-dojo-scenario-01',
   ]),
 }).strict();
 

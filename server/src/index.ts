@@ -4,6 +4,11 @@ import { env } from './env.js';
 import { getBearerToken } from './auth.js';
 import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
+import { createRateLimiter } from './rateLimit.js';
+
+const LEARNER_RATE_LIMIT = 60;
+const LEARNER_RATE_WINDOW_MS = 60_000;
+const learnerLimiter = createRateLimiter(LEARNER_RATE_LIMIT, LEARNER_RATE_WINDOW_MS);
 
 const app = express();
 app.disable('x-powered-by');
@@ -17,7 +22,14 @@ app.use((req, res, next) => {
   next();
 });
 
-type AuthedRequest = Request & { learnerId?: string; learnerDb?: SupabaseClient };
+// Structured, token-free error logging (Vercel captures stdout/stderr). Only the
+// error name, code and message are logged; request headers and bodies never are.
+function logError(message: string, err: unknown) {
+  const e = err as { name?: string; code?: string; status?: number; message?: string } | null;
+  console.error(JSON.stringify({ level: 'error', message, name: e?.name, code: e?.code, status: e?.status, detail: e?.message }));
+}
+
+type AuthedRequest =Request & { learnerId?: string; learnerDb?: SupabaseClient };
 
 async function requireLearner(req: AuthedRequest, res: Response, next: NextFunction) {
   const token = getBearerToken(req.header('authorization'));
@@ -31,7 +43,19 @@ async function requireLearner(req: AuthedRequest, res: Response, next: NextFunct
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   const { data, error } = await learnerDb.auth.getUser(token);
-  if (error || !data.user) return res.status(401).json({ error: 'Session is invalid or expired.' });
+  if (error) {
+    // A 4xx from Auth means the token is bad; anything else (network, 5xx) is an outage,
+    // and must not be reported as 401 or the client would sign the learner out.
+    const status = typeof error.status === 'number' ? error.status : 0;
+    if (status >= 400 && status < 500) return res.status(401).json({ error: 'Session is invalid or expired.' });
+    logError('auth.getUser failed', error);
+    return res.status(503).json({ error: 'Authentication service is temporarily unavailable.' });
+  }
+  if (!data.user) return res.status(401).json({ error: 'Session is invalid or expired.' });
+  if (!learnerLimiter.allow(data.user.id)) {
+    res.setHeader('Retry-After', String(LEARNER_RATE_WINDOW_MS / 1000));
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
   req.learnerId = data.user.id;
   req.learnerDb = learnerDb;
   next();
@@ -45,7 +69,7 @@ app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, r
     .select('scenario_id, version, title, prompt, chart_data, choices')
     .eq('published', true)
     .order('scenario_id', { ascending: true });
-  if (error) return res.status(500).json({ error: 'Chart Dojo scenarios could not be loaded.' });
+  if (error) { logError('Chart Dojo scenarios could not be loaded.', error); return res.status(500).json({ error: 'Chart Dojo scenarios could not be loaded.' }); }
   return res.json({ scenarios: (data ?? []).map((item) => ({
     scenarioId: item.scenario_id,
     version: item.version,
@@ -63,6 +87,7 @@ app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Respo
     req.learnerDb!.from('progress_events').select('event_key').eq('user_id', req.learnerId!),
   ]);
   if (progressResult.error || eventsResult.error) {
+    logError('Could not load progress.', progressResult.error ?? eventsResult.error);
     return res.status(500).json({ error: 'Could not load progress.' });
   }
   return res.json({
@@ -81,6 +106,7 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
   if (error) {
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     if (error.code === '22023') return res.status(400).json({ error: 'Unknown progress event.' });
+    logError('rpc failed', error);
     return res.status(400).json({ error: 'Progress event could not be recorded.' });
   }
   return res.status(200).json({ result: data });
@@ -104,6 +130,7 @@ app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Respon
       .eq('event_key', 'risk-tool-used-v1'),
   ]);
   if (dojoResult.error || lessonResult.error || eventResult.error) {
+    logError('Mastery signals could not be loaded.', dojoResult.error ?? lessonResult.error ?? eventResult.error);
     return res.status(500).json({ error: 'Mastery signals could not be loaded.' });
   }
   return res.json(buildMastery(dojoResult.data ?? [], lessonResult.data ?? [], eventResult.data ?? []));
@@ -121,6 +148,7 @@ app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, r
     if (error.code === '23505') return res.status(409).json({ error: 'Attempt ID already used with different content.' });
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     if (error.code === '22023') return res.status(400).json({ error: 'Unknown scenario or choice.' });
+    logError('rpc failed', error);
     return res.status(400).json({ error: 'Chart Dojo attempt could not be saved.' });
   }
   return res.status(200).json({ result: data });
@@ -132,7 +160,7 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
     .eq('user_id', req.learnerId!)
     .order('submitted_at', { ascending: false })
     .limit(50);
-  if (error) return res.status(500).json({ error: 'Chart Dojo history could not be loaded.' });
+  if (error) { logError('Chart Dojo history could not be loaded.', error); return res.status(500).json({ error: 'Chart Dojo history could not be loaded.' }); }
   return res.json({ attempts: (data ?? []).map((item) => ({
     attemptId: item.attempt_id,
     scenarioId: item.scenario_id,
@@ -157,13 +185,19 @@ app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: 
     if (error.code === 'P0002') return res.status(404).json({ error: 'Published lesson version not found.' });
     if (error.code === '23505') return res.status(409).json({ error: 'Attempt ID already used with different content.' });
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('rpc failed', error);
     return res.status(400).json({ error: 'Attempt could not be accepted.' });
   }
   return res.status(200).json({ result: data });
 });
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  if (env.NODE_ENV !== 'production') console.error(err);
+  // body-parser failures (malformed JSON, oversized body) are client errors, not 500s.
+  const status = (err as { status?: number } | null)?.status;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return res.status(status).json({ error: status === 413 ? 'Request body too large.' : 'Invalid request.' });
+  }
+  logError('unhandled error', err);
   return res.status(500).json({ error: 'Unexpected server error.' });
 });
 
