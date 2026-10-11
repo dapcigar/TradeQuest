@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildMastery } from './mastery.js';
 import { SKILL_CATALOGUE } from './skillCatalogue.js';
 
-const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '202610110009_chart_dojo_scenario_variants.sql', '202610110010_chart_dojo_transfer_depth.sql', '202610110011_risk_budget_reasoning.sql'];
+const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '20261011175355_chart_dojo_scenario_variants.sql', '20261011182406_chart_dojo_transfer_depth.sql', '20261011190000_risk_budget_reasoning.sql'];
 const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 
 type SeedScenario = {
@@ -112,7 +112,7 @@ describe('scoring consistency', () => {
   });
 
   it('keeps risk-budget figures consistent with the stated budget', () => {
-    // Migration 009 corrects TQ-SYN-002's Plan A; apply that correction before checking.
+    // The scenario-variants migration corrects TQ-SYN-002's Plan A; apply that correction before checking.
     const correction = readFileSync(resolve(migrationsDir, MIGRATIONS[1]), 'utf8').match(/'(\{"id":"A","stopDistance":\d+,"estimatedLoss":\d+\})'::jsonb\)\s*where scenario_id = 'TQ-SYN-002'/);
     expect(correction).not.toBeNull();
     const budgetScenarios = seeded.filter(s => s.chartData.kind === 'risk-budget-comparison');
