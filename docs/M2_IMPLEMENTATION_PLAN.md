@@ -39,4 +39,4 @@ The API integration suite is opt-in and requires a running API plus two dedicate
 ## Next engineering priorities
 1. Run the opt-in integration suite against a disposable Supabase project and two dedicated test accounts after applying migrations 001–006 and the lesson seed.
 2. Wire the frontend to the scenario catalogue so learners can play scenarios 001–003 without hard-coded answer feedback.
-3. Add evidence-based adaptive mastery and recommendations across multiple unseen exercises.
+3. Surface the mastery API in the Skill Tree and guide learners directly to the recommended synthetic practice scenario.\n4. Extend mastery signals across lesson attempts and risk exercises, with confidence-aware explanations.\n5. Run the opt-in integration suite against a disposable Supabase project with two dedicated test accounts.
