@@ -1,5 +1,5 @@
 // Skill catalogue for the Chart Dojo mastery summary. Scenario ids and outcome labels
-// mirror the published scenarios in supabase/migrations (006, 009, 010); skillCatalogue.test.ts
+// mirror the published scenarios in supabase/migrations (006, 009, 010, 011); skillCatalogue.test.ts
 // fails if the two drift apart. The first scenario of each skill is its anchor scenario.
 export const SKILL_CATALOGUE = [
   {
@@ -11,7 +11,7 @@ export const SKILL_CATALOGUE = [
   {
     skillId: 'risk-management', label: 'Keep risk within budget',
     description: 'Size a position so a possible loss fits the stated risk budget.',
-    scenarioIds: ['TQ-SYN-002', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-011', 'TQ-SYN-014'],
+    scenarioIds: ['TQ-SYN-002', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-011', 'TQ-SYN-014', 'TQ-SYN-016', 'TQ-SYN-017', 'TQ-SYN-018'],
     positiveOutcomes: ['risk-aware'], negativeOutcomes: ['risk-exceeded'],
   },
   {
