@@ -4,7 +4,7 @@ import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './sc
 describe('progressEventSchema', () => {
   const valid = {
     eventId: '0e7a6c7c-95c6-4d47-9e92-9c3ddf5c0a1e',
-    eventKey: 'chart-dojo-scenario-01',
+    eventKey: 'risk-tool-used-v1',
   };
 
   it('accepts an allowlisted event with a UUID', () => {
@@ -14,6 +14,10 @@ describe('progressEventSchema', () => {
   it('rejects arbitrary event keys and client-supplied XP', () => {
     expect(progressEventSchema.safeParse({ ...valid, eventKey: 'award-9999-xp' }).success).toBe(false);
     expect(progressEventSchema.safeParse({ ...valid, xp: 9999 }).success).toBe(false);
+  });
+
+  it('rejects the Chart Dojo milestone, which is only earned by submitting an attempt', () => {
+    expect(progressEventSchema.safeParse({ ...valid, eventKey: 'chart-dojo-scenario-01' }).success).toBe(false);
   });
 
   it('rejects malformed IDs', () => {
