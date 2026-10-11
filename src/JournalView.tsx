@@ -26,7 +26,7 @@ function toApi(draft: Draft) {
   return { title: draft.title.trim(), scenarioId: draft.scenarioId, decision: draft.decision, thesis: draft.thesis.trim(),
     invalidation: draft.invalidation.trim(), riskPlan: draft.riskPlan.trim(), reflection: draft.reflection.trim(), lessonLearned: draft.lessonLearned.trim() };
 }
-function readDemo(): Entry[] {
+function writeDemo(entries: Entry[]) { try { localStorage.setItem(demoKey, JSON.stringify(entries)); } catch { /* local demo remains usable in memory */ } }\nfunction readDemo(): Entry[] {
   try { const raw = localStorage.getItem(demoKey); const value = raw ? JSON.parse(raw) as unknown : []; return Array.isArray(value) ? value as Entry[] : []; }
   catch { return []; }
 }
@@ -73,7 +73,7 @@ export default function JournalView({ session, scenarioId }: { session: Session 
       if (!session) {
         const now = new Date().toISOString();
         const entry: Entry = { ...toApi(draft), id: editingId ?? crypto.randomUUID(), createdAt: editingId ? entries.find(e => e.id === editingId)?.createdAt ?? now : now, updatedAt: now };
-        setEntries(current => editingId ? current.map(e => e.id === editingId ? entry : e) : [entry, ...current]);
+        setEntries(current => { const next = editingId ? current.map(e => e.id === editingId ? entry : e) : [entry, ...current]; writeDemo(next); return next; });
       } else {
         const url = apiBase() + '/v1/decision-journal' + (editingId ? '/' + encodeURIComponent(editingId) : '');
         const response = await fetch(url, { method: editingId ? 'PATCH' : 'POST',
@@ -97,7 +97,7 @@ export default function JournalView({ session, scenarioId }: { session: Session 
         const response = await fetch(apiBase() + '/v1/decision-journal/' + encodeURIComponent(entry.id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + session.access_token } });
         if (!response.ok) { const body = await response.json() as { error?: string }; throw new Error(body.error || 'Entry could not be deleted.'); }
       }
-      setEntries(current => current.filter(item => item.id !== entry.id));
+      setEntries(current => { const next = current.filter(item => item.id !== entry.id); if (!session) writeDemo(next); return next; });
       if (editingId === entry.id) { setEditingId(null); setDraft(emptyDraft); }
       setMessage('Journal entry deleted.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Entry could not be deleted.'); }
