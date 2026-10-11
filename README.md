@@ -17,7 +17,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Node/Express TypeScript API verifies learner access tokens and forwards the JWT to Supabase so RLS and `auth.uid()` operate in the learner's context.
 - Supabase PostgreSQL stores learner progress and server-scored lesson attempts.
 - First server-scored lesson: spread basics.
-- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo choices, server-authored feedback, and recent attempt history are persisted separately; its milestone reward is awarded once per learner.
+- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of three synthetic scenarios; answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
@@ -44,7 +44,7 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 6. Apply `supabase/seed/dev_spread_lesson.sql`.
 7. Start the API and Vite frontend and test with two separate test accounts.
 
-If migration 004 previously stopped with a policy-already-exists error, apply migration 005 after confirming the earlier migrations are present. It recreates the policy safely and redefines the RPC. Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
+Migration 005 is a safe, repeatable repair for migration 004 and should be applied before migration 006. Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
 
 ## Validation
 

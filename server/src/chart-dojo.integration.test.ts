@@ -8,7 +8,7 @@ const enabled = process.env.TRADEQUEST_RUN_INTEGRATION_TESTS === 'true'
 
 const suite = describe.skipIf(!enabled);
 
-suite('Chart Dojo API integration (explicit opt-in; uses two dedicated test accounts)', () => {
+suite('TradeQuest API integration (explicit opt-in; uses two dedicated test accounts)', () => {
   const request = (path: string, token: string, init?: RequestInit) =>
     fetch(`${apiUrl}${path}`, {
       ...init,
@@ -19,79 +19,48 @@ suite('Chart Dojo API integration (explicit opt-in; uses two dedicated test acco
       },
     });
 
+  it('serves multiple published scenarios without exposing answer keys', async () => {
+    const response = await request('/v1/chart-dojo/scenarios', userAToken!);
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      scenarios: Array<{ scenarioId: string; version: string; title: string; choices: unknown[]; answer_key?: unknown; answerKey?: unknown }>;
+    };
+    expect(body.scenarios.map(s => s.scenarioId)).toEqual(['TQ-SYN-001', 'TQ-SYN-002', 'TQ-SYN-003']);
+    expect(body.scenarios.every(s => s.version === '1' && s.choices.length >= 2)).toBe(true);
+    expect(body.scenarios.every(s => s.answer_key === undefined && s.answerKey === undefined)).toBe(true);
+  });
+
   it('persists attempts privately and handles replay safely', async () => {
     const attemptId = crypto.randomUUID();
-    const payload = {
-      attemptId,
-      scenarioId: 'TQ-SYN-001',
-      choiceId: 'wait',
-    };
+    const payload = { attemptId, scenarioId: 'TQ-SYN-001', choiceId: 'wait' };
 
-    const submit = await request('/v1/chart-dojo/attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    const submit = await request('/v1/chart-dojo/attempts', userAToken!, { method: 'POST', body: JSON.stringify(payload) });
     expect(submit.status).toBe(200);
-    const firstResult = await submit.json() as {
-      result: { attemptId: string; choiceId: string; idempotentReplay: boolean };
-    };
+    const firstResult = await submit.json() as { result: { attemptId: string; choiceId: string; idempotentReplay: boolean } };
     expect(firstResult.result.attemptId).toBe(attemptId);
     expect(firstResult.result.choiceId).toBe('wait');
     expect(firstResult.result.idempotentReplay).toBe(false);
 
-    const replay = await request('/v1/chart-dojo/attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    const replay = await request('/v1/chart-dojo/attempts', userAToken!, { method: 'POST', body: JSON.stringify(payload) });
     expect(replay.status).toBe(200);
-    const replayResult = await replay.json() as {
-      result: { attemptId: string; idempotentReplay: boolean; xpAwarded: number };
-    };
+    const replayResult = await replay.json() as { result: { attemptId: string; idempotentReplay: boolean; xpAwarded: number } };
     expect(replayResult.result.idempotentReplay).toBe(true);
     expect(replayResult.result.xpAwarded).toBe(0);
 
     const conflictingReplay = await request('/v1/chart-dojo/attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify({ ...payload, choiceId: 'skip' }),
+      method: 'POST', body: JSON.stringify({ ...payload, choiceId: 'skip' }),
     });
     expect(conflictingReplay.status).toBe(409);
 
     const userAHistoryResponse = await request('/v1/chart-dojo/attempts', userAToken!);
     expect(userAHistoryResponse.status).toBe(200);
-    const userAHistory = await userAHistoryResponse.json() as {
-      attempts: Array<{ attemptId: string }>;
-    };
-    expect(userAHistory.attempts.some((attempt) => attempt.attemptId === attemptId)).toBe(true);
+    const userAHistory = await userAHistoryResponse.json() as { attempts: Array<{ attemptId: string }> };
+    expect(userAHistory.attempts.some(attempt => attempt.attemptId === attemptId)).toBe(true);
 
     const userBHistoryResponse = await request('/v1/chart-dojo/attempts', userBToken!);
     expect(userBHistoryResponse.status).toBe(200);
-    const userBHistory = await userBHistoryResponse.json() as {
-      attempts: Array<{ attemptId: string }>;
-    };
-    expect(userBHistory.attempts.some((attempt) => attempt.attemptId === attemptId)).toBe(false);
-  });
-
-  it('rejects unauthenticated and malformed submissions', async () => {
-    const unauthenticated = await fetch(`${apiUrl}/v1/chart-dojo/attempts`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        attemptId: crypto.randomUUID(),
-        scenarioId: 'TQ-SYN-001',
-        choiceId: 'wait',
-      }),
-    });
-    expect(unauthenticated.status).toBe(401);
-
-    const malformed = await request('/v1/chart-dojo/attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify({
-        attemptId: 'not-a-uuid',
-        scenarioId: 'TQ-SYN-001',
-        choiceId: 'wait',
-      }),
-    });
-    expect(malformed.status).toBe(400);
+    const userBHistory = await userBHistoryResponse.json() as { attempts: Array<{ attemptId: string }> };
+    expect(userBHistory.attempts.some(attempt => attempt.attemptId === attemptId)).toBe(false);
   });
 
   it('scores lesson answers on the server and does not award completion XP twice', async () => {
@@ -101,42 +70,25 @@ suite('Chart Dojo API integration (explicit opt-in; uses two dedicated test acco
       attemptId: crypto.randomUUID(),
       answers: [{ questionId: 'spread-definition', answerId: 'spread' }],
     };
-
-    const first = await request('/v1/lesson-attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    const first = await request('/v1/lesson-attempts', userAToken!, { method: 'POST', body: JSON.stringify(payload) });
     expect(first.status).toBe(200);
-    const firstBody = await first.json() as {
-      result: { score: number; passed: boolean; xpAwarded: number; firstCompletion?: boolean; idempotentReplay: boolean };
-    };
+    const firstBody = await first.json() as { result: { score: number; passed: boolean; xpAwarded: number; idempotentReplay: boolean } };
     expect(firstBody.result.score).toBe(100);
     expect(firstBody.result.passed).toBe(true);
     expect(firstBody.result.idempotentReplay).toBe(false);
 
-    const replay = await request('/v1/lesson-attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    const replay = await request('/v1/lesson-attempts', userAToken!, { method: 'POST', body: JSON.stringify(payload) });
     expect(replay.status).toBe(200);
-    const replayBody = await replay.json() as {
-      result: { score: number; passed: boolean; xpAwarded: number; idempotentReplay: boolean };
-    };
+    const replayBody = await replay.json() as { result: { score: number; passed: boolean; xpAwarded: number; idempotentReplay: boolean } };
     expect(replayBody.result.idempotentReplay).toBe(true);
     expect(replayBody.result.score).toBe(firstBody.result.score);
     expect(replayBody.result.xpAwarded).toBe(firstBody.result.xpAwarded);
 
     const secondPassingAttempt = await request('/v1/lesson-attempts', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify({
-        ...payload,
-        attemptId: crypto.randomUUID(),
-      }),
+      method: 'POST', body: JSON.stringify({ ...payload, attemptId: crypto.randomUUID() }),
     });
     expect(secondPassingAttempt.status).toBe(200);
-    const secondBody = await secondPassingAttempt.json() as {
-      result: { score: number; passed: boolean; xpAwarded: number; firstCompletion: boolean };
-    };
+    const secondBody = await secondPassingAttempt.json() as { result: { passed: boolean; xpAwarded: number; firstCompletion: boolean } };
     expect(secondBody.result.passed).toBe(true);
     expect(secondBody.result.firstCompletion).toBe(false);
     expect(secondBody.result.xpAwarded).toBe(0);
@@ -145,21 +97,43 @@ suite('Chart Dojo API integration (explicit opt-in; uses two dedicated test acco
   it('does not award a progress milestone more than once', async () => {
     const eventKey = 'risk-tool-used-v1';
     const first = await request('/v1/progress-events', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
+      method: 'POST', body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
     });
     expect(first.status).toBe(200);
-
     const replay = await request('/v1/progress-events', userAToken!, {
-      method: 'POST',
-      body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
+      method: 'POST', body: JSON.stringify({ eventId: crypto.randomUUID(), eventKey }),
     });
     expect(replay.status).toBe(200);
-    const replayBody = await replay.json() as {
-      result: { eventKey: string; xpAwarded: number; alreadyRecorded: boolean };
-    };
+    const replayBody = await replay.json() as { result: { eventKey: string; xpAwarded: number; alreadyRecorded: boolean } };
     expect(replayBody.result.eventKey).toBe(eventKey);
     expect(replayBody.result.xpAwarded).toBe(0);
     expect(replayBody.result.alreadyRecorded).toBe(true);
+  });
+
+  it('accepts choices from a second scenario and returns server-authored feedback', async () => {
+    const response = await request('/v1/chart-dojo/attempts', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({ attemptId: crypto.randomUUID(), scenarioId: 'TQ-SYN-002', choiceId: 'recalculate' }),
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json() as { result: { scenarioId: string; scenarioVersion: string; choiceId: string; outcome: string; feedback: string } };
+    expect(body.result.scenarioId).toBe('TQ-SYN-002');
+    expect(body.result.scenarioVersion).toBe('1');
+    expect(body.result.choiceId).toBe('recalculate');
+    expect(body.result.outcome).toBe('risk-aware');
+    expect(body.result.feedback).toContain('risk budget');
+  });
+
+  it('rejects unauthenticated and malformed submissions', async () => {
+    const unauthenticated = await fetch(`${apiUrl}/v1/chart-dojo/attempts`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ attemptId: crypto.randomUUID(), scenarioId: 'TQ-SYN-001', choiceId: 'wait' }),
+    });
+    expect(unauthenticated.status).toBe(401);
+
+    const malformed = await request('/v1/chart-dojo/attempts', userAToken!, {
+      method: 'POST', body: JSON.stringify({ attemptId: 'not-a-uuid', scenarioId: 'TQ-SYN-001', choiceId: 'wait' }),
+    });
+    expect(malformed.status).toBe(400);
   });
 });

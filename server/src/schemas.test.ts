@@ -28,15 +28,14 @@ describe('chartDojoAttemptSchema', () => {
     choiceId: 'wait',
   };
 
-  it('accepts each supported choice', () => {
-    for (const choiceId of ['wait', 'buy', 'skip']) {
-      expect(chartDojoAttemptSchema.safeParse({ ...valid, choiceId }).success).toBe(true);
-    }
+  it('accepts the versioned scenario identifier format and choice slugs', () => {
+    expect(chartDojoAttemptSchema.safeParse(valid).success).toBe(true);
+    expect(chartDojoAttemptSchema.safeParse({ ...valid, scenarioId: 'TQ-SYN-002', choiceId: 'recalculate' }).success).toBe(true);
   });
 
-  it('rejects unknown scenarios, choices, and extra fields', () => {
+  it('rejects malformed scenario identifiers, choices, and extra fields', () => {
     expect(chartDojoAttemptSchema.safeParse({ ...valid, scenarioId: 'live-gold' }).success).toBe(false);
-    expect(chartDojoAttemptSchema.safeParse({ ...valid, choiceId: 'short' }).success).toBe(false);
+    expect(chartDojoAttemptSchema.safeParse({ ...valid, choiceId: 'not a choice' }).success).toBe(false);
     expect(chartDojoAttemptSchema.safeParse({ ...valid, userId: 'attacker-chosen-id' }).success).toBe(false);
   });
 

@@ -10,8 +10,8 @@
 - React + Vite frontend.
 - Browser uses `@supabase/supabase-js` and a public publishable key for managed email/password authentication and persistent sessions.
 - Node/Express API validates Supabase access tokens and forwards the learner JWT to a request-scoped Supabase client so RLS and `auth.uid()` see the authenticated learner.
-- Supabase PostgreSQL stores versioned lessons, lesson attempts, learner progress and idempotent progress events.
-- Database functions calculate scores and XP. Clients cannot send XP, score or pass state.
+- Supabase PostgreSQL stores versioned lessons, lesson attempts, learner progress, idempotent progress events, and versioned Chart Dojo scenarios/attempts.
+- Database functions calculate scores, feedback and XP. Clients cannot submit answer keys, XP, score or pass state.
 
 ## Environment setup
 Copy `.env.example` to `.env.local` for Vite development. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and optionally `VITE_TRADEQUEST_API_URL` (defaults to `http://localhost:4000`). Create `server/.env` for the API using the server variables in `.env.example`. Never commit actual environment files or expose a service-role key.
@@ -22,17 +22,21 @@ Apply in order:
 2. `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
 3. `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
 4. `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
-5. `supabase/seed/dev_spread_lesson.sql`
+5. `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
+6. `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
+7. `supabase/seed/dev_spread_lesson.sql`
+
+Migration 006 seeds three synthetic scenarios and creates a published-scenario read API. Authenticated learners can read published scenario prompts/choices, but not answer keys. Attempt records store the exact scenario version used. The first Chart Dojo XP milestone remains one-time per learner.
 
 Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins. Test with at least two separate users. Verify RLS isolation, progress event idempotency, quiz attempt retries and XP awards in a disposable project before production use.
 
 ## Current scope
-Account persistence covers the spread knowledge check, foundations lesson completion, risk calculator use, and Chart Dojo scenario choice/feedback history. Anonymous demo progress remains local and separate. Full adaptive mastery, production deployment and comprehensive multi-user database integration tests remain outstanding.
+Account persistence covers the spread knowledge check, foundations lesson completion, risk calculator use, and Chart Dojo choice/feedback history. The database/API catalogue supports multiple versioned scenarios, while the current frontend still presents the original scenario experience. Anonymous demo progress remains local and separate. Adaptive mastery, cross-device adaptive recommendations, production deployment and comprehensive multi-user database integration validation remain outstanding.
 
 ## Integration test setup
-The Chart Dojo API integration suite is opt-in and requires a running API plus two dedicated test accounts in a disposable Supabase project. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`, then run `npm test`. Keep these credentials out of committed files and CI logs. The suite creates a uniquely identified test attempt for user A and checks replay idempotency, conflicting replay rejection, unauthenticated/malformed requests, and that user B cannot see user A's attempt. Without all four variables, these integration tests are skipped.
+The API integration suite is opt-in and requires a running API plus two dedicated test accounts in a disposable Supabase project. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`, then run `npm test`. Keep these credentials out of committed files and CI logs. The suite checks scenario catalogue exposure without answer keys, attempt replay/conflict behaviour, cross-learner history isolation, lesson scoring/XP idempotency, milestone idempotency, and submission against a second scenario. Without all four variables, these integration tests are skipped.
 
 ## Next engineering priorities
-1. Run the opt-in integration suite against a disposable Supabase project and two dedicated test accounts.
-2. Add equivalent integration coverage for lesson scoring and progress-event XP idempotency.
-3. Persist multiple versioned Chart Dojo scenarios and evidence for adaptive mastery.
+1. Run the opt-in integration suite against a disposable Supabase project and two dedicated test accounts after applying migrations 001–006 and the lesson seed.
+2. Wire the frontend to the scenario catalogue so learners can play scenarios 001–003 without hard-coded answer feedback.
+3. Add evidence-based adaptive mastery and recommendations across multiple unseen exercises.
