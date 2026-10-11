@@ -23,3 +23,20 @@ export const attemptSchema = z.object({
     answerId: z.string().min(1).max(80),
   }).strict()).min(1).max(50),
 }).strict();
+
+
+export const decisionJournalSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  scenarioId: z.string().regex(/^TQ-SYN-[0-9]{3}$/).nullable().optional(),
+  decision: z.enum(['considered', 'waited', 'passed', 'simulated']),
+  thesis: z.string().max(2000).optional().default(''),
+  invalidation: z.string().max(1000).optional().default(''),
+  riskPlan: z.string().max(1000).optional().default(''),
+  reflection: z.string().max(2000).optional().default(''),
+  lessonLearned: z.string().max(1000).optional().default(''),
+}).strict();
+
+export const decisionJournalPatchSchema = decisionJournalSchema.partial().refine(
+  value => Object.keys(value).length > 0,
+  { message: 'At least one field is required.' },
+);
