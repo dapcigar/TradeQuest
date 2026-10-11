@@ -67,14 +67,19 @@ alter table public.chart_dojo_attempts
 
 alter table public.chart_dojo_attempts
   drop constraint if exists chart_dojo_attempts_scenario_id_check;
-
+alter table public.chart_dojo_attempts
+  drop constraint if exists chart_dojo_attempts_choice_id_check;
+alter table public.chart_dojo_attempts
+  drop constraint if exists chart_dojo_attempts_outcome_check;
 alter table public.chart_dojo_attempts
   drop constraint if exists chart_dojo_attempts_scenario_version_fkey;
 
 alter table public.chart_dojo_attempts
+  add constraint chart_dojo_attempts_choice_id_check check (length(choice_id) between 1 and 40),
+  add constraint chart_dojo_attempts_outcome_check check (length(outcome) between 1 and 40),
   add constraint chart_dojo_attempts_scenario_version_fkey
-  foreign key (scenario_id, scenario_version)
-  references public.chart_dojo_scenarios(scenario_id, version);
+    foreign key (scenario_id, scenario_version)
+    references public.chart_dojo_scenarios(scenario_id, version);
 
 create or replace function public.submit_chart_dojo_attempt(
   p_attempt_id uuid,
