@@ -12,6 +12,7 @@ describe('buildMastery', () => {
     expect(result.recommendation.confidence).toBe('not-enough-evidence');
     expect(result.skills.find(skill => skill.skillId === 'planning')?.successRate).toBe(50);
   });
+
   it('uses lower positive-decision rate to break ties in practice count', () => {
     const result = buildMastery([
       { scenario_id: 'TQ-SYN-001', outcome: 'disciplined' },
@@ -20,12 +21,36 @@ describe('buildMastery', () => {
     ]);
     expect(result.recommendation.scenarioId).toBe('TQ-SYN-002');
   });
+
+  it('prioritises a skill last practised at least 14 days ago for spaced review', () => {
+    const now = new Date('2026-10-11T12:00:00.000Z');
+    const result = buildMastery([
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: '2026-09-20T12:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: '2026-09-21T12:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-002', outcome: 'risk-aware', submitted_at: '2026-10-10T12:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-003', outcome: 'evidence-led', submitted_at: '2026-10-10T12:00:00.000Z' },
+    ], [], [], now);
+    expect(result.recommendation.scenarioId).toBe('TQ-SYN-001');
+    expect(result.recommendation.reviewStatus).toBe('review-due');
+    expect(result.recommendation.reason).toContain('at least 14 days ago');
+    expect(result.skills.find(skill => skill.scenarioId === 'TQ-SYN-001')?.lastPractisedAt).toBe('2026-09-21T12:00:00.000Z');
+  });
+
+  it('does not mark skills due when timestamps are absent or invalid', () => {
+    const result = buildMastery([
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: 'not-a-date' },
+    ], [], [], new Date('2026-10-11T12:00:00.000Z'));
+    expect(result.skills.find(skill => skill.scenarioId === 'TQ-SYN-001')?.reviewStatus).toBe('date-unavailable');
+    expect(result.recommendation.scenarioId).toBe('TQ-SYN-002');
+  });
+
   it('returns all skills with unknown rates when there is no history', () => {
     const result = buildMastery([]);
     expect(result.skills).toHaveLength(3);
     expect(result.skills.every(skill => skill.successRate === null)).toBe(true);
     expect(result.sampleSize).toBe(0);
   });
+
   it('adds lesson outcomes but treats risk-tool use as participation only', () => {
     const result = buildMastery(
       [{ scenario_id: 'TQ-SYN-001', outcome: 'disciplined' }],
