@@ -24,9 +24,9 @@ Apply in order:
 4. `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
 5. `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
 6. `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
-7. `supabase/migrations/202610110008_foundations_milestone_requires_quiz.sql`
-8. `supabase/migrations/202610110009_chart_dojo_scenario_variants.sql`
-9. `supabase/migrations/202610110010_chart_dojo_transfer_depth.sql`
+7. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
+8. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
+9. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
 10. `supabase/migrations/202610110011_risk_budget_reasoning.sql`
 11. `supabase/seed/dev_spread_lesson.sql`
 

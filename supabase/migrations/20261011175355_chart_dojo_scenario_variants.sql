@@ -1,5 +1,5 @@
 -- Unseen Chart Dojo scenario variants (two more per skill).
--- Apply after 202610110008_foundations_milestone_requires_quiz.sql.
+-- Apply after 20261011170834_foundations_milestone_requires_quiz.sql.
 --
 -- Each variant teaches the same risk-first principle as an original scenario in a
 -- different fictional situation, so a learner cannot score well just by remembering

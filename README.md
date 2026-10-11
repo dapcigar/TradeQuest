@@ -44,9 +44,9 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
    - `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
    - `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
-   - `supabase/migrations/202610110007_harden_grants_and_milestone_claims.sql`
-   - `supabase/migrations/202610110008_foundations_milestone_requires_quiz.sql`
-   - `supabase/migrations/202610110009_chart_dojo_scenario_variants.sql`
+   - `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
+   - `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
+   - `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts.
 
