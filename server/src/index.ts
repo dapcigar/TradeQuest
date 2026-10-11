@@ -39,10 +39,38 @@ async function requireLearner(req: AuthedRequest, res: Response, next: NextFunct
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'tradequest-api' }));
 
 app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Response) => {
-  const { data, error } = await req.learnerDb!.from('learner_progress')
-    .select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle();
-  if (error) return res.status(500).json({ error: 'Could not load progress.' });
-  return res.json({ progress: data ?? { xp: 0, lessons_completed: [], updated_at: null } });
+  const [progressResult, eventsResult] = await Promise.all([
+    req.learnerDb!.from('learner_progress')
+      .select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
+    req.learnerDb!.from('progress_events').select('event_key').eq('user_id', req.learnerId!),
+  ]);
+  if (progressResult.error || eventsResult.error) {
+    return res.status(500).json({ error: 'Could not load progress.' });
+  }
+  return res.json({
+    progress: progressResult.data ?? { xp: 0, lessons_completed: [], updated_at: null },
+    events: (eventsResult.data ?? []).map((event) => event.event_key),
+  });
+});
+
+const progressEventSchema = z.object({
+  eventId: z.string().uuid(),
+  eventKey: z.enum(['foundations-lesson-01', 'risk-tool-used-v1']),
+}).strict();
+
+app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = progressEventSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid progress event.' });
+  const { data, error } = await req.learnerDb!.rpc('record_progress_event', {
+    p_event_id: parsed.data.eventId,
+    p_event_key: parsed.data.eventKey,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Unknown progress event.' });
+    return res.status(400).json({ error: 'Progress event could not be recorded.' });
+  }
+  return res.status(200).json({ result: data });
 });
 
 const attemptSchema = z.object({
