@@ -39,7 +39,6 @@ begin
   v_xp := case p_event_key
     when 'foundations-lesson-01' then 40
     when 'risk-tool-used-v1' then 10
-    when 'chart-dojo-scenario-01' then 15
     else null
   end;
   if v_xp is null then
