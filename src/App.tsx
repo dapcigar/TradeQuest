@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen,
+  Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
-  LockKeyhole, Menu, Play, ShieldCheck, Sparkles, Target, TrendingUp, Trophy,
+  LockKeyhole, Menu, Play, ShieldCheck, Sparkles, Target, Trophy,
   Wallet, X, Zap,
 } from 'lucide-react';
 import { calculateRisk } from './risk';
@@ -39,7 +39,7 @@ function CandleChart() {
   return (
     <svg className="candles" viewBox="0 0 400 145" role="img" aria-label="Illustrative synthetic candlestick chart trending upward. This is not live market data.">
       {[24, 54, 84, 114].map(y => <line key={y} x1="18" y1={y} x2="385" y2={y} className="chart-grid" />)}
-      {candles.map(([x, open, close, high, low], i) => {
+      {candles.map(([x, open, close, high, low]) => {
         const up = close < open;
         const top = Math.min(open, close);
         const height = Math.max(5, Math.abs(open - close));
