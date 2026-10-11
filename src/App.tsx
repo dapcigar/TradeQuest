@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import JournalView from './JournalView';
 import ReviewQueue from './ReviewQueue';
 import AdaptivePractice from './AdaptivePractice';
+import WeeklyPracticePlan from './WeeklyPracticePlan';
 import {
-  Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen,
+  Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
   LockKeyhole, Menu, Play, ShieldCheck, Sparkles, Target, Trophy,
   Wallet, X, Zap,
@@ -16,7 +17,7 @@ import { useModalFocus } from './useModalFocus';
 import { describeEvidence, describeTransfer, type ApplicationBucket, type EvidenceBucket } from './masteryDisplay';
 import type { Session } from '@supabase/supabase-js';
 
-type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive';
+type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
 type MasterySummary = {
   skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string; distinctScenarios: number; scenariosAvailable: number; recall: EvidenceBucket; application: ApplicationBucket; lastPractisedAt: string | null; reviewStatus: string; firstAttemptPositive: boolean | null; delayedReviewAttempts: number; retentionStatus: string }>;
@@ -256,7 +257,8 @@ function App() {
     { id: 'risk', label: 'Risk simulator', icon: ShieldCheck },
     { id: 'journal', label: 'Decision journal', icon: BookOpen, section: 'REFLECT' },
     { id: 'review', label: 'Review queue', icon: Target, section: 'KEEP LEARNING' },
-    { id: 'adaptive', label: 'Adaptive practice', icon: Sparkles }, 
+    { id: 'adaptive', label: 'Adaptive practice', icon: Sparkles },
+    { id: 'weekly', label: 'Weekly practice plan', icon: CalendarDays, section: 'BUILD A ROUTINE' }, 
     { id: 'challenges', label: 'Community quests', icon: Trophy, section: 'PLAY TOGETHER' },
     { id: 'progress', label: 'Skill tree', icon: Award },
   ];
@@ -266,7 +268,7 @@ function App() {
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
     overview: 'Mission control', learn: 'Your learning path', practice: 'Chart dojo',
-    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice',
+    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan',
   };
 
   function awardXPOnce(actionId: string, amount: number) {
@@ -490,6 +492,7 @@ function App() {
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'journal' && <JournalView session={session} scenarioId={activeScenarioId} />}
           {view === 'adaptive' && <AdaptivePractice />}
+          {view === 'weekly' && <WeeklyPracticePlan />}
           {view === 'review' && <ReviewQueue signedIn={Boolean(session)} mastery={session ? mastery : null} message={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
