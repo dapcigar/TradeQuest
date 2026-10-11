@@ -81,6 +81,10 @@ function App() {
   const [riskError, setRiskError] = useState('');
   const [scenarioChoice, setScenarioChoice] = useState<string | null>(null);
   const [scenarioRevealed, setScenarioRevealed] = useState(false);
+  const [dojoResult, setDojoResult] = useState<{ choiceId: string; outcome: string; feedback: string; xpAwarded: number; idempotentReplay?: boolean } | null>(null);
+  const [dojoError, setDojoError] = useState('');
+  const [dojoBusy, setDojoBusy] = useState(false);
+  const [dojoHistory, setDojoHistory] = useState<Array<{ attemptId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string }>>([]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -121,6 +125,16 @@ function App() {
     return () => { cancelled = true; };
   }, [session]);
 
+  useEffect(() => {
+    if (!session) { setDojoHistory([]); setDojoResult(null); return; }
+    let cancelled = false;
+    fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/chart-dojo/attempts', { headers: { Authorization: 'Bearer ' + session.access_token } })
+      .then(async response => { if (!response.ok) throw new Error('Chart Dojo history could not load.'); return response.json(); })
+      .then((body: { attempts?: Array<{ attemptId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string }> }) => { if (!cancelled) setDojoHistory(Array.isArray(body.attempts) ? body.attempts : []); })
+      .catch(error => { if (!cancelled) setDojoError(error instanceof Error ? error.message : 'Chart Dojo history could not load.'); });
+    return () => { cancelled = true; };
+  }, [session]);
+
   const risk = useMemo(() => {
     try {
       return calculateRisk({
@@ -156,7 +170,7 @@ function App() {
     setProgress(p => awardProgressXPOnce(p, actionId, amount));
   }
 
-  async function recordAccountEvent(eventKey: 'foundations-lesson-01' | 'risk-tool-used-v1' | 'chart-dojo-scenario-01') {
+  async function recordAccountEvent(eventKey: 'foundations-lesson-01' | 'risk-tool-used-v1') {
     if (!session) return false;
     try {
       const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/progress-events', {
@@ -177,6 +191,33 @@ function App() {
       setAuthMessage(error instanceof Error ? error.message : 'Progress could not be saved.');
       return false;
     }
+  }
+
+  async function submitChartDojoAttempt(choiceId: string): Promise<boolean> {
+    setDojoBusy(true); setDojoError('');
+    try {
+      if (session) {
+        const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/chart-dojo/attempts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({ attemptId: crypto.randomUUID(), scenarioId: 'TQ-SYN-001', choiceId }),
+        });
+        const body = await response.json() as { result?: { choiceId: string; outcome: string; feedback: string; xpAwarded: number; idempotentReplay?: boolean; attemptId: string }; error?: string };
+        if (!response.ok || !body.result) throw new Error(body.error || 'Chart Dojo answer could not be saved.');
+        setDojoResult(body.result);
+        setAccountProgress(p => p ? { ...p, xp: p.xp + body.result!.xpAwarded, events: p.events.includes('chart-dojo-scenario-01') ? p.events : [...p.events, 'chart-dojo-scenario-01'] } : p);
+        setDojoHistory(history => [{ attemptId: body.result!.attemptId, choiceId: body.result!.choiceId, outcome: body.result!.outcome, feedback: body.result!.feedback, submittedAt: new Date().toISOString() }, ...history].slice(0, 50));
+      } else {
+        const outcome = choiceId === 'buy' ? 'undefined-risk' : 'disciplined';
+        const feedback = choiceId === 'buy' ? 'Momentum is not a plan. Entering without an invalidation point leaves risk undefined. A strong-looking chart does not guarantee continuation.' : 'A disciplined choice. Waiting or declining an unclear setup protects your decision process. Define what would prove the idea wrong before considering an entry.';
+        setDojoResult({ choiceId, outcome, feedback, xpAwarded: 15 });
+        awardXPOnce('chart-dojo-synthetic-001', 15);
+      }
+      setScenarioRevealed(true);
+      return true;
+    } catch (error) {
+      setDojoError(error instanceof Error ? error.message : 'Chart Dojo answer could not be saved.');
+      return false;
+    } finally { setDojoBusy(false); }
   }
 
   async function markLessonComplete() {
@@ -319,7 +360,7 @@ function App() {
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} accountMode={Boolean(session)} />}
-          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={async () => { if (session) return recordAccountEvent('chart-dojo-scenario-01'); awardXPOnce('chart-dojo-synthetic-001', 15); return true; }} />}
+          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} />}
@@ -382,14 +423,15 @@ function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitt
     </aside></div></>;
 }
 
-function PracticeView({ choice, setChoice, revealed, setRevealed, onAward }: {
-  choice: string | null; setChoice: (s: string) => void; revealed: boolean; setRevealed: (b: boolean) => void; onAward: () => Promise<boolean>;
+function PracticeView({ choice, setChoice, revealed, onSubmit, result, error, busy, history }: {
+  choice: string | null; setChoice: (s: string) => void; revealed: boolean; onSubmit: (choice: string) => Promise<boolean>;
+  result: { choiceId: string; outcome: string; feedback: string; xpAwarded: number } | null; error: string; busy: boolean;
+  history: Array<{ attemptId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string }>;
 }) {
-  const [awarded, setAwarded] = useState(false);
-  async function reveal() { if (revealed || !choice) return; if (!awarded) { const saved = await onAward(); if (!saved) return; setAwarded(true); } setRevealed(true); }
+  async function reveal() { if (revealed || !choice || busy) return; await onSubmit(choice); }
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> PRACTICE LAB 01</div><h1>Welcome to the <span>chart dojo.</span></h1><p>Slow down, read what is visible, make a plan, then reveal the next chapter. No rush, no real money.</p></div>
     <div className="practice-layout"><section className="chart-panel"><div className="chart-panel-head"><div><span className="chart-instrument">SYNTHETIC · TEACHING SCENARIO</span><h2>Gold / USD <span className="chart-symbol">XAU/USD · SIMULATED</span></h2></div><span className="timeframe-chip">1H <ChevronDown size={13} /></span></div><div className="chart-legend"><span><i className="legend-dot green" /> Illustrative up candle</span><span><i className="legend-dot red" /> Illustrative down candle</span><span className="chart-disclosure"><LockKeyhole size={12} /> Not live prices</span></div><div className="chart-wrap"><CandleChart /></div><div className="chart-footer"><span>SCENARIO TQ-SYN-001</span><span>Prices are fictional</span></div></section>
-      <aside className="scenario-panel"><div className="scenario-number">DECISION POINT 01 <span>+15 XP</span></div><h2>What would you do next?</h2><p>The illustrative candles have been moving higher. You have no defined entry, stop, or reason that would invalidate the idea.</p><div className="scenario-rule"><ShieldCheck size={17} /><span><strong>Think risk-first</strong> — a chart direction alone is not a complete plan.</span></div><div className="scenario-options">{[['wait','Wait for more evidence and define risk first'],['buy','Buy now because the trend looks strong'],['skip','Skip the trade; the setup is unclear']].map(([id,label]) => <button key={id} className={`scenario-option ${choice === id ? 'selected' : ''}`} onClick={() => { setChoice(id); setRevealed(false); }}><span className="scenario-radio">{choice === id ? <span /> : null}</span>{label}</button>)}</div><button className="btn-primary full-button" onClick={reveal} disabled={!choice || revealed}>{revealed ? 'Scenario revealed' : 'Reveal feedback'} <ArrowRight size={15} /></button>{revealed && <div className="scenario-feedback"><CheckCircle2 size={18} /><div><strong>{choice === 'wait' || choice === 'skip' ? 'A disciplined choice.' : 'Momentum is not a plan.'}</strong><p>{choice === 'buy' ? 'Entering without an invalidation point leaves risk undefined. A strong-looking chart does not guarantee continuation.' : 'Waiting or declining an unclear setup protects your decision process. Define what would prove the idea wrong before considering an entry.'}</p></div></div>}</aside>
+      <aside className="scenario-panel"><div className="scenario-number">DECISION POINT 01 <span>+15 XP</span></div><h2>What would you do next?</h2><p>The illustrative candles have been moving higher. You have no defined entry, stop, or reason that would invalidate the idea.</p><div className="scenario-rule"><ShieldCheck size={17} /><span><strong>Think risk-first</strong> — a chart direction alone is not a complete plan.</span></div><div className="scenario-options">{[['wait','Wait for more evidence and define risk first'],['buy','Buy now because the trend looks strong'],['skip','Skip the trade; the setup is unclear']].map(([id,label]) => <button key={id} className={`scenario-option ${choice === id ? 'selected' : ''}`} onClick={() => { setChoice(id); setRevealed(false); }}><span className="scenario-radio">{choice === id ? <span /> : null}</span>{label}</button>)}</div><button className="btn-primary full-button" onClick={reveal} disabled={!choice || revealed || busy}>{busy ? 'Saving answer…' : revealed ? 'Scenario revealed' : 'Reveal feedback'} <ArrowRight size={15} /></button>{error && <p className="feedback" role="alert">{error}</p>}{revealed && result && <div className="scenario-feedback"><CheckCircle2 size={18} /><div><strong>{result.outcome === 'disciplined' ? 'A disciplined choice.' : 'Momentum is not a plan.'}</strong><p>{result.feedback}</p><span className="scenario-xp">+{result.xpAwarded} XP earned</span></div></div>}{history.length > 0 && <div className="dojo-history"><h3>Recent practice</h3>{history.slice(0, 5).map(item => <div className="dojo-history-row" key={item.attemptId}><span>{item.choiceId === 'buy' ? 'Buy now' : item.choiceId === 'wait' ? 'Wait for evidence' : 'Skip unclear setup'}</span><span>{item.outcome === 'disciplined' ? 'Risk-first' : 'Risk undefined'}</span><time>{new Date(item.submittedAt).toLocaleDateString()}</time></div>)}</div>}</aside>
     </div><div className="practice-disclaimer"><ShieldCheck size={17} /><span>Learning simulation only. This scenario uses synthetic teaching data and is not a recommendation to buy or sell gold.</span></div>
   </>;
 }
