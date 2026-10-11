@@ -87,13 +87,26 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
 });
 
 app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Response) => {
-  const { data, error } = await req.learnerDb!.from('chart_dojo_attempts')
-    .select('scenario_id, outcome, submitted_at')
-    .eq('user_id', req.learnerId!)
-    .order('submitted_at', { ascending: false })
-    .limit(100);
-  if (error) return res.status(500).json({ error: 'Mastery signals could not be loaded.' });
-  return res.json(buildMastery(data ?? []));
+  const [dojoResult, lessonResult, eventResult] = await Promise.all([
+    req.learnerDb!.from('chart_dojo_attempts')
+      .select('scenario_id, outcome, submitted_at')
+      .eq('user_id', req.learnerId!)
+      .order('submitted_at', { ascending: false })
+      .limit(100),
+    req.learnerDb!.from('lesson_attempts')
+      .select('lesson_id, score, passed, submitted_at')
+      .eq('user_id', req.learnerId!)
+      .order('submitted_at', { ascending: false })
+      .limit(100),
+    req.learnerDb!.from('progress_events')
+      .select('event_key, recorded_at')
+      .eq('user_id', req.learnerId!)
+      .eq('event_key', 'risk-tool-used-v1'),
+  ]);
+  if (dojoResult.error || lessonResult.error || eventResult.error) {
+    return res.status(500).json({ error: 'Mastery signals could not be loaded.' });
+  }
+  return res.json(buildMastery(dojoResult.data ?? [], lessonResult.data ?? [], eventResult.data ?? []));
 });
 
 app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
