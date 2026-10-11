@@ -112,7 +112,7 @@ describe('scoring consistency', () => {
   });
 
   it('keeps risk-budget figures consistent with the stated budget', () => {
-    // Migration 009 corrects TQ-SYN-002's Plan A; apply that correction before checking.
+    // The scenario-variants migration corrects TQ-SYN-002's Plan A; apply that correction before checking.
     const correction = readFileSync(resolve(migrationsDir, MIGRATIONS[1]), 'utf8').match(/'(\{"id":"A","stopDistance":\d+,"estimatedLoss":\d+\})'::jsonb\)\s*where scenario_id = 'TQ-SYN-002'/);
     expect(correction).not.toBeNull();
     const budgetScenarios = seeded.filter(s => s.chartData.kind === 'risk-budget-comparison');

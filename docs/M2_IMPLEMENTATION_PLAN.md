@@ -24,10 +24,11 @@ Apply in order:
 4. `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
 5. `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
 6. `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
-7. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
-8. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
-9. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
-10. `supabase/migrations/202610110011_risk_budget_reasoning.sql`
+7. `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
+8. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
+9. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
+10. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
+11. `supabase/migrations/20261011190000_risk_budget_reasoning.sql` (already applied manually to the dev project; reconcile its ledger entry before using `supabase db push`)
 11. `supabase/seed/dev_spread_lesson.sql`
 
 Migration 006 seeds three synthetic scenarios and creates a published-scenario read API. Authenticated learners can read published scenario prompts/choices, but not answer keys. Attempt records store the exact scenario version used. The first Chart Dojo XP milestone remains one-time per learner.
@@ -52,7 +53,7 @@ npm run api:build
 
 For real database behaviour, use a **disposable Supabase project** and two dedicated test users; do not use production credentials or personal learner accounts.
 
-1. Apply migrations 001–006, then 008–011 in filename order, then run `supabase/seed/dev_spread_lesson.sql`.
+1. Apply migrations 001–006, then the timestamped migrations 007–011 in filename order, then run `supabase/seed/dev_spread_lesson.sql`. On the existing dev project, do not re-run the risk-budget SQL: it was applied manually and must be reconciled in the migration ledger first.
 2. Configure `server/.env` with the disposable project's URL and public/anon key, then start the API with `npm run api:dev`.
 3. Obtain fresh access tokens for test users A and B. Treat them as secrets and never commit them or print them in CI logs.
 4. In a separate shell, set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`; run `npm test`.
@@ -66,3 +67,57 @@ The integration suite cannot prove live database isolation when it is skipped du
 1. Maintain diverse synthetic scenarios and report transfer confidence only from distinct first-time variants; repeated answers must not inflate transfer evidence.
 2. Continue validating server-authoritative scoring and per-account isolation as new exercises are added.
 3. Prepare a production-readiness review covering migration deployment, backups, auth redirect configuration, rate limiting, monitoring, and incident recovery.
+
+
+## Migration-history integrity gate (PR #36)
+
+The Supabase Preview check has reported: `Remote migration versions not found in local migrations directory.` This is a migration-ledger mismatch warning, not by itself proof that the latest schema change failed. Do not run `supabase migration repair`, delete ledger rows, or mark versions applied until the remote versions and local files have been compared.
+
+### Read-only diagnosis
+
+Run from the repository root, using the Supabase project that the failing Preview check targets:
+
+```bash
+supabase migration list
+```
+
+Compare the **remote** versions shown by the CLI with the filenames under `supabase/migrations/`. The checked-in migration files currently run from `202610110001` through `202610110011`; migration `202610110007_harden_grants_and_milestone_claims.sql` exists even though the development setup list above starts with 008 after 006.
+
+If CLI output is ambiguous, use the Supabase SQL Editor for a read-only check of the ledger:
+
+```sql
+select version
+from supabase_migrations.schema_migrations
+order by version;
+```
+
+Do not share database passwords, access tokens, service-role keys, or connection strings when reporting the results. The version list and the exact Preview error are sufficient for the next diagnosis step.
+
+### Resolution decision
+
+- **Remote version has a matching local migration file:** check whether Preview is linked to the intended project and whether the integration is running against the expected branch/directory.
+- **Remote version has no matching local file:** recover the original migration from its source branch/history if possible; determine whether it was applied manually or generated elsewhere before deciding how to reconcile it.
+- **Local migration is missing remotely:** validate the SQL and intended target project before applying it through the normal migration workflow.
+- **Histories diverge or the target project is uncertain:** stop and resolve the project/branch mapping first. Never use a production project for speculative migration repair.
+
+### Multi-user validation gate
+
+The opt-in integration suite writes attempts and progress events. Run it against a **disposable Supabase project** with two dedicated test users, not production or personal learner accounts. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN` only in the local test environment. Keep tokens out of chat, commits, and CI logs. Confirm the suite actually ran (rather than skipped) and verifies cross-user history/mastery isolation, server-side scoring, replay/conflict handling, and XP/milestone idempotency.
+
+PR #36 is not considered complete until the remote migration mismatch is explained and the disposable-project integration suite has passed. Passing unit tests/builds and the live PR #35 scenario checks do not replace these gates.
+
+
+### Resolution applied on PR #36 branch (2026-10-11)
+
+The remote dev ledger reported these versions as already applied, with version IDs different from the original local filenames. The corresponding SQL files have been renamed on this branch to match the existing remote versions exactly; SQL content is unchanged:
+
+| Remote version | Migration file now checked in |
+| --- | --- |
+| `20261011170155` | `20261011170155_harden_grants_and_milestone_claims.sql` |
+| `20261011170834` | `20261011170834_foundations_milestone_requires_quiz.sql` |
+| `20261011175355` | `20261011175355_chart_dojo_scenario_variants.sql` |
+| `20261011182406` | `20261011182406_chart_dojo_transfer_depth.sql` |
+
+The risk-budget migration is tracked in the repository as `202610110011_risk_budget_reasoning.sql`, which is the filename already present on `main`. The SQL content matches the timestamped duplicate previously created during reconciliation. Keep one canonical file rather than carrying both names, so the scenario catalogue test and migration tooling resolve the same migration.
+
+The known remote versions for migrations 007–010 remain aligned to their timestamped filenames listed above. The user has confirmed the migration issue is sorted; do not perform additional migration-ledger repairs as part of resolving this Git conflict. PR #36 still requires CI validation and the disposable-project two-user integration suite before it is ready to merge.
