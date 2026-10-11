@@ -59,6 +59,6 @@ The integration suite cannot prove live database isolation when it is skipped du
 
 ## Next engineering priorities
 
-1. Execute the opt-in integration suite against a disposable Supabase project and record the results.
-2. Expand server-authoritative exercise coverage and mastery only when each exercise has meaningful, validated signals.
+1. Keep scenario variants diverse and ensure mastery distinguishes repeated-scenario recall from first-time application and transfer to another scenario.
+2. Continue validating server-authoritative scoring and per-account isolation as new exercises are added.
 3. Prepare a production-readiness review covering migration deployment, backups, auth redirect configuration, rate limiting, monitoring, and incident recovery.

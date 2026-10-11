@@ -110,7 +110,8 @@ export function buildMastery(
       delayedReviewAttempts: delayedReviews.length,
       retentionStatus,
       distinctScenarios: seen.size, scenariosAvailable: skill.scenarioIds.length,
-      recall: summarise(recall, positiveOutcomes, capAtEarlySignal(confidenceFor(recall.length, seen.size))),
+      // Recall repeats the same scenario by definition; other scenarios seen elsewhere must not inflate its evidence confidence.
+      recall: summarise(recall, positiveOutcomes, capAtEarlySignal(confidenceFor(recall.length, new Set(recall.map(attempt => attempt.scenario_id)).size))),
       application: { ...summarise(application, positiveOutcomes, confidenceFor(application.length, application.length)),
         transferAttempts: transferSummary.attempts, transferPositiveDecisions: transferSummary.positiveDecisions },
       seenScenarioIds: [...seen],
