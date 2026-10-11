@@ -167,6 +167,11 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   return res.status(500).json({ error: 'Unexpected server error.' });
 });
 
-app.listen(env.PORT, () => {
-  if (env.NODE_ENV !== 'production') console.log(`TradeQuest API listening on :${env.PORT}`);
-});
+// On Vercel the app is served through server/api/index.ts, so only listen when run directly.
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, () => {
+    if (env.NODE_ENV !== 'production') console.log(`TradeQuest API listening on :${env.PORT}`);
+  });
+}
+
+export default app;
