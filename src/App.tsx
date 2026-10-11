@@ -116,6 +116,7 @@ function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
+  const [lessonReadPending, setLessonReadPending] = useState(false);
   const [accountProgress, setAccountProgress] = useState<{ xp: number; lessons_completed: string[]; events: string[] } | null>(null);
   const [quizResult, setQuizResult] = useState<{ score: number; passed: boolean; xpAwarded: number; idempotentReplay?: boolean } | null>(null);
   const [quizError, setQuizError] = useState('');
@@ -333,6 +334,13 @@ function App() {
         setLessonOpen(false);
         return;
       }
+      if (!accountProgress?.lessons_completed.includes('spread-basics')) {
+        // The milestone is earned after the quick check; remember the lesson was read.
+        setLessonReadPending(true);
+        setLessonOpen(false);
+        setAuthMessage('Lesson read. Pass the quick check on the learning page to earn the lesson milestone.');
+        return;
+      }
       const saved = await recordAccountEvent('foundations-lesson-01');
       if (!saved) return;
       setProgress(p => ({ ...p, lessonComplete: true }));
@@ -362,6 +370,11 @@ function App() {
         if (!response.ok || !body.result) throw new Error(body.error || 'The answer could not be saved.');
         setQuizResult(body.result);
         setProgress(p => ({ ...p, quizCorrect: body.result!.passed || p.quizCorrect }));
+        if (body.result.passed && lessonReadPending) {
+          setLessonReadPending(false);
+          const claimed = await recordAccountEvent('foundations-lesson-01');
+          if (claimed) setProgress(p => ({ ...p, lessonComplete: true }));
+        }
         setAccountProgress(p => p ? {
           ...p,
           xp: p.xp + (body.result!.idempotentReplay ? 0 : body.result!.xpAwarded),

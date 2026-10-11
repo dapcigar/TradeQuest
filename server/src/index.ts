@@ -106,6 +106,7 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
   if (error) {
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     if (error.code === '22023') return res.status(400).json({ error: 'Unknown progress event.' });
+    if (error.code === '55000') return res.status(409).json({ error: 'Pass the quick check first to earn this milestone.' });
     logError('rpc failed', error);
     return res.status(400).json({ error: 'Progress event could not be recorded.' });
   }
