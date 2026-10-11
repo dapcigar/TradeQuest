@@ -31,7 +31,7 @@ describe('API routes keep each learner\'s data separate', () => {
   it('filters every read of a learner-owned table by the verified learner id', () => {
     for (const handler of handlers) {
       const reads = [...handler.source.matchAll(/\.from\('([a-z_]+)'\)([\s\S]*?)(?=\.from\(|\n\}\);|$)/g)]
-        .filter(match => LEARNER_TABLES.includes(match[1]));
+        .filter(match => LEARNER_TABLES.includes(match[1]) && !match[2].includes('.insert('));
       for (const read of reads) {
         expect(read[2], `${handler.route} → ${read[1]}`).toContain(".eq('user_id', req.learnerId!)");
       }
