@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, Circle, ShieldCheck, Target } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Circle, Download, ShieldCheck, Target } from 'lucide-react';
+import { downloadLearningExport } from './learningExport';
 
 export type WeeklyPlan = { week: string; target: number; completedDates: string[] };
 const storageKey = 'tradequest-weekly-practice-plan-v1';
@@ -60,6 +61,7 @@ export default function WeeklyPracticePlan() {
         <button className="btn-primary" disabled={complete} onClick={() => persist({ ...plan, completedDates: [...plan.completedDates, today] })}>{complete ? <><CheckCircle2 size={16} /> Session recorded today</> : <><Target size={16} /> Record today’s session</>}</button>
         {complete && <button className="btn-outline" onClick={() => persist({ ...plan, completedDates: plan.completedDates.filter(date => date !== today) })}>Undo today</button>}
       </div>
+      <div className="weekly-export-row"><button className="btn-outline" onClick={() => downloadLearningExport(key => localStorage.getItem(key))}><Download size={16} /> Export browser-local learning data</button><p className="form-footnote">Exports the local practice plan, adaptive practice attempts, and demo journal entries as JSON. Server-stored account data is not included.</p></div>
       <p className="form-footnote" role="status">{saved ? 'Saved on this device.' : 'Your plan is stored only in this browser. Clearing browser data removes it.'} Sessions are self-recorded; TradeQuest does not verify time spent.</p>
     </section>
     <section className="panel weekly-plan-checklist">
