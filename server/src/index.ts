@@ -104,7 +104,7 @@ app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, r
 
 app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('chart_dojo_attempts')
-    .select('attempt_id, scenario_id, choice_id, outcome, feedback, submitted_at')
+    .select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at')
     .eq('user_id', req.learnerId!)
     .order('submitted_at', { ascending: false })
     .limit(50);
@@ -112,6 +112,7 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
   return res.json({ attempts: (data ?? []).map((item) => ({
     attemptId: item.attempt_id,
     scenarioId: item.scenario_id,
+    scenarioVersion: item.scenario_version,
     choiceId: item.choice_id,
     outcome: item.outcome,
     feedback: item.feedback,
