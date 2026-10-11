@@ -141,10 +141,10 @@ describe('mastery summaries are computed only from the rows passed in', () => {
 
 describe('decision journal database privacy', () => {
   it('enables row-level security and restricts every journal operation to the owning learner', () => {
-    expect(allMigrations).toMatch(/alter table public\\.decision_journal_entries enable row level security/i);
-    expect(allMigrations).toMatch(/create policy "Learners read own decision journal" on public\\.decision_journal_entries\\s+for select to authenticated using \\(auth\\.uid\\(\\) = user_id\\)/i);
-    expect(allMigrations).toMatch(/create policy "Learners create own decision journal" on public\\.decision_journal_entries\\s+for insert to authenticated with check \\(auth\\.uid\\(\\) = user_id\\)/i);
-    expect(allMigrations).toMatch(/create policy "Learners update own decision journal" on public\\.decision_journal_entries\\s+for update to authenticated using \\(auth\\.uid\\(\\) = user_id\\) with check \\(auth\\.uid\\(\\) = user_id\\)/i);
-    expect(allMigrations).toMatch(/create policy "Learners delete own decision journal" on public\\.decision_journal_entries\\s+for delete to authenticated using \\(auth\\.uid\\(\\) = user_id\\)/i);
+    expect(allMigrations).toMatch(/alter table public\.decision_journal_entries enable row level security/i);
+    expect(allMigrations).toMatch(/create policy "Learners read own decision journal" on public\.decision_journal_entries\s+for select to authenticated using \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners create own decision journal" on public\.decision_journal_entries\s+for insert to authenticated with check \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners update own decision journal" on public\.decision_journal_entries\s+for update to authenticated using \(auth\.uid\(\) = user_id\) with check \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/create policy "Learners delete own decision journal" on public\.decision_journal_entries\s+for delete to authenticated using \(auth\.uid\(\) = user_id\)/i);
   });
 });
