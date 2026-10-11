@@ -1,17 +1,16 @@
-# M2 — Account Persistence Acceptance Criteria
+# M2 Acceptance Criteria — Supabase + Node
 
-This milestone must not be called complete until all of the following pass:
-
-- A learner can register, sign in, sign out and recover access through the selected identity provider.
-- Progress is retrieved from the authenticated account on a second device/browser.
-- A user cannot read or change another user's profile, attempts, progress or XP.
-- XP events are server-calculated, bounded by published rules and idempotent under retries.
-- Client-supplied totals, mastery and arbitrary event types are rejected or ignored.
-- Database migrations run on a clean database and are tested against a documented rollback/forward strategy.
-- Secrets are never exposed in frontend bundles or committed to the repository.
-- Automated tests cover authorization denial, session expiry, duplicate event delivery and account deletion.
-- Privacy notice, export and deletion flows are available before public release.
-- The product continues to function without live market data and labels synthetic scenarios clearly.
-
-## Deployment gate
-Do not select or provision a production database, identity provider or paid service until the owner confirms hosting preferences, expected initial user volume, budget and privacy/compliance requirements.
+- Authenticated requests validate access tokens with Supabase Auth.
+- Anonymous requests cannot read or submit learner progress.
+- User A cannot read or mutate User B's attempts or progress.
+- Lesson attempt requests reject unknown fields and invalid identifiers.
+- Score and XP are computed server-side from a published, versioned answer key.
+- XP reward and attempt record commit atomically.
+- Retrying the same attempt ID with identical content returns the original result without duplicate XP.
+- Reusing an attempt ID with different content is rejected.
+- Client cannot supply XP, score, pass state or mastery.
+- Answer keys are not available to client roles.
+- Tests cover RLS and transaction/idempotency behavior against a disposable Supabase database.
+- No service-role secret is committed or sent to the frontend.
+- Demo mode remains labelled until authenticated persistence is integrated.
+- No live feeds, broker connections, payments or real-money execution.
