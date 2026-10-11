@@ -26,4 +26,21 @@ describe('buildMastery', () => {
     expect(result.skills.every(skill => skill.successRate === null)).toBe(true);
     expect(result.sampleSize).toBe(0);
   });
+  it('adds lesson outcomes but treats risk-tool use as participation only', () => {
+    const result = buildMastery(
+      [{ scenario_id: 'TQ-SYN-001', outcome: 'disciplined' }],
+      [
+        { lesson_id: 'spread-basics', score: 100, passed: true },
+        { lesson_id: 'spread-basics', score: 40, passed: false },
+      ],
+      [{ event_key: 'risk-tool-used-v1' }],
+    );
+    const spread = result.learningSignals.find(signal => signal.signalId === 'spread-basics');
+    const risk = result.learningSignals.find(signal => signal.signalId === 'risk-tool-used-v1');
+    expect(spread?.attempts).toBe(2);
+    expect(spread?.successRate).toBe(50);
+    expect(risk?.attempts).toBe(1);
+    expect(risk?.successRate).toBeNull();
+    expect(risk?.confidence).toBe('participation-only');
+  });
 });
