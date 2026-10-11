@@ -34,7 +34,7 @@ export function buildMastery(
     const relevant = attempts.filter(attempt => attempt.scenario_id === skill.scenarioId);
     const chronological = relevant
       .map(attempt => ({ ...attempt, timestamp: validTimestamp(attempt.submitted_at) }))
-      .filter((attempt): attempt is typeof attempt & { timestamp: number } => attempt.timestamp !== null)
+      .filter((attempt): attempt is MasteryAttempt & { timestamp: number } => attempt.timestamp !== null)
       .sort((a, b) => a.timestamp - b.timestamp);
     const positive = relevant.filter(attempt => POSITIVE_OUTCOMES[skill.scenarioId].includes(attempt.outcome)).length;
     const count = relevant.length;
