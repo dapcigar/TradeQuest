@@ -8,8 +8,8 @@ import {
 import { calculateRisk } from './risk';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
-type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean };
-const initialProgress: Progress = { lessonComplete: false, quizCorrect: false, xp: 120, riskToolUsed: false };
+type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
+const initialProgress: Progress = { lessonComplete: false, quizCorrect: false, xp: 120, riskToolUsed: false, awardedActions: [] };
 const progressKey = 'tradequest-demo-progress-v1';
 
 const lessons = [
@@ -22,7 +22,17 @@ const lessons = [
 function readProgress(): Progress {
   try {
     const raw = localStorage.getItem(progressKey);
-    return raw ? { ...initialProgress, ...JSON.parse(raw) as Partial<Progress> } : initialProgress;
+    if (!raw) return initialProgress;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return initialProgress;
+    const value = parsed as Partial<Progress>;
+    return {
+      lessonComplete: value.lessonComplete === true,
+      quizCorrect: value.quizCorrect === true,
+      riskToolUsed: value.riskToolUsed === true,
+      xp: typeof value.xp === 'number' && Number.isFinite(value.xp) && value.xp >= 0 ? value.xp : initialProgress.xp,
+      awardedActions: Array.isArray(value.awardedActions) ? value.awardedActions.filter((id): id is string => typeof id === 'string').slice(0, 500) : [],
+    };
   } catch {
     return initialProgress;
   }
@@ -101,8 +111,11 @@ function App() {
     risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree',
   };
 
-  function awardXP(amount: number) {
-    setProgress(p => ({ ...p, xp: p.xp + amount }));
+  function awardXPOnce(actionId: string, amount: number) {
+    setProgress(p => {
+      if (p.awardedActions.includes(actionId)) return p;
+      return { ...p, xp: p.xp + amount, awardedActions: [...p.awardedActions, actionId] };
+    });
   }
 
   function markLessonComplete() {
@@ -171,7 +184,7 @@ function App() {
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} onQuiz={() => document.getElementById('quick-quiz')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} quizChoice={quizChoice} setQuizChoice={setQuizChoice} submitQuiz={submitQuiz} />}
-          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXP(15)} />}
+          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} />}
