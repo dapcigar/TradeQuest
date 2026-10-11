@@ -22,8 +22,6 @@ function readAttempts(): Attempt[] {
   } catch { return []; }
 }
 function chooseNext(attempts: Attempt[]): Variant {
-  const counts = new Map<Skill, number>();
-  for (const attempt of attempts) counts.set(attempt.skill, (counts.get(attempt.skill) ?? 0) + 1);
   const skills: Skill[] = ['risk-definition', 'evidence-patience', 'risk-budget'];
   const weakest = [...skills].sort((a, b) => {
     const aa = attempts.filter(item => item.skill === a);
@@ -63,7 +61,6 @@ export default function AdaptivePractice() {
   const [feedback, setFeedback] = useState<{ positive: boolean; explanation: string } | null>(null);
   const next = useMemo(() => chooseNext(attempts), [attempts]);
   const skills: Array<{ id: Skill; label: string }> = [{ id: 'risk-definition', label: 'Define risk' }, { id: 'evidence-patience', label: 'Wait for evidence' }, { id: 'risk-budget', label: 'Respect the budget' }];
-  const answered = attempts.filter(item => item.skill === variant.skill);
   function submit() {
     if (!choice || feedback) return;
     const result = assessAdaptiveAnswer(variant.id, choice);
