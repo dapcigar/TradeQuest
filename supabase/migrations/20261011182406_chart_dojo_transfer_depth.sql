@@ -1,5 +1,5 @@
 -- Additional synthetic variants to give transfer evidence enough breadth to be meaningful.
--- Apply after 202610110009_chart_dojo_scenario_variants.sql.
+-- Apply after 20261011175355_chart_dojo_scenario_variants.sql.
 -- All answer keys remain server-only; no production learner rows are changed.
 
 insert into public.chart_dojo_scenarios
