@@ -66,3 +66,41 @@ The integration suite cannot prove live database isolation when it is skipped du
 1. Maintain diverse synthetic scenarios and report transfer confidence only from distinct first-time variants; repeated answers must not inflate transfer evidence.
 2. Continue validating server-authoritative scoring and per-account isolation as new exercises are added.
 3. Prepare a production-readiness review covering migration deployment, backups, auth redirect configuration, rate limiting, monitoring, and incident recovery.
+
+
+## Migration-history integrity gate (PR #36)
+
+The Supabase Preview check has reported: `Remote migration versions not found in local migrations directory.` This is a migration-ledger mismatch warning, not by itself proof that the latest schema change failed. Do not run `supabase migration repair`, delete ledger rows, or mark versions applied until the remote versions and local files have been compared.
+
+### Read-only diagnosis
+
+Run from the repository root, using the Supabase project that the failing Preview check targets:
+
+```bash
+supabase migration list
+```
+
+Compare the **remote** versions shown by the CLI with the filenames under `supabase/migrations/`. The checked-in migration files currently run from `202610110001` through `202610110011`; migration `202610110007_harden_grants_and_milestone_claims.sql` exists even though the development setup list above starts with 008 after 006.
+
+If CLI output is ambiguous, use the Supabase SQL Editor for a read-only check of the ledger:
+
+```sql
+select version
+from supabase_migrations.schema_migrations
+order by version;
+```
+
+Do not share database passwords, access tokens, service-role keys, or connection strings when reporting the results. The version list and the exact Preview error are sufficient for the next diagnosis step.
+
+### Resolution decision
+
+- **Remote version has a matching local migration file:** check whether Preview is linked to the intended project and whether the integration is running against the expected branch/directory.
+- **Remote version has no matching local file:** recover the original migration from its source branch/history if possible; determine whether it was applied manually or generated elsewhere before deciding how to reconcile it.
+- **Local migration is missing remotely:** validate the SQL and intended target project before applying it through the normal migration workflow.
+- **Histories diverge or the target project is uncertain:** stop and resolve the project/branch mapping first. Never use a production project for speculative migration repair.
+
+### Multi-user validation gate
+
+The opt-in integration suite writes attempts and progress events. Run it against a **disposable Supabase project** with two dedicated test users, not production or personal learner accounts. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN` only in the local test environment. Keep tokens out of chat, commits, and CI logs. Confirm the suite actually ran (rather than skipped) and verifies cross-user history/mastery isolation, server-side scoring, replay/conflict handling, and XP/milestone idempotency.
+
+PR #36 is not considered complete until the remote migration mismatch is explained and the disposable-project integration suite has passed. Passing unit tests/builds and the live PR #35 scenario checks do not replace these gates.
