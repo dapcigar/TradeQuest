@@ -88,6 +88,25 @@ describe('buildMastery', () => {
     expect(result.skills.find(skill => skill.skillId === 'risk-management')?.confidence).toBe('not-enough-evidence');
   });
 
+
+  it('does not let unrelated scenario coverage inflate recall confidence', () => {
+    const result = buildMastery([
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: '2026-10-01T10:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: '2026-10-01T11:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined', submitted_at: '2026-10-01T12:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-004', outcome: 'disciplined', submitted_at: '2026-10-01T13:00:00.000Z' },
+      { scenario_id: 'TQ-SYN-005', outcome: 'disciplined', submitted_at: '2026-10-01T14:00:00.000Z' },
+    ]);
+    const planning = result.skills.find(skill => skill.skillId === 'planning')!;
+    expect(planning.distinctScenarios).toBe(3);
+    expect(planning.recall.attempts).toBe(2);
+    expect(planning.recall.confidence).toBe('not-enough-evidence');
+    expect(planning.application.attempts).toBe(3);
+    expect(planning.application.confidence).toBe('early-signal');
+    expect(planning.application.transferAttempts).toBe(2);
+    expect(planning.application.transferPositiveDecisions).toBe(2);
+  });
+
   it('returns all skills with unknown rates when there is no history', () => {
     const result = buildMastery([]);
     expect(result.skills).toHaveLength(3);
