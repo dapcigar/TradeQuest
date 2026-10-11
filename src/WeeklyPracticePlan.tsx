@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, CheckCircle2, Circle, ShieldCheck, Target } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Circle, ShieldCheck, Target } from 'lucide-react';
 
 export type WeeklyPlan = { week: string; target: number; completedDates: string[] };
 const storageKey = 'tradequest-weekly-practice-plan-v1';
