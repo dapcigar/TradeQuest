@@ -118,14 +118,6 @@ The remote dev ledger reported these versions as already applied, with version I
 | `20261011175355` | `20261011175355_chart_dojo_scenario_variants.sql` |
 | `20261011182406` | `20261011182406_chart_dojo_transfer_depth.sql` |
 
-The risk-budget migration was also applied manually to the dev database and verified by live scenario checks, but its version was absent from the supplied remote ledger. Its file is now named `20261011190000_risk_budget_reasoning.sql`, after the last recorded remote version. **This rename does not register it as applied.** Before running `supabase db push`, link the CLI to the same dev project, confirm the three risk-budget scenarios already exist and the migration completed successfully there, then register only this migration as applied:
+The risk-budget migration is tracked in the repository as `202610110011_risk_budget_reasoning.sql`, which is the filename already present on `main`. The SQL content matches the timestamped duplicate previously created during reconciliation. Keep one canonical file rather than carrying both names, so the scenario catalogue test and migration tooling resolve the same migration.
 
-```bash
-supabase migration list
-supabase migration repair --status applied 20261011190000
-supabase migration list
-```
-
-Run the repair command only against that confirmed dev project and only after verifying the migration's effects are already present. It changes migration history; it does not execute or validate the SQL. Do not run it against production or a different Preview project. Afterward, confirm local and remote versions align. If the Preview integration targets a different project, diagnose that project's ledger independently rather than assuming the dev project's history applies.
-
-The migration filename reconciliation fixes the known 007–010 version mismatch in this branch. PR #36 still requires CI validation and the disposable-project two-user integration suite before it is ready to merge.
+The known remote versions for migrations 007–010 remain aligned to their timestamped filenames listed above. The user has confirmed the migration issue is sorted; do not perform additional migration-ledger repairs as part of resolving this Git conflict. PR #36 still requires CI validation and the disposable-project two-user integration suite before it is ready to merge.
