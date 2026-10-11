@@ -97,7 +97,7 @@ export function buildMastery(
       application.push(attempt);
       seen.add(attempt.scenario_id);
     }
-    const transferSummary = summarise(transfer, positiveOutcomes, 'not-enough-evidence');
+    const transferSummary = summarise(transfer, positiveOutcomes, confidenceFor(transfer.length, new Set(transfer.map(attempt => attempt.scenario_id)).size));
 
     return {
       skillId: skill.skillId, scenarioId: skill.scenarioIds[0], label: skill.label,
@@ -113,7 +113,7 @@ export function buildMastery(
       // Recall repeats the same scenario by definition; other scenarios seen elsewhere must not inflate its evidence confidence.
       recall: summarise(recall, positiveOutcomes, capAtEarlySignal(confidenceFor(recall.length, new Set(recall.map(attempt => attempt.scenario_id)).size))),
       application: { ...summarise(application, positiveOutcomes, confidenceFor(application.length, application.length)),
-        transferAttempts: transferSummary.attempts, transferPositiveDecisions: transferSummary.positiveDecisions },
+        transferAttempts: transferSummary.attempts, transferPositiveDecisions: transferSummary.positiveDecisions, transferConfidence: transferSummary.confidence },
       seenScenarioIds: [...seen],
       scenarioIds: skill.scenarioIds,
     };

@@ -107,6 +107,21 @@ describe('buildMastery', () => {
     expect(planning.application.transferPositiveDecisions).toBe(2);
   });
 
+  it('builds transfer confidence only from distinct first-time scenarios', () => {
+    const result = buildMastery([
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined' },
+      { scenario_id: 'TQ-SYN-001', outcome: 'disciplined' },
+      { scenario_id: 'TQ-SYN-004', outcome: 'disciplined' },
+      { scenario_id: 'TQ-SYN-005', outcome: 'disciplined' },
+      { scenario_id: 'TQ-SYN-010', outcome: 'disciplined' },
+      { scenario_id: 'TQ-SYN-013', outcome: 'undefined-risk' },
+    ]);
+    const planning = result.skills.find(skill => skill.skillId === 'planning')!;
+    expect(planning.application.transferAttempts).toBe(4);
+    expect(planning.application.transferPositiveDecisions).toBe(3);
+    expect(planning.application.transferConfidence).toBe('early-signal');
+  });
+
   it('returns all skills with unknown rates when there is no history', () => {
     const result = buildMastery([]);
     expect(result.skills).toHaveLength(3);

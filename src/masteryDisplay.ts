@@ -5,7 +5,7 @@ export type EvidenceBucket = {
   confidence: string;
 };
 
-export type ApplicationBucket = EvidenceBucket & { transferAttempts: number; transferPositiveDecisions: number };
+export type ApplicationBucket = EvidenceBucket & { transferAttempts: number; transferPositiveDecisions: number; transferConfidence: string };
 
 export function confidenceLabel(confidence: string): string {
   if (confidence === 'building') return 'building signal';
@@ -24,5 +24,6 @@ export function describeEvidence(bucket: EvidenceBucket): string {
 
 export function describeTransfer(bucket: ApplicationBucket): string {
   if (bucket.transferAttempts === 0) return 'No transfer evidence yet';
-  return `${bucket.transferPositiveDecisions} of ${bucket.transferAttempts} positive on new scenarios after your first`;
+  const counts = `${bucket.transferPositiveDecisions} of ${bucket.transferAttempts} positive on new scenarios after your first`;
+  return bucket.transferConfidence === 'not-enough-evidence' ? `${counts} · too few to judge` : `${counts} · ${confidenceLabel(bucket.transferConfidence)}`;
 }
