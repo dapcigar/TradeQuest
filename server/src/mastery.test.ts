@@ -16,6 +16,7 @@ describe('buildMastery', () => {
     const result = buildMastery([
       { scenario_id: 'TQ-SYN-001', outcome: 'disciplined' },
       { scenario_id: 'TQ-SYN-002', outcome: 'risk-exceeded' },
+      { scenario_id: 'TQ-SYN-003', outcome: 'evidence-led' },
     ]);
     expect(result.recommendation.scenarioId).toBe('TQ-SYN-002');
   });
