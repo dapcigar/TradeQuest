@@ -41,7 +41,8 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 3. Apply `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`.
 4. Apply `supabase/migrations/202610110003_chart_dojo_progress_event.sql`.
 5. Apply `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`.
-6. Apply `supabase/seed/dev_spread_lesson.sql`.
+6. Apply `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`.
+7. Apply `supabase/seed/dev_spread_lesson.sql`.
 7. Start the API and Vite frontend and test with two separate test accounts.
 
 Migration 005 is a safe, repeatable repair for migration 004 and should be applied before migration 006. Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
