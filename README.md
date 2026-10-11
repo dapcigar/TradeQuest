@@ -37,15 +37,17 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 ## Supabase setup (development project only)
 
 1. Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins.
-2. Apply `supabase/migrations/202610110001_m2_learner_progress.sql`.
-3. Apply `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`.
-4. Apply `supabase/migrations/202610110003_chart_dojo_progress_event.sql`.
-5. Apply `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`.
-6. Apply `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`.
-7. Apply `supabase/seed/dev_spread_lesson.sql`.
-7. Start the API and Vite frontend and test with two separate test accounts.
+2. Apply migrations 001–006 in numeric order:
+   - `supabase/migrations/202610110001_m2_learner_progress.sql`
+   - `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
+   - `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
+   - `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
+   - `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
+   - `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
+3. Apply `supabase/seed/dev_spread_lesson.sql`.
+4. Start the API and Vite frontend, then test with two dedicated test accounts.
 
-Migration 005 is a safe, repeatable repair for migration 004 and should be applied before migration 006. Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
+Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project. See the M2 implementation plan for the opt-in integration test setup.
 
 ## Validation
 
