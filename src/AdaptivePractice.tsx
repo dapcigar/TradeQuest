@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw, ShieldCheck, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Sparkles, Target } from 'lucide-react';
 
 type Skill = 'risk-definition' | 'evidence-patience' | 'risk-budget';
 type Variant = { id: string; skill: Skill; title: string; context: string; choices: Array<{ id: string; label: string }>; answer: string; explanation: string };
