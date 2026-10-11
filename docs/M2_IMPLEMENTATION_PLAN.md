@@ -104,3 +104,19 @@ Do not share database passwords, access tokens, service-role keys, or connection
 The opt-in integration suite writes attempts and progress events. Run it against a **disposable Supabase project** with two dedicated test users, not production or personal learner accounts. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN` only in the local test environment. Keep tokens out of chat, commits, and CI logs. Confirm the suite actually ran (rather than skipped) and verifies cross-user history/mastery isolation, server-side scoring, replay/conflict handling, and XP/milestone idempotency.
 
 PR #36 is not considered complete until the remote migration mismatch is explained and the disposable-project integration suite has passed. Passing unit tests/builds and the live PR #35 scenario checks do not replace these gates.
+
+
+### Findings from the supplied migration ledger (2026-10-11)
+
+The supplied version/name list shows these remote version IDs, which do not match the checked-in version prefixes:
+
+| Remote version | Migration name | Checked-in file currently carrying that SQL |
+| --- | --- | --- |
+| `20261011170155` | `harden_grants_and_milestone_claims` | `202610110007_harden_grants_and_milestone_claims.sql` |
+| `20261011170834` | `foundations_milestone_requires_quiz` | `202610110008_foundations_milestone_requires_quiz.sql` |
+| `20261011175355` | `chart_dojo_scenario_variants` | `202610110009_chart_dojo_scenario_variants.sql` |
+| `20261011182406` | `chart_dojo_transfer_depth` | `202610110010_chart_dojo_transfer_depth.sql` |
+
+This is consistent with the Preview error: the remote ledger contains versions that are not present as local filename prefixes. The ledger list supplied also does not show the risk-budget migration from PR #35 (`202610110011_risk_budget_reasoning.sql`). That migration was reportedly applied manually in the Supabase SQL Editor, so its schema effects and its migration-ledger entry are separate concerns.
+
+**Do not merge this documentation-only PR as the fix.** Before changing migration filenames or ledger rows, capture the full `supabase migration list` output with both local and remote columns, and confirm which Supabase project the Preview integration targets. If the rows above are confirmed as remote-only versions, rename the four local files to use their exact remote version prefixes (preserving SQL content), then separately reconcile the manually applied risk-budget migration using a unique, correctly ordered version. Only mark that version applied after confirming the SQL was fully applied to that same project. Do not re-run or mark unrelated migrations applied. Re-run `supabase migration list` afterward and require local/remote versions to align before closing the migration-integrity gate.
