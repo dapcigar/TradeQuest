@@ -15,10 +15,10 @@ values
   ),
   (
     'TQ-SYN-011', '1', 'A stop that breaks the budget',
-    'A fictional account has £4,000 equity and a 1% risk budget. A proposed plan estimates a £60 loss at its stop; another estimates £80. Which process respects the budget?',
-    '{"kind":"risk-budget-comparison","disclosure":"Synthetic teaching data; no real prices or execution","accountEquity":4000,"riskBudgetPercent":1,"plans":[{"id":"A","stopDistance":12,"estimatedLoss":60},{"id":"B","stopDistance":16,"estimatedLoss":80}]}'::jsonb,
+    'A fictional account has £4,000 equity and a 1% risk budget. Plan A estimates a £30 loss at its stop; Plan B estimates £80. Which process respects the budget?',
+    '{"kind":"risk-budget-comparison","disclosure":"Synthetic teaching data; no real prices or execution","accountEquity":4000,"riskBudgetPercent":1,"plans":[{"id":"A","stopDistance":6,"estimatedLoss":30},{"id":"B","stopDistance":16,"estimatedLoss":80}]}'::jsonb,
     '[{"id":"choose-b","label":"Choose Plan B because its stop is farther away"},{"id":"resize-a","label":"Use Plan A only if its full potential loss and costs fit the £40 budget; otherwise resize or pass"},{"id":"ignore-budget","label":"Accept either plan because the difference is small"}]'::jsonb,
-    '{"choose-b":{"outcome":"risk-exceeded","feedback":"A farther stop does not make the loss fit the budget. Compare the full potential loss with the £40 limit."},"resize-a":{"outcome":"risk-aware","feedback":"Good process. The stated budget is £40, so even Plan A needs resizing or passing if its estimated loss is £60 before other costs."},"ignore-budget":{"outcome":"risk-exceeded","feedback":"The budget is a limit, not a suggestion. A small-looking difference still exceeds the stated amount."}}'::jsonb,
+    '{"choose-b":{"outcome":"risk-exceeded","feedback":"A farther stop does not make the loss fit the budget. Compare the full potential loss with the £40 limit."},"resize-a":{"outcome":"risk-aware","feedback":"Good process. Plan A fits the £40 budget before other costs; check assumptions and costs, and do not use Plan B unless resized to fit."},"ignore-budget":{"outcome":"risk-exceeded","feedback":"The budget is a limit, not a suggestion. A small-looking difference still exceeds the stated amount."}}'::jsonb,
     true
   ),
   (
