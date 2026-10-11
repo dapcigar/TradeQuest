@@ -38,6 +38,23 @@ async function requireLearner(req: AuthedRequest, res: Response, next: NextFunct
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'tradequest-api' }));
 
+// Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
+app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('chart_dojo_scenarios')
+    .select('scenario_id, version, title, prompt, chart_data, choices')
+    .eq('published', true)
+    .order('scenario_id', { ascending: true });
+  if (error) return res.status(500).json({ error: 'Chart Dojo scenarios could not be loaded.' });
+  return res.json({ scenarios: (data ?? []).map((item) => ({
+    scenarioId: item.scenario_id,
+    version: item.version,
+    title: item.title,
+    prompt: item.prompt,
+    chartData: item.chart_data,
+    choices: item.choices,
+  })) });
+});
+
 app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Response) => {
   const [progressResult, eventsResult] = await Promise.all([
     req.learnerDb!.from('learner_progress')
