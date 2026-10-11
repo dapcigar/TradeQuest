@@ -71,3 +71,18 @@ describe('attemptSchema', () => {
     expect(attemptSchema.safeParse({ ...valid, answers: [{ ...valid.answers[0], correct: true }] }).success).toBe(false);
   });
 });
+
+describe('decisionJournalSchema', () => {
+  const valid = { title: 'Waited for evidence', decision: 'waited', thesis: 'The level was unclear.', invalidation: 'A close below the level.', riskPlan: 'Pass if the loss exceeds the budget.', reflection: '', lessonLearned: 'Write the invalidation first.', scenarioId: 'TQ-SYN-001' };
+  it('accepts a bounded journal reflection', async () => {
+    const { decisionJournalSchema } = await import('./schemas.js');
+    expect(decisionJournalSchema.safeParse(valid).success).toBe(true);
+  });
+  it('rejects user IDs, unknown decisions, invalid scenarios, and oversized notes', async () => {
+    const { decisionJournalSchema } = await import('./schemas.js');
+    expect(decisionJournalSchema.safeParse({ ...valid, userId: 'another-user' }).success).toBe(false);
+    expect(decisionJournalSchema.safeParse({ ...valid, decision: 'buy' }).success).toBe(false);
+    expect(decisionJournalSchema.safeParse({ ...valid, scenarioId: 'live-gold' }).success).toBe(false);
+    expect(decisionJournalSchema.safeParse({ ...valid, thesis: 'x'.repeat(2001) }).success).toBe(false);
+  });
+});
