@@ -6,10 +6,11 @@ import {
   Wallet, X, Zap,
 } from 'lucide-react';
 import { calculateRisk } from './risk';
+import { normaliseProgress, awardProgressXPOnce } from './progress';
 
 type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress';
-type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean };
-const initialProgress: Progress = { lessonComplete: false, quizCorrect: false, xp: 120, riskToolUsed: false };
+type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
+const initialProgress: Progress = { lessonComplete: false, quizCorrect: false, xp: 120, riskToolUsed: false, awardedActions: [] };
 const progressKey = 'tradequest-demo-progress-v1';
 
 const lessons = [
@@ -22,7 +23,7 @@ const lessons = [
 function readProgress(): Progress {
   try {
     const raw = localStorage.getItem(progressKey);
-    return raw ? { ...initialProgress, ...JSON.parse(raw) as Partial<Progress> } : initialProgress;
+    return normaliseProgress(raw ? JSON.parse(raw) as unknown : null, initialProgress);
   } catch {
     return initialProgress;
   }
@@ -101,8 +102,8 @@ function App() {
     risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree',
   };
 
-  function awardXP(amount: number) {
-    setProgress(p => ({ ...p, xp: p.xp + amount }));
+  function awardXPOnce(actionId: string, amount: number) {
+    setProgress(p => awardProgressXPOnce(p, actionId, amount));
   }
 
   function markLessonComplete() {
@@ -171,7 +172,7 @@ function App() {
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} onQuiz={() => document.getElementById('quick-quiz')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} quizChoice={quizChoice} setQuizChoice={setQuizChoice} submitQuiz={submitQuiz} />}
-          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXP(15)} />}
+          {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} />}
