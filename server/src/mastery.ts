@@ -3,6 +3,7 @@ export type LessonMasteryAttempt = { lesson_id: string; score: number; passed: b
 export type RiskPracticeEvent = { event_key: string; recorded_at?: string };
 
 const REVIEW_AFTER_DAYS = 14;
+const REVIEW_AFTER_MS = REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000;
 
 const SKILLS = [
   { scenarioId: 'TQ-SYN-001', skillId: 'planning', label: 'Plan before entry', description: 'Define a reason to enter and what would invalidate the idea.' },
@@ -28,24 +29,51 @@ export function buildMastery(
   progressEvents: RiskPracticeEvent[] = [],
   now: Date = new Date(),
 ) {
-  const reviewCutoff = now.getTime() - REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  const reviewCutoff = now.getTime() - REVIEW_AFTER_MS;
   const skills = SKILLS.map(skill => {
     const relevant = attempts.filter(attempt => attempt.scenario_id === skill.scenarioId);
+    const chronological = relevant
+      .map(attempt => ({ ...attempt, timestamp: validTimestamp(attempt.submitted_at) }))
+      .filter((attempt): attempt is MasteryAttempt & { timestamp: number } => attempt.timestamp !== null)
+      .sort((a, b) => a.timestamp - b.timestamp);
     const positive = relevant.filter(attempt => POSITIVE_OUTCOMES[skill.scenarioId].includes(attempt.outcome)).length;
     const count = relevant.length;
-    const timestamps = relevant.map(attempt => validTimestamp(attempt.submitted_at)).filter((value): value is number => value !== null);
+    const timestamps = chronological.map(attempt => attempt.timestamp);
     const lastPractisedMs = timestamps.length ? Math.max(...timestamps) : null;
     const lastPractisedAt = lastPractisedMs === null ? null : new Date(lastPractisedMs).toISOString();
     const reviewStatus = count === 0 ? 'not-yet-practised'
       : lastPractisedMs === null ? 'date-unavailable'
         : lastPractisedMs <= reviewCutoff ? 'review-due' : 'recently-practised';
+
+    const firstAttempt = chronological[0];
+    const firstAttemptPositive = firstAttempt
+      ? POSITIVE_OUTCOMES[skill.scenarioId].includes(firstAttempt.outcome)
+      : null;
+    const delayedReviews = chronological.filter((attempt, index) =>
+      index > 0 && attempt.timestamp - chronological[index - 1].timestamp >= REVIEW_AFTER_MS,
+    );
+    const retainedAfterReview = delayedReviews.some(attempt =>
+      POSITIVE_OUTCOMES[skill.scenarioId].includes(attempt.outcome),
+    );
+    const retentionStatus = count === 0 ? 'not-yet-practised'
+      : !firstAttempt ? 'date-unavailable'
+        : delayedReviews.length === 0 ? 'awaiting-delayed-review'
+          : retainedAfterReview ? 'retained-after-review' : 'needs-reinforcement';
+    // Repetition alone is not mastery: the stronger signal requires a positive
+    // decision after a meaningful gap, plus at least one other positive decision.
+    const confidence = retainedAfterReview && positive >= 2 ? 'building'
+      : count >= 3 ? 'early-signal' : 'not-enough-evidence';
+
     return {
       skillId: skill.skillId, scenarioId: skill.scenarioId, label: skill.label,
       description: skill.description, attempts: count, positiveDecisions: positive,
       successRate: count ? Math.round((positive / count) * 100) : null,
-      confidence: count >= 5 ? 'building' : count >= 3 ? 'early-signal' : 'not-enough-evidence',
+      confidence,
       lastPractisedAt,
       reviewStatus,
+      firstAttemptPositive,
+      delayedReviewAttempts: delayedReviews.length,
+      retentionStatus,
     };
   });
   const dueSkills = skills.filter(skill => skill.reviewStatus === 'review-due');
@@ -58,15 +86,20 @@ export function buildMastery(
   })[0];
   const reason = recommended.reviewStatus === 'review-due'
     ? 'Revisit this skill: your last recorded practice was at least 14 days ago.'
-    : recommended.attempts === 0 ? 'Start here: you have not practised this skill yet.'
-      : recommended.confidence === 'not-enough-evidence' ? 'Build a little more evidence with another practice attempt.'
-        : 'This skill is your best next practice target based on your practice history.';
+    : recommended.retentionStatus === 'needs-reinforcement'
+      ? 'Revisit this skill: your delayed review suggests there is more to reinforce.'
+      : recommended.retentionStatus === 'awaiting-delayed-review'
+        ? 'Return after a gap to check whether the idea sticks—not just whether it worked once.'
+        : recommended.attempts === 0 ? 'Start here: you have not practised this skill yet.'
+          : recommended.confidence === 'not-enough-evidence' ? 'Build a little more evidence with another practice attempt.'
+            : 'This skill is your best next practice target based on your practice history.';
   return {
     skills,
     recommendation: {
       scenarioId: recommended.scenarioId, skillId: recommended.skillId, title: recommended.label,
       reason, attempts: recommended.attempts, confidence: recommended.confidence,
       reviewStatus: recommended.reviewStatus,
+      retentionStatus: recommended.retentionStatus,
     },
     learningSignals: [
       {
@@ -94,6 +127,6 @@ export function buildMastery(
       },
     ],
     sampleSize: attempts.length + lessonAttempts.length,
-    note: 'Practice signals are learning prompts, not predictions of trading performance. Skills last practised 14 or more days ago are suggested for review. Risk calculator use measures participation only, not decision quality.',
+    note: 'Practice signals are learning prompts, not predictions of trading performance. Skills last practised 14 or more days ago are suggested for review. Retention is only indicated by a positive decision after a 14-day gap; repeated attempts alone do not establish retained understanding. Risk calculator use measures participation only, not decision quality.',
   };
 }
