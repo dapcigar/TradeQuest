@@ -117,3 +117,32 @@
 .review-loading{display:flex;align-items:center;gap:10px;color:#718092;font-size:11px}
 .review-footnote{margin-top:16px}
 @media(max-width:760px){.review-summary-grid{grid-template-columns:1fr;gap:8px}.review-summary-card{display:grid;grid-template-columns:1fr auto;align-items:center;padding:12px}.review-summary-card strong{grid-column:2;grid-row:1/3;margin:0;font-size:24px}.review-featured{grid-template-columns:auto minmax(0,1fr)}.review-featured>.btn-primary{grid-column:1/-1;justify-content:center}.review-queue-item{grid-template-columns:auto minmax(0,1fr);gap:10px;padding:12px}.review-item-action{grid-column:2;justify-self:start}.review-demo-note .btn-outline{margin-left:0}.review-gate{padding:15px}}
+
+
+/* Weekly practice plan */
+.weekly-plan-page{max-width:980px;margin:0 auto}
+.weekly-plan-card,.weekly-plan-checklist{padding:24px;margin:22px 0;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
+.weekly-plan-heading{display:flex;align-items:flex-start;gap:13px}
+.weekly-plan-heading h2{margin:2px 0 6px;font:700 19px Manrope,sans-serif;color:var(--ink)}
+.weekly-plan-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.weekly-plan-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:12px;background:var(--mint);color:var(--green)}
+.weekly-target-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0}
+.weekly-target{border:1px solid var(--line);background:#fff;border-radius:12px;padding:15px 10px;text-align:left;color:var(--ink);display:flex;flex-direction:column;gap:3px}
+.weekly-target strong{font:800 26px Manrope,sans-serif}
+.weekly-target span{font-size:12px;font-weight:700}
+.weekly-target small{font-size:11px;color:var(--muted);margin-top:5px}
+.weekly-target.selected{border-color:var(--green);box-shadow:0 0 0 2px #25866818;background:#f3fbf7}
+.weekly-progress-label{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);margin-bottom:9px}
+.weekly-progress-label strong{color:var(--ink)}
+.weekly-progress-track{height:9px;border-radius:99px;background:#edf0ed;overflow:hidden}
+.weekly-progress-track span{display:block;height:100%;background:var(--green);border-radius:99px;transition:width .2s}
+.weekly-plan-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+.weekly-plan-card .form-footnote{font-size:11px;line-height:1.6;color:var(--muted);margin:16px 0 0}
+.weekly-plan-checklist ul{list-style:none;padding:0;margin:22px 0;display:grid;gap:17px}
+.weekly-plan-checklist li{display:flex;align-items:flex-start;gap:12px;color:var(--green)}
+.weekly-plan-checklist li span{display:flex;flex-direction:column;gap:4px;color:var(--ink)}
+.weekly-plan-checklist li strong{font-size:13px}
+.weekly-plan-checklist li small{font-size:12px;line-height:1.5;color:var(--muted)}
+.weekly-plan-note{display:flex;gap:9px;align-items:flex-start;padding:13px;border-radius:10px;background:#f0f8f4;color:var(--green);font-size:12px;line-height:1.5}
+.weekly-plan-footnote{font-size:11px;line-height:1.6;color:var(--muted);margin:18px 0}
+@media(max-width:600px){.weekly-plan-card,.weekly-plan-checklist{padding:17px}.weekly-target-options{gap:7px}.weekly-target{padding:12px 8px}.weekly-target small{font-size:10px}.weekly-plan-heading h2{font-size:17px}}
