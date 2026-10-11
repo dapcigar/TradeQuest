@@ -18,7 +18,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Supabase PostgreSQL stores learner progress and server-scored lesson attempts.
 - First server-scored lesson: spread basics.
 - Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of three synthetic scenarios; answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
-- Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice by skill and recommends the least-practised area, using positive-decision rates only as a tie-breaker; small samples are explicitly labelled as low-confidence.
+- Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice, server-scored spread-basics quiz attempts, and risk-calculator participation. It recommends the least-practised Chart Dojo skill, uses positive-decision rates only as a tie-breaker, and labels small samples as low-confidence. Risk-calculator use is tracked as participation, not mastery.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
 
