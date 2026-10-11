@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Check, Pencil, Plus, Save, ShieldCheck, Trash2, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Pencil, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
 type Decision = 'considered' | 'waited' | 'passed' | 'simulated';
