@@ -56,3 +56,29 @@
 .mastery-evidence>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 14px;padding-top:6px;border-top:1px solid #e5e8e4}
 .mastery-evidence dt{font:600 12px/1.4 Manrope,sans-serif;color:#536176}
 .mastery-evidence dd{margin:0;font:500 12px/1.4 Manrope,sans-serif;color:#244c3e}
+
+/* Decision journal */
+.journal-layout{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:18px;align-items:start}
+.journal-editor{overflow:visible}
+.journal-input{display:block;width:100%;box-sizing:border-box;border:1px solid #e2e7e2;border-radius:6px;background:#fcfdfc;padding:10px 11px;font:inherit;font-size:12px;line-height:1.6;color:#263549}
+.journal-input:focus-visible{outline:2px solid #6688d9;outline-offset:2px}
+.journal-textarea{resize:vertical;min-height:64px}
+.journal-form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.journal-form-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.journal-list{min-width:0}
+.journal-count{font-size:10px;color:#7d8795;white-space:nowrap}
+.journal-empty{display:grid;justify-items:center;text-align:center;padding:38px 24px;background:#fff;border:1px dashed #d8e1da;border-radius:10px;color:#729081}
+.journal-empty h3{font:700 15px Manrope,sans-serif;color:#263b34;margin:13px 0 5px}
+.journal-empty p{max-width:330px;font-size:11px;line-height:1.7;color:#7d8795}
+.journal-entry{background:#fff;border:1px solid #e4e8e4;border-radius:10px;padding:16px;margin-bottom:12px;overflow-wrap:anywhere}
+.journal-entry-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.journal-entry-top h3{font:700 15px/1.4 Manrope,sans-serif;color:#203047;margin:9px 0 5px}
+.journal-entry-top time{font-size:9px;color:#8b96a4}
+.journal-entry-actions{display:flex;gap:4px}
+.journal-entry-actions .icon-button{position:static;flex-shrink:0}
+.journal-scenario{font:500 9px 'DM Mono',monospace;color:#66806f;margin:12px 0}
+.journal-note{padding-top:10px;margin-top:10px;border-top:1px solid #edf0ed}
+.journal-note strong{font:700 10px Manrope,sans-serif;color:#4e695c}
+.journal-note p{font-size:11px;line-height:1.7;color:#687487;white-space:pre-wrap;margin:5px 0 0}
+@media(max-width:1000px){.journal-layout{grid-template-columns:1fr}}
+@media(max-width:560px){.journal-editor{padding:14px}.journal-entry{padding:12px}.journal-form-actions button{flex:1}.journal-entry-top h3{font-size:13px}}
