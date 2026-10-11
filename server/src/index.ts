@@ -1,8 +1,8 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { z } from 'zod';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
+import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -53,11 +53,6 @@ app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Respo
   });
 });
 
-const progressEventSchema = z.object({
-  eventId: z.string().uuid(),
-  eventKey: z.enum(['foundations-lesson-01', 'risk-tool-used-v1']),
-}).strict();
-
 app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = progressEventSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid progress event.' });
@@ -73,15 +68,39 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
   return res.status(200).json({ result: data });
 });
 
-const attemptSchema = z.object({
-  lessonId: z.string().regex(/^[a-z0-9][a-z0-9-]{1,79}$/),
-  lessonVersion: z.string().min(1).max(40),
-  attemptId: z.string().uuid(),
-  answers: z.array(z.object({
-    questionId: z.string().min(1).max(80),
-    answerId: z.string().min(1).max(80),
-  }).strict()).min(1).max(50),
-}).strict();
+app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = chartDojoAttemptSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid Chart Dojo attempt.' });
+  const { data, error } = await req.learnerDb!.rpc('submit_chart_dojo_attempt', {
+    p_attempt_id: parsed.data.attemptId,
+    p_scenario_id: parsed.data.scenarioId,
+    p_choice_id: parsed.data.choiceId,
+  });
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'Attempt ID already used with different content.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Unknown scenario or choice.' });
+    return res.status(400).json({ error: 'Chart Dojo attempt could not be saved.' });
+  }
+  return res.status(200).json({ result: data });
+});
+
+app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('chart_dojo_attempts')
+    .select('attempt_id, scenario_id, choice_id, outcome, feedback, submitted_at')
+    .eq('user_id', req.learnerId!)
+    .order('submitted_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: 'Chart Dojo history could not be loaded.' });
+  return res.json({ attempts: (data ?? []).map((item) => ({
+    attemptId: item.attempt_id,
+    scenarioId: item.scenario_id,
+    choiceId: item.choice_id,
+    outcome: item.outcome,
+    feedback: item.feedback,
+    submittedAt: item.submitted_at,
+  })) });
+});
 
 app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = attemptSchema.safeParse(req.body);
