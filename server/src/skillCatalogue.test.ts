@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildMastery } from './mastery.js';
 import { SKILL_CATALOGUE } from './skillCatalogue.js';
 
-const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '20261011175355_chart_dojo_scenario_variants.sql', '20261011182406_chart_dojo_transfer_depth.sql', '20261011190000_risk_budget_reasoning.sql'];
+const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '20261011175355_chart_dojo_scenario_variants.sql', '20261011182406_chart_dojo_transfer_depth.sql', '202610110011_risk_budget_reasoning.sql'];
 const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 
 type SeedScenario = {
