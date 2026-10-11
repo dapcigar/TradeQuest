@@ -173,7 +173,7 @@ function App() {
             progress={progress} completion={completion} onStart={() => setLessonOpen(true)}
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
-          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} onQuiz={() => document.getElementById('quick-quiz')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} />}
+          {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} />}
           {view === 'practice' && <PracticeView choice={scenarioChoice} setChoice={setScenarioChoice} revealed={scenarioRevealed} setRevealed={setScenarioRevealed} onAward={() => awardXPOnce('chart-dojo-synthetic-001', 15)} />}
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
@@ -224,8 +224,8 @@ function Overview({ progress, completion, onStart, onNavigate, onPractice }: {
   </>;
 }
 
-function LearningView({ progress, onOpen, onQuiz, quizChoice, setQuizChoice, quizSubmitted, submitQuiz }: {
-  progress: Progress; onOpen: () => void; onQuiz: () => void; quizChoice: string | null;
+function LearningView({ progress, onOpen, quizChoice, setQuizChoice, quizSubmitted, submitQuiz }: {
+  progress: Progress; onOpen: () => void; quizChoice: string | null;
   setQuizChoice: (s: string) => void; quizSubmitted: boolean; submitQuiz: () => void;
 }) {
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> LEARN BY DOING</div><h1>Your learning <span>path.</span></h1><p>Short lessons, useful practice, and feedback that explains the why—not just the answer.</p></div>
