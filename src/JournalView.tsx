@@ -26,7 +26,8 @@ function toApi(draft: Draft) {
   return { title: draft.title.trim(), scenarioId: draft.scenarioId, decision: draft.decision, thesis: draft.thesis.trim(),
     invalidation: draft.invalidation.trim(), riskPlan: draft.riskPlan.trim(), reflection: draft.reflection.trim(), lessonLearned: draft.lessonLearned.trim() };
 }
-function writeDemo(entries: Entry[]) { try { localStorage.setItem(demoKey, JSON.stringify(entries)); } catch { /* local demo remains usable in memory */ } }\nfunction readDemo(): Entry[] {
+function writeDemo(entries: Entry[]) { try { localStorage.setItem(demoKey, JSON.stringify(entries)); } catch { /* local demo remains usable in memory */ } }
+function readDemo(): Entry[] {
   try { const raw = localStorage.getItem(demoKey); const value = raw ? JSON.parse(raw) as unknown : []; return Array.isArray(value) ? value as Entry[] : []; }
   catch { return []; }
 }
