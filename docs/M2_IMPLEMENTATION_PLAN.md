@@ -1,30 +1,31 @@
-# M2 — Account Persistence Implementation Plan
+# M2 — Supabase + Node.js implementation
 
-## Phase 0: confirm deployment decisions
-- Confirm identity provider, backend runtime/hosting, database, deployment target and budget.
-- Confirm account data retention, export/deletion behavior and minimum privacy notice.
-- Keep credentials and infrastructure changes out of the frontend-only prototype.
+## Decisions confirmed
+- Supabase for database and managed authentication.
+- Node.js / TypeScript API.
+- £0 initial infrastructure budget; use local development and eligible free tiers without promising permanent free hosting.
+- No live data, broker integration, paid AI dependency or real-money execution.
 
-## Phase 1: API contract
-- Define schemas for registration/session, profile, lesson attempts, progress query, XP events and deletion/export.
-- Version routes and validate request/response contracts.
-- Add explicit authorization requirements to every endpoint.
+## Architecture
+- React/Vite frontend.
+- Node/Express TypeScript API verifies Supabase access tokens and validates lesson attempts.
+- Supabase Auth handles identity; PostgreSQL stores progress.
+- RLS restricts reads to the authenticated learner.
+- A transactional database function computes score and XP from a published, versioned answer key; the client cannot specify score, pass state or XP.
 
-## Phase 2: persistence
-- Add migrations and indexes for user IDs, lesson versions, attempt IDs and unique XP idempotency keys.
-- Add repository/service boundaries; keep business rules out of route handlers.
-- Use transactions for attempt completion, XP event insert and derived progress update.
+## Security
+- Never expose a service-role key to the frontend or use one in this API.
+- Client roles cannot read answer keys or write attempt/progress rows directly.
+- Test duplicate attempt IDs, retries, cross-user access and transaction rollback.
+- Do not apply the migration to production until it has been reviewed and tested against a disposable Supabase project.
 
-## Phase 3: UI integration
-- Add auth/loading/empty/error states and session expiry handling.
-- Load progress after authentication; never treat browser storage as authoritative.
-- Support retry-safe submissions and a clearly labelled demo mode if sign-in is not yet available.
+## Local setup
+1. Install Node.js 20+ and npm.
+2. Copy `server/.env.example` to `server/.env` and add the Supabase project URL and publishable/anon key.
+3. Apply the SQL migration to a development project using the Supabase CLI.
+4. Seed an editorially reviewed published lesson through a controlled admin process.
+5. Run `npm install`, `npm run api:dev` and `npm run dev` in separate terminals.
+6. Never commit environment files.
 
-## Phase 4: verification
-- Unit tests for validation and award rules.
-- Integration tests for auth, ownership, idempotency and transaction rollback.
-- End-to-end tests for register → lesson → assessment → progress on a second session.
-- Accessibility review for forms, focus, error announcements and password manager support.
-
-## Deliverables
-API contract, schema/migrations, identity integration, transactional XP service, test suite, privacy/export/delete UX, operational runbook and deployment notes.
+## Current scope
+Backend foundation only. The demo frontend still uses browser-local progress. Auth UI, API client integration, seed/editorial workflow, integration tests and deployment remain follow-up work.
