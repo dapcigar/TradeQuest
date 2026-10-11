@@ -29,7 +29,10 @@ Configure Supabase Auth email confirmation and allowed redirect URLs for local a
 ## Current scope
 Account persistence covers the spread knowledge check, foundations lesson completion, risk calculator use, and Chart Dojo scenario choice/feedback history. Anonymous demo progress remains local and separate. Full adaptive mastery, production deployment and comprehensive multi-user database integration tests remain outstanding.
 
+## Integration test setup
+The Chart Dojo API integration suite is opt-in and requires a running API plus two dedicated test accounts in a disposable Supabase project. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`, then run `npm test`. Keep these credentials out of committed files and CI logs. The suite creates a uniquely identified test attempt for user A and checks replay idempotency, conflicting replay rejection, unauthenticated/malformed requests, and that user B cannot see user A's attempt. Without all four variables, these integration tests are skipped.
+
 ## Next engineering priorities
-1. Validate migrations and database functions against a disposable Supabase project.
-2. Add API contract/integration tests for auth, RLS, retries and XP.
+1. Run the opt-in integration suite against a disposable Supabase project and two dedicated test accounts.
+2. Add equivalent integration coverage for lesson scoring and progress-event XP idempotency.
 3. Persist multiple versioned Chart Dojo scenarios and evidence for adaptive mastery.
