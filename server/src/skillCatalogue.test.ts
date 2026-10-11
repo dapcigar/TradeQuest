@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildMastery } from './mastery.js';
 import { SKILL_CATALOGUE } from './skillCatalogue.js';
 
-const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '202610110009_chart_dojo_scenario_variants.sql', '202610110010_chart_dojo_transfer_depth.sql'];
+const MIGRATIONS = ['202610110006_versioned_chart_dojo_scenarios.sql', '202610110009_chart_dojo_scenario_variants.sql', '202610110010_chart_dojo_transfer_depth.sql', '202610110011_risk_budget_reasoning.sql'];
 const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 
 type SeedScenario = {
@@ -34,7 +34,7 @@ const isSound = (scenario: SeedScenario, choiceId: string) =>
 
 describe('scenario catalogue matches the seeded scenarios', () => {
   it('parses every seeded scenario', () => {
-    expect(seeded).toHaveLength(15);
+    expect(seeded).toHaveLength(18);
     for (const scenario of seeded) {
       expect(scenario.chartData).toBeTypeOf('object');
       expect(Array.isArray(scenario.choices)).toBe(true);
@@ -116,7 +116,7 @@ describe('scoring consistency', () => {
     const correction = readFileSync(resolve(migrationsDir, MIGRATIONS[1]), 'utf8').match(/'(\{"id":"A","stopDistance":\d+,"estimatedLoss":\d+\})'::jsonb\)\s*where scenario_id = 'TQ-SYN-002'/);
     expect(correction).not.toBeNull();
     const budgetScenarios = seeded.filter(s => s.chartData.kind === 'risk-budget-comparison');
-    expect(budgetScenarios.length).toBeGreaterThanOrEqual(2);
+    expect(budgetScenarios.length).toBeGreaterThanOrEqual(5);
     for (const scenario of budgetScenarios) {
       const budget = Number(scenario.chartData.accountEquity) * Number(scenario.chartData.riskBudgetPercent) / 100;
       const plans = [...(scenario.chartData.plans as Array<{ id: string; estimatedLoss: number }>)];
