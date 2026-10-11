@@ -120,6 +120,13 @@ begin
     raise exception 'Lesson is not assessable';
   end if;
 
+  insert into public.learner_progress(user_id, xp, lessons_completed, updated_at)
+  values (v_user_id, 0, '{}'::text[], now())
+  on conflict (user_id) do nothing;
+  select * into v_progress from public.learner_progress where user_id = v_user_id for update;
+
+  -- Check idempotency after taking the per-learner lock so concurrent retries
+  -- cannot race between the lookup and the insert.
   select * into v_existing from public.lesson_attempts
     where user_id = v_user_id and attempt_id = p_attempt_id;
   if found then
@@ -128,11 +135,6 @@ begin
     end if;
     raise exception 'Attempt ID already used with different content' using errcode = '23505';
   end if;
-
-  insert into public.learner_progress(user_id, xp, lessons_completed, updated_at)
-  values (v_user_id, 0, '{}'::text[], now())
-  on conflict (user_id) do nothing;
-  select * into v_progress from public.learner_progress where user_id = v_user_id for update;
 
   v_total := jsonb_array_length(v_lesson.answer_key);
   for v_correct_answer in select value from jsonb_array_elements(v_lesson.answer_key)
