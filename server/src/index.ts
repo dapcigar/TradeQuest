@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, progressEventSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 
@@ -80,6 +80,59 @@ app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, r
     chartData: item.chart_data,
     choices: item.choices,
   })) });
+});
+
+
+const journalFields = 'id, title, scenario_id, decision, thesis, invalidation, risk_plan, reflection, lesson_learned, created_at, updated_at';
+function journalEntry(row: Record<string, unknown>) {
+  return { ...row };
+}
+app.get('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('decision_journal_entries')
+    .select(journalFields).order('created_at', { ascending: false }).limit(100);
+  if (error) { logError('Decision journal could not be loaded.', error); return res.status(500).json({ error: 'Decision journal could not be loaded.' }); }
+  return res.json({ entries: (data ?? []).map(journalEntry) });
+});
+
+app.post('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = decisionJournalSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid journal entry.' });
+  const d = parsed.data;
+  const { data, error } = await req.learnerDb!.from('decision_journal_entries').insert({
+    user_id: req.learnerId!, title: d.title, scenario_id: d.scenarioId ?? null, decision: d.decision,
+    thesis: d.thesis, invalidation: d.invalidation, risk_plan: d.riskPlan, reflection: d.reflection, lesson_learned: d.lessonLearned,
+  }).select(journalFields).single();
+  if (error) { logError('Decision journal entry could not be saved.', error); return res.status(400).json({ error: 'Journal entry could not be saved.' }); }
+  return res.status(201).json({ entry: journalEntry(data as unknown as Record<string, unknown>) });
+});
+
+app.patch('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = decisionJournalPatchSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid journal update.' });
+  const d = parsed.data;
+  const updates: Record<string, unknown> = {};
+  if (d.title !== undefined) updates.title = d.title;
+  if (d.scenarioId !== undefined) updates.scenario_id = d.scenarioId;
+  if (d.decision !== undefined) updates.decision = d.decision;
+  if (d.thesis !== undefined) updates.thesis = d.thesis;
+  if (d.invalidation !== undefined) updates.invalidation = d.invalidation;
+  if (d.riskPlan !== undefined) updates.risk_plan = d.riskPlan;
+  if (d.reflection !== undefined) updates.reflection = d.reflection;
+  if (d.lessonLearned !== undefined) updates.lesson_learned = d.lessonLearned;
+  updates.updated_at = new Date().toISOString();
+  const { data, error } = await req.learnerDb!.from('decision_journal_entries').update(updates)
+    .eq('id', req.params.id).select(journalFields).maybeSingle();
+  if (error) { logError('Decision journal entry could not be updated.', error); return res.status(400).json({ error: 'Journal entry could not be updated.' }); }
+  if (!data) return res.status(404).json({ error: 'Journal entry not found.' });
+  return res.json({ entry: journalEntry(data as unknown as Record<string, unknown>) });
+});
+
+app.delete('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('decision_journal_entries').delete()
+    .eq('id', req.params.id).select('id').maybeSingle();
+  if (error) { logError('Decision journal entry could not be deleted.', error); return res.status(400).json({ error: 'Journal entry could not be deleted.' }); }
+  if (!data) return res.status(404).json({ error: 'Journal entry not found.' });
+  return res.sendStatus(204);
 });
 
 app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Response) => {
