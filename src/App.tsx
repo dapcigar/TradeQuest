@@ -16,7 +16,7 @@ type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progres
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
 type MasterySummary = {
   skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string; lastPractisedAt: string | null; reviewStatus: string; firstAttemptPositive: boolean | null; delayedReviewAttempts: number; retentionStatus: string }>;
-  recommendation: { scenarioId: string; skillId: string; title: string; reason: string; attempts: number; confidence: string; reviewStatus: string };
+  recommendation: { scenarioId: string; skillId: string; title: string; reason: string; attempts: number; confidence: string; reviewStatus: string; retentionStatus: string };
   learningSignals: Array<{ signalId: string; label: string; description: string; attempts: number; positiveDecisions: number | null; successRate: number | null; confidence: string; measure: string }>;
   sampleSize: number;
   note: string;
