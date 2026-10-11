@@ -17,7 +17,7 @@ export const SKILL_CATALOGUE = [
   {
     skillId: 'evidence', label: 'Wait for evidence',
     description: 'Distinguish observable evidence from prediction or impulse.',
-    scenarioIds: ['TQ-SYN-003', 'TQ-SYN-008', 'TQ-SYN-009', 'TQ-SYN-012', 'TQ-SYN-015'),
+    scenarioIds: ['TQ-SYN-003', 'TQ-SYN-008', 'TQ-SYN-009', 'TQ-SYN-012', 'TQ-SYN-015'],
     positiveOutcomes: ['evidence-led'], negativeOutcomes: ['impulsive'],
   },
 ] as const;
