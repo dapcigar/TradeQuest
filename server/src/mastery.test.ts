@@ -18,7 +18,9 @@ describe('buildMastery', () => {
       { scenario_id: 'TQ-SYN-002', outcome: 'risk-exceeded' },
       { scenario_id: 'TQ-SYN-003', outcome: 'evidence-led' },
     ]);
-    expect(result.recommendation.scenarioId).toBe('TQ-SYN-002');
+    // Skill 2 has the lowest positive rate; the recommendation is an unseen variant of it.
+    expect(result.recommendation.skillId).toBe('risk-management');
+    expect(result.recommendation.scenarioId).not.toBe('TQ-SYN-002');
   });
   it('returns all skills with unknown rates when there is no history', () => {
     const result = buildMastery([]);

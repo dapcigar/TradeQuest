@@ -6,6 +6,8 @@ import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './sc
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 
+// Recall vs application is derived from attempt order, so read generously.
+const MASTERY_ATTEMPT_LIMIT = 500;
 const LEARNER_RATE_LIMIT = 60;
 const LEARNER_RATE_WINDOW_MS = 60_000;
 const learnerLimiter = createRateLimiter(LEARNER_RATE_LIMIT, LEARNER_RATE_WINDOW_MS);
@@ -119,7 +121,7 @@ app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Respon
       .select('scenario_id, outcome, submitted_at')
       .eq('user_id', req.learnerId!)
       .order('submitted_at', { ascending: false })
-      .limit(100),
+      .limit(MASTERY_ATTEMPT_LIMIT),
     req.learnerDb!.from('lesson_attempts')
       .select('lesson_id, score, passed, submitted_at')
       .eq('user_id', req.learnerId!)

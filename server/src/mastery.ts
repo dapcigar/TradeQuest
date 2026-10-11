@@ -1,29 +1,66 @@
+import { SKILL_CATALOGUE } from './skillCatalogue.js';
+
 export type MasteryAttempt = { scenario_id: string; outcome: string; submitted_at?: string };
 export type LessonMasteryAttempt = { lesson_id: string; score: number; passed: boolean; submitted_at?: string };
 export type RiskPracticeEvent = { event_key: string; recorded_at?: string };
 
-const SKILLS = [
-  { scenarioId: 'TQ-SYN-001', skillId: 'planning', label: 'Plan before entry', description: 'Define a reason to enter and what would invalidate the idea.' },
-  { scenarioId: 'TQ-SYN-002', skillId: 'risk-management', label: 'Keep risk within budget', description: 'Size a position so a possible loss fits the stated risk budget.' },
-  { scenarioId: 'TQ-SYN-003', skillId: 'evidence', label: 'Wait for evidence', description: 'Distinguish observable evidence from prediction or impulse.' },
-] as const;
+export type Confidence = 'not-enough-evidence' | 'early-signal' | 'building';
 
-const POSITIVE_OUTCOMES: Record<string, string[]> = {
-  'TQ-SYN-001': ['disciplined'],
-  'TQ-SYN-002': ['risk-aware'],
-  'TQ-SYN-003': ['evidence-led'],
-};
+// Confidence is deliberately slow to rise: repeating one scenario never builds it,
+// because that measures recall of an answer rather than the principle behind it.
+export function confidenceFor(attempts: number, distinctScenarios: number): Confidence {
+  if (attempts >= 5 && distinctScenarios >= 3) return 'building';
+  if (attempts >= 3 && distinctScenarios >= 2) return 'early-signal';
+  return 'not-enough-evidence';
+}
+
+function capAtEarlySignal(confidence: Confidence): Confidence {
+  return confidence === 'building' ? 'early-signal' : confidence;
+}
+
+function summarise(attempts: MasteryAttempt[], positiveOutcomes: readonly string[], confidence: Confidence) {
+  const positive = attempts.filter(attempt => positiveOutcomes.includes(attempt.outcome)).length;
+  return {
+    attempts: attempts.length,
+    positiveDecisions: positive,
+    successRate: attempts.length ? Math.round((positive / attempts.length) * 100) : null,
+    confidence,
+  };
+}
+
+// Oldest first. The API reads newest-first; rows without timestamps are assumed to be in order already.
+function chronological(attempts: MasteryAttempt[]): MasteryAttempt[] {
+  if (attempts.some(attempt => !attempt.submitted_at)) return [...attempts];
+  return [...attempts].sort((a, b) => Date.parse(a.submitted_at!) - Date.parse(b.submitted_at!));
+}
 
 export function buildMastery(attempts: MasteryAttempt[], lessonAttempts: LessonMasteryAttempt[] = [], progressEvents: RiskPracticeEvent[] = []) {
-  const skills = SKILLS.map(skill => {
-    const relevant = attempts.filter(attempt => attempt.scenario_id === skill.scenarioId);
-    const positive = relevant.filter(attempt => POSITIVE_OUTCOMES[skill.scenarioId].includes(attempt.outcome)).length;
-    const count = relevant.length;
+  const skills = SKILL_CATALOGUE.map(skill => {
+    const relevant = chronological(attempts.filter(attempt => (skill.scenarioIds as readonly string[]).includes(attempt.scenario_id)));
+    // Recall: a scenario the learner has already seen. Application: the first attempt at a
+    // scenario they have not seen. Application attempts after the skill's first are transfer.
+    const seen = new Set<string>();
+    const recall: MasteryAttempt[] = [];
+    const application: MasteryAttempt[] = [];
+    let transferAttempts: MasteryAttempt[] = [];
+    for (const attempt of relevant) {
+      if (seen.has(attempt.scenario_id)) { recall.push(attempt); continue; }
+      if (seen.size > 0) transferAttempts = [...transferAttempts, attempt];
+      application.push(attempt);
+      seen.add(attempt.scenario_id);
+    }
+    const overall = summarise(relevant, skill.positiveOutcomes, confidenceFor(relevant.length, seen.size));
+    const transfer = summarise(transferAttempts, skill.positiveOutcomes, confidenceFor(transferAttempts.length, transferAttempts.length));
     return {
-      skillId: skill.skillId, scenarioId: skill.scenarioId, label: skill.label,
-      description: skill.description, attempts: count, positiveDecisions: positive,
-      successRate: count ? Math.round((positive / count) * 100) : null,
-      confidence: count >= 5 ? 'building' : count >= 3 ? 'early-signal' : 'not-enough-evidence',
+      skillId: skill.skillId, scenarioId: skill.scenarioIds[0], label: skill.label,
+      description: skill.description, attempts: overall.attempts, positiveDecisions: overall.positiveDecisions,
+      successRate: overall.successRate, confidence: overall.confidence,
+      distinctScenarios: seen.size, scenariosAvailable: skill.scenarioIds.length,
+      recall: summarise(recall, skill.positiveOutcomes, capAtEarlySignal(confidenceFor(recall.length, seen.size))),
+      application: { ...summarise(application, skill.positiveOutcomes, confidenceFor(application.length, application.length)),
+        transferAttempts: transfer.attempts, transferPositiveDecisions: transfer.positiveDecisions },
+      seenScenarioIds: [...seen],
+      scenarioIds: skill.scenarioIds,
     };
   });
   const recommended = [...skills].sort((a, b) => {
@@ -32,14 +69,18 @@ export function buildMastery(attempts: MasteryAttempt[], lessonAttempts: LessonM
     if (b.successRate === null && a.successRate !== null) return 1;
     return (a.successRate ?? 0) - (b.successRate ?? 0);
   })[0];
+  // Prefer a scenario the learner has not seen so practice tests transfer, not memory.
+  const unseenScenarioId = recommended.scenarioIds.find(id => !recommended.seenScenarioIds.includes(id));
+  const nextScenarioId = unseenScenarioId ?? recommended.seenScenarioIds[0] ?? recommended.scenarioIds[0];
+  const publicSkills = skills.map(({ seenScenarioIds: _seen, scenarioIds: _ids, ...skill }) => skill);
   return {
-    skills,
+    skills: publicSkills,
     recommendation: {
-      scenarioId: recommended.scenarioId, skillId: recommended.skillId, title: recommended.label,
+      scenarioId: nextScenarioId, skillId: recommended.skillId, title: recommended.label,
       reason: recommended.attempts === 0 ? 'Start here: you have not practised this skill yet.'
-        : recommended.confidence === 'not-enough-evidence' ? 'Build a little more evidence with another practice attempt.'
-          : 'This skill is your best next practice target based on your recent attempts.',
-      attempts: recommended.attempts, confidence: recommended.confidence,
+        : unseenScenarioId ? 'Try a new scenario that applies the same principle. An unfamiliar situation shows whether the idea carries over, not just whether you remember an answer.'
+          : 'You have seen every scenario for this skill, so repeating one mostly tests recall. Revisit it, then look for new scenarios as they are added.',
+      attempts: recommended.attempts, confidence: recommended.confidence, isNewScenario: unseenScenarioId !== undefined,
     },
     learningSignals: [
       {

@@ -17,7 +17,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Node/Express TypeScript API verifies learner access tokens and forwards the JWT to Supabase so RLS and `auth.uid()` operate in the learner's context.
 - Supabase PostgreSQL stores learner progress and server-scored lesson attempts.
 - First server-scored lesson: spread basics.
-- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of three synthetic scenarios; answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
+- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of synthetic scenarios (three originals plus six unseen variants, see `docs/TRANSFER_PRACTICE.md`); answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice, server-scored spread-basics quiz attempts, and risk-calculator participation. It recommends the least-practised Chart Dojo skill, uses positive-decision rates only as a tie-breaker, and labels small samples as low-confidence. Risk-calculator use is tracked as participation, not mastery.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
@@ -44,6 +44,9 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
    - `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
    - `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
+   - `supabase/migrations/202610110007_harden_grants_and_milestone_claims.sql`
+   - `supabase/migrations/202610110008_foundations_milestone_requires_quiz.sql`
+   - `supabase/migrations/202610110009_chart_dojo_scenario_variants.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts.
 

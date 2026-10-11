@@ -49,3 +49,10 @@
 .dojo-context-track span:nth-child(1){height:30%}.dojo-context-track span:nth-child(2){height:47%}.dojo-context-track span:nth-child(3){height:39%}.dojo-context-track span:nth-child(4){height:76%}.dojo-context-track span:nth-child(5){height:94%;background:#d8b28b}
 .dojo-context-panel>small{font-size:9px;color:#87958e}
 @media(max-width:760px){.dojo-scenario-picker{padding:13px}.dojo-scenario-tabs{grid-template-columns:1fr;gap:7px}.dojo-scenario-tab{flex-direction:row;align-items:center;gap:10px;padding:10px}.dojo-scenario-tab>span{flex:0 0 24px}.dojo-scenario-tab strong{font-size:10px}.dojo-data-panel{padding:17px 12px}.dojo-plan-card{padding:12px}.dojo-plan-card>strong{font-size:22px}.dojo-context-panel h3{font-size:18px}}
+
+.dojo-scenario-tab small{font:600 10px/1.3 Manrope,sans-serif;color:#536176}
+.mastery-skill-row{flex-wrap:wrap}
+.mastery-evidence{display:grid;gap:6px;margin:8px 0 0;flex:1 1 100%}
+.mastery-evidence>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 14px;padding-top:6px;border-top:1px solid #e5e8e4}
+.mastery-evidence dt{font:600 12px/1.4 Manrope,sans-serif;color:#536176}
+.mastery-evidence dd{margin:0;font:500 12px/1.4 Manrope,sans-serif;color:#244c3e}

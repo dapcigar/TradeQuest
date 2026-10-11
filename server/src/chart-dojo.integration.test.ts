@@ -19,13 +19,14 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
       },
     });
 
-  it('serves multiple published scenarios without exposing answer keys', async () => {
+  it('serves all published scenarios, including unseen variants, without exposing answer keys', async () => {
     const response = await request('/v1/chart-dojo/scenarios', userAToken!);
     expect(response.status).toBe(200);
     const body = await response.json() as {
       scenarios: Array<{ scenarioId: string; version: string; title: string; choices: unknown[]; answer_key?: unknown; answerKey?: unknown }>;
     };
-    expect(body.scenarios.map(s => s.scenarioId)).toEqual(['TQ-SYN-001', 'TQ-SYN-002', 'TQ-SYN-003']);
+    expect(body.scenarios.map(s => s.scenarioId)).toEqual(
+      ['TQ-SYN-001', 'TQ-SYN-002', 'TQ-SYN-003', 'TQ-SYN-004', 'TQ-SYN-005', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-008', 'TQ-SYN-009']);
     expect(body.scenarios.every(s => s.version === '1' && s.choices.length >= 2)).toBe(true);
     expect(body.scenarios.every(s => s.answer_key === undefined && s.answerKey === undefined)).toBe(true);
   });
@@ -170,6 +171,30 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(afterB).toEqual(beforeB);
     expect(riskSignalA?.successRate).toBeNull();
     expect(riskSignalA?.measure).toBe('milestone');
+  });
+
+  it('scores a variant scenario on the server and reports it as application, not recall, in mastery', async () => {
+    type Skills = { skills: Array<{ skillId: string; recall: { attempts: number }; application: { attempts: number; transferAttempts: number } }> };
+    const readPlanning = async (token: string) => {
+      const response = await request('/v1/me/mastery', token);
+      expect(response.status).toBe(200);
+      return ((await response.json()) as Skills).skills.find(skill => skill.skillId === 'planning')!;
+    };
+    const beforeA = await readPlanning(userAToken!);
+    const beforeB = await readPlanning(userBToken!);
+
+    const submit = await request('/v1/chart-dojo/attempts', userAToken!, {
+      method: 'POST', body: JSON.stringify({ attemptId: crypto.randomUUID(), scenarioId: 'TQ-SYN-005', choiceId: 'win-it-back' }),
+    });
+    expect(submit.status).toBe(200);
+    const result = await submit.json() as { result: { outcome: string; scenarioVersion: string } };
+    expect(result.result.outcome).toBe('undefined-risk');
+    expect(result.result.scenarioVersion).toBe('1');
+
+    const afterA = await readPlanning(userAToken!);
+    expect(afterA.application.attempts + afterA.recall.attempts).toBe(beforeA.application.attempts + beforeA.recall.attempts + 1);
+    // Another learner's recall/application counts are untouched.
+    expect(await readPlanning(userBToken!)).toEqual(beforeB);
   });
 
   it('rejects unauthenticated and malformed submissions', async () => {
