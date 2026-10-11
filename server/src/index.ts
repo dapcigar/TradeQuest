@@ -89,7 +89,7 @@ function journalEntry(row: Record<string, unknown>) {
 }
 app.get('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('decision_journal_entries')
-    .select(journalFields).order('created_at', { ascending: false }).limit(100);
+    .select(journalFields).eq('user_id', req.learnerId!).order('created_at', { ascending: false }).limit(100);
   if (error) { logError('Decision journal could not be loaded.', error); return res.status(500).json({ error: 'Decision journal could not be loaded.' }); }
   return res.json({ entries: (data ?? []).map(journalEntry) });
 });
@@ -121,7 +121,7 @@ app.patch('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest,
   if (d.lessonLearned !== undefined) updates.lesson_learned = d.lessonLearned;
   updates.updated_at = new Date().toISOString();
   const { data, error } = await req.learnerDb!.from('decision_journal_entries').update(updates)
-    .eq('id', req.params.id).select(journalFields).maybeSingle();
+    .eq('id', req.params.id).eq('user_id', req.learnerId!).select(journalFields).maybeSingle();
   if (error) { logError('Decision journal entry could not be updated.', error); return res.status(400).json({ error: 'Journal entry could not be updated.' }); }
   if (!data) return res.status(404).json({ error: 'Journal entry not found.' });
   return res.json({ entry: journalEntry(data as unknown as Record<string, unknown>) });
@@ -129,7 +129,7 @@ app.patch('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest,
 
 app.delete('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('decision_journal_entries').delete()
-    .eq('id', req.params.id).select('id').maybeSingle();
+    .eq('id', req.params.id).eq('user_id', req.learnerId!).select('id').maybeSingle();
   if (error) { logError('Decision journal entry could not be deleted.', error); return res.status(400).json({ error: 'Journal entry could not be deleted.' }); }
   if (!data) return res.status(404).json({ error: 'Journal entry not found.' });
   return res.sendStatus(204);
