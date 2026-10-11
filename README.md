@@ -60,4 +60,4 @@ npm run build
 npm run api:build
 ```
 
-See `docs/IMPLEMENTATION_BRIEF.md` for product direction and `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup.
+See `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, and `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch.
