@@ -209,8 +209,6 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     });
     expect(malformed.status).toBe(400);
   });
-});
-
   it('keeps decision journal entries private and supports edit/delete', async () => {
     const payload = {
       title: 'Journal isolation test',
@@ -251,3 +249,6 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     const afterDeleteBody = await afterDelete.json() as { entries: Array<{ id: string }> };
     expect(afterDeleteBody.entries.some(entry => entry.id === entryId)).toBe(false);
   });
+
+});
+
