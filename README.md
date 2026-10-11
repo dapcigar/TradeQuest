@@ -17,7 +17,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Node/Express TypeScript API verifies learner access tokens and forwards the JWT to Supabase so RLS and `auth.uid()` operate in the learner's context.
 - Supabase PostgreSQL stores learner progress and server-scored lesson attempts.
 - First server-scored lesson: spread basics.
-- Authenticated progress events persist foundations completion, first risk calculator use, and the first chart-dojo scenario; rewards are selected server-side and awarded once per learner.
+- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo choices, server-authored feedback, and recent attempt history are persisted separately; its milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
@@ -40,8 +40,9 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 2. Apply `supabase/migrations/202610110001_m2_learner_progress.sql`.
 3. Apply `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`.
 4. Apply `supabase/migrations/202610110003_chart_dojo_progress_event.sql`.
-5. Apply `supabase/seed/dev_spread_lesson.sql`.
-5. Start the API and Vite frontend and test with two separate test accounts.
+5. Apply `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`.
+6. Apply `supabase/seed/dev_spread_lesson.sql`.
+7. Start the API and Vite frontend and test with two separate test accounts.
 
 Do not apply migrations to production until the SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project.
 
