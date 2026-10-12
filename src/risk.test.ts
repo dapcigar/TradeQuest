@@ -15,7 +15,7 @@ describe('calculateRisk', () => {
   });
 
   it('rejects finite inputs whose intermediate risk arithmetic overflows or underflows', () => {
-    expect(() => calculateRisk({ equity: Number.MAX_VALUE, riskPercent: 100, entry: 2, stop: 1, unitsPerPrice: Number.MAX_VALUE })).toThrow(/safe numeric range/);
+    expect(() => calculateRisk({ equity: Number.MAX_VALUE, riskPercent: 100, entry: 3, stop: 1, unitsPerPrice: Number.MAX_VALUE })).toThrow(/safe numeric range/);
     expect(() => calculateRisk({ equity: Number.MIN_VALUE, riskPercent: Number.MIN_VALUE, entry: 2, stop: 1, unitsPerPrice: 1 })).toThrow(/safe numeric range/);
   });
 
