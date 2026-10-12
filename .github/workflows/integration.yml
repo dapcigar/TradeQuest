@@ -8,9 +8,6 @@ on:
         required: true
         type: boolean
         default: false
-  push:
-    branches:
-      - integration-test/confirm-dedicated-test-accounts-2026-10-12
 
 permissions:
   contents: read
@@ -37,13 +34,8 @@ jobs:
         env:
           CONFIRM_TEST_ACCOUNTS: ${{ inputs.confirm_test_accounts }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
-              echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
-              exit 1
-            fi
-          elif [ "$GITHUB_REF_NAME" != "integration-test/confirm-dedicated-test-accounts-2026-10-12" ]; then
-            echo "::error::Only the explicitly named one-shot integration-test branch may trigger this destructive test automatically."
+          if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
+            echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
             exit 1
           fi
       - name: Require all dedicated test secrets
@@ -75,6 +67,32 @@ jobs:
             process.exit(1);
           }
           console.log('Integration API URL format validated; host and credentials are not printed.');
+          NODE
+      - name: Validate dedicated account tokens against deployed API
+        env:
+          TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
+          TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+          TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const base = new URL(process.env.TRADEQUEST_TEST_API_URL);
+          const accounts = [
+            ['Account A', process.env.TRADEQUEST_TEST_USER_A_TOKEN],
+            ['Account B', process.env.TRADEQUEST_TEST_USER_B_TOKEN],
+          ];
+          let failed = false;
+          for (const [label, token] of accounts) {
+            const response = await fetch(new URL('/v1/me/progress', base), {
+              headers: { Authorization: 'Bearer ' + token },
+              cache: 'no-store',
+            });
+            if (!response.ok) {
+              console.error(`::error::${label} token/API preflight failed with HTTP ${response.status}. Refresh the dedicated test token or deploy the current API. No integration writes have been started.`);
+              failed = true;
+            }
+          }
+          if (failed) process.exit(1);
+          console.log('Both dedicated accounts authenticated against the configured API. Tokens and response bodies were not logged.');
           NODE
       - run: npm install
       - name: Run the two-account API integration suite
