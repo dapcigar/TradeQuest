@@ -2,10 +2,11 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
+import { advancePaperTrade, startPaperTrade } from './paperLab.js';
 
 // Recall vs application is derived from attempt order, so read generously.
 const MASTERY_ATTEMPT_LIMIT = 500;
@@ -82,6 +83,35 @@ app.get('/v1/replay/synthetic-basics', requireLearner, (req: AuthedRequest, res:
   }
 });
 
+
+// Server-owned paper trade simulation. Tokens are signed and learner-bound; no real orders or persistent account balance exist.
+app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, (req: AuthedRequest, res: Response) => {
+  const parsed = paperTradePlanSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade plan.' });
+  try {
+    const result = startPaperTrade({ plan: parsed.data, secret: process.env.REPLAY_CURSOR_SECRET ?? '', learnerId: req.learnerId! });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(201).json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Paper trade could not start.';
+    if (message.includes('not configured securely')) return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable.' });
+    return res.status(400).json({ error: message });
+  }
+});
+
+app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, (req: AuthedRequest, res: Response) => {
+  const parsed = paperTradeStepSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade continuation token.' });
+  try {
+    const result = advancePaperTrade({ token: parsed.data.token, secret: process.env.REPLAY_CURSOR_SECRET ?? '', learnerId: req.learnerId! });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Paper trade could not continue.';
+    if (message.includes('not configured securely')) return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable.' });
+    return res.status(400).json({ error: 'Paper trade session is invalid. Start a new session.' });
+  }
+});
 
 // Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
 app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, res: Response) => {
