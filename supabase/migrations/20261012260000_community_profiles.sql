@@ -17,7 +17,7 @@ alter table public.community_profiles enable row level security;
 revoke all on public.community_profiles from public, anon, authenticated;
 -- Direct table reads expose only opted-in profile fields. Ownership IDs and writes
 -- are handled by narrowly scoped SECURITY DEFINER functions bound to auth.uid().
-grant select (handle, display_name, bio, updated_at)
+grant select (handle, display_name, bio, is_public, updated_at)
   on public.community_profiles to authenticated;
 
 drop policy if exists "Learners read own or public community profiles" on public.community_profiles;
