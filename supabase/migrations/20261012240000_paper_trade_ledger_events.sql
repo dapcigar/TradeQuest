@@ -31,6 +31,7 @@ begin
     v_payload := pg_catalog.jsonb_build_object(
       'scenarioId', new.scenario_id, 'direction', new.direction, 'entryPrice', new.entry_price,
       'stopPrice', new.stop_price, 'targetPrice', new.target_price, 'virtualEquity', new.virtual_equity,
+      'virtualEquityAfter', case when new.status = 'closed' then new.virtual_equity + coalesce(new.pnl, 0) else null end,
       'riskPercent', new.risk_percent, 'riskBudget', new.risk_budget, 'units', new.units,
       'currentIndex', new.current_index, 'status', new.status, 'exitPrice', new.exit_price,
       'exitReason', new.exit_reason, 'pnl', new.pnl, 'version', new.version
@@ -43,6 +44,7 @@ begin
     v_payload := pg_catalog.jsonb_build_object(
       'scenarioId', new.scenario_id, 'direction', new.direction, 'entryPrice', new.entry_price,
       'stopPrice', new.stop_price, 'targetPrice', new.target_price, 'virtualEquity', new.virtual_equity,
+      'virtualEquityAfter', case when new.status = 'closed' then new.virtual_equity + coalesce(new.pnl, 0) else null end,
       'riskPercent', new.risk_percent, 'riskBudget', new.risk_budget, 'units', new.units,
       'currentIndex', new.current_index, 'status', new.status, 'exitPrice', new.exit_price,
       'exitReason', new.exit_reason, 'pnl', new.pnl, 'version', new.version
@@ -74,7 +76,7 @@ insert into public.paper_trade_ledger_events
 select s.user_id, s.id, 0, 'session_started', 0,
   pg_catalog.jsonb_build_object(
     'scenarioId', s.scenario_id, 'direction', s.direction, 'entryPrice', s.entry_price,
-    'stopPrice', s.stop_price, 'targetPrice', s.target_price, 'virtualEquity', s.virtual_equity,
+    'stopPrice', s.stop_price, 'targetPrice', s.target_price, 'virtualEquity', s.virtual_equity, 'virtualEquityAfter', null,
     'riskPercent', s.risk_percent, 'riskBudget', s.risk_budget, 'units', s.units,
     'currentIndex', 0, 'status', 'open', 'exitPrice', null, 'exitReason', null, 'pnl', null, 'version', 0
   ), s.created_at
@@ -86,7 +88,7 @@ insert into public.paper_trade_ledger_events
 select s.user_id, s.id, s.version, 'candle_revealed', s.current_index,
   pg_catalog.jsonb_build_object(
     'scenarioId', s.scenario_id, 'direction', s.direction, 'entryPrice', s.entry_price,
-    'stopPrice', s.stop_price, 'targetPrice', s.target_price, 'virtualEquity', s.virtual_equity,
+    'stopPrice', s.stop_price, 'targetPrice', s.target_price, 'virtualEquity', s.virtual_equity, 'virtualEquityAfter', case when s.status = 'closed' then s.virtual_equity + coalesce(s.pnl, 0) else null end,
     'riskPercent', s.risk_percent, 'riskBudget', s.risk_budget, 'units', s.units,
     'currentIndex', s.current_index, 'status', s.status, 'exitPrice', s.exit_price,
     'exitReason', s.exit_reason, 'pnl', s.pnl, 'version', s.version
