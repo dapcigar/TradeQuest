@@ -66,7 +66,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Decide whether browser-local Adaptive Practice history should remain local or be replaced by account-backed, server-scored attempts. Do not present the current local score as server-derived mastery.
 - [ ] Decide whether the weekly plan and demo journal should sync across devices; communicate current limits until implemented.
-- [ ] Persistent paper-trade sessions are implemented, but a full append-only order/fill/ledger-event model and instrument-accurate P/L remain unfinished. Validate transactional transitions, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
+- [ ] Persistent paper-trade sessions and append-only session transition events are implemented, but a full order/fill ledger and instrument-accurate P/L remain unfinished. Validate trigger atomicity, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready. Validate transactional transitions, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
 - [ ] Add an end-to-end smoke path covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export, and restore.
 - [ ] Establish a small release note and known-limitations section for each launch.
 - [ ] Re-check this list after any auth, schema, scoring, or storage change.
