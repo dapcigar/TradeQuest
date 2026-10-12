@@ -219,6 +219,21 @@ begin
 end;
 $$;
 
+create or replace function public.list_my_community_reports() returns jsonb
+language plpgsql stable security definer set search_path = '' as $
+declare v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+  return coalesce((
+    select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+      'reportId', r.report_id, 'entryId', r.entry_id, 'category', r.category,
+      'details', r.details, 'status', r.status, 'createdAt', r.created_at
+    ) order by r.created_at desc)
+    from public.community_reports r where r.reporter_user_id = v_user_id
+  ), '[]'::jsonb);
+end;
+$;
+
 create or replace function public.delete_my_community_challenge_entry(p_entry_id uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 declare v_user_id uuid := auth.uid();
@@ -341,8 +356,62 @@ begin
 end;
 $$;
 
+-- Extend the account data deletion RPC so community contributions, reports and profile
+-- are deleted with the learner's other server-stored learning data.
+create or replace function public.delete_own_learning_data() returns jsonb
+language plpgsql security definer set search_path = '' as $
+declare
+  v_user_id uuid := auth.uid();
+  v_deleted integer;
+  v_counts jsonb := '{}'::jsonb;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+
+  delete from public.community_challenge_entries where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityChallengeEntries', v_deleted);
+
+  delete from public.community_reports where reporter_user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityReports', v_deleted);
+
+  delete from public.community_profiles where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityProfiles', v_deleted);
+
+  delete from public.paper_trade_sessions where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('paperTradeSessions', v_deleted);
+
+  delete from public.decision_journal_entries where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('decisionJournalEntries', v_deleted);
+
+  delete from public.chart_dojo_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('chartDojoAttempts', v_deleted);
+
+  delete from public.lesson_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('lessonAttempts', v_deleted);
+
+  delete from public.progress_events where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('progressEvents', v_deleted);
+
+  delete from public.learner_progress where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('learnerProgress', v_deleted);
+
+  return pg_catalog.jsonb_build_object('deleted', v_counts);
+end;
+$;
+revoke all on function public.delete_own_learning_data() from public, anon, authenticated;
+grant execute on function public.delete_own_learning_data() to authenticated;
+
 revoke all on function public.is_community_moderator() from public, anon;
 revoke all on function public.list_community_challenges() from public, anon;
+revoke all on function public.list_my_community_reports() from public, anon;
 revoke all on function public.list_my_community_challenge_entries() from public, anon;
 revoke all on function public.list_public_community_challenge_entries(integer) from public, anon;
 revoke all on function public.submit_community_challenge_entry(text, uuid, text, boolean) from public, anon;
@@ -352,6 +421,7 @@ revoke all on function public.list_community_moderation_queue() from public, ano
 revoke all on function public.moderate_community_challenge_entry(uuid, text, text) from public, anon;
 grant execute on function public.is_community_moderator() to authenticated;
 grant execute on function public.list_community_challenges() to authenticated;
+grant execute on function public.list_my_community_reports() to authenticated;
 grant execute on function public.list_my_community_challenge_entries() to authenticated;
 grant execute on function public.list_public_community_challenge_entries(integer) to authenticated;
 grant execute on function public.submit_community_challenge_entry(text, uuid, text, boolean) to authenticated;
