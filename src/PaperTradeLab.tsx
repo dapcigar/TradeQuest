@@ -30,6 +30,7 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
   const [commissionPerUnit, setCommissionPerUnit] = useState('0');
   const [slippageTicks, setSlippageTicks] = useState('0');
   const [leverage, setLeverage] = useState('1');
+  const [assumptionsOpen, setAssumptionsOpen] = useState(true);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [result, setResult] = useState<PaperResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -148,13 +149,13 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
     <div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> PRACTICE LAB · PAPER TRADING</div><h1>Practise a plan, <span>one candle at a time.</span></h1><p>Set a hypothetical entry, stop and target, then observe how the plan behaves as synthetic candles are revealed. This is a learning exercise, not a performance prediction.</p></div>
     <p className="candle-disclaimer"><ShieldCheck size={15} /> Synthetic scenario only · no live or historical prices · no real orders or saved account balance.</p>
     <div className="paper-lab-layout">
-      <section className="panel paper-lab-form" aria-labelledby="paper-plan-title"><div className="panel-heading"><div className="panel-heading-icon"><ShieldCheck size={19} /></div><div><h2 id="paper-plan-title">Define the plan</h2><p>Virtual equity and simplified fictional price units.</p></div></div>
+      <section className="panel paper-lab-form" aria-labelledby="paper-plan-title"><div className="panel-heading"><div className="panel-heading-icon"><ShieldCheck size={19} /></div><div><h2 id="paper-plan-title">Define the plan</h2><p>Set a fictional price plan and execution assumptions.</p></div></div>
         <label className="field-label" htmlFor="paper-direction">Hypothetical direction</label><select id="paper-direction" value={direction} onChange={e => setDirection(e.target.value as 'long' | 'short')}><option value="long">Long — benefit if price rises</option><option value="short">Short — benefit if price falls</option></select>
         <label className="field-label" htmlFor="paper-equity">Virtual account equity (£)</label><input id="paper-equity" type="number" min="1" max="1000000000" value={equity} onChange={e => setEquity(e.target.value)} />
         <label className="field-label" htmlFor="paper-risk">Risk budget (%)</label><input id="paper-risk" type="number" min="0.01" max="5" step="0.1" value={riskPercent} onChange={e => setRiskPercent(e.target.value)} />
         <div className="field-pair"><div><label className="field-label" htmlFor="paper-entry">Entry</label><input id="paper-entry" type="number" min="0.000001" step="any" value={entry} onChange={e => setEntry(e.target.value)} /></div><div><label className="field-label" htmlFor="paper-stop">Stop</label><input id="paper-stop" type="number" min="0.000001" step="any" value={stop} onChange={e => setStop(e.target.value)} /></div></div>
         <label className="field-label" htmlFor="paper-target">Target</label><input id="paper-target" type="number" min="0.000001" step="any" value={target} onChange={e => setTarget(e.target.value)} />
-        <details className="paper-lab-assumptions" open>
+        <details className="paper-lab-assumptions" open={assumptionsOpen} onToggle={event => setAssumptionsOpen(event.currentTarget.open)}>
           <summary>Execution assumptions</summary>
           <p className="form-footnote">User-defined model only; TradeQuest does not verify these against a real instrument. Tick value and costs are in the virtual account currency (GBP).</p>
           <label className="field-label" htmlFor="paper-instrument-label">Model label</label><input id="paper-instrument-label" type="text" maxLength={40} value={instrumentLabel} onChange={e => setInstrumentLabel(e.target.value)} />
