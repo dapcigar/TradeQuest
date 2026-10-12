@@ -71,6 +71,8 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 ### 7. Weekly plan, export, restore, and deletion
 
 - [ ] Select each supported weekly target (3, 5, and 7 sessions); record a session and undo it.
+- [ ] As Account A, change the weekly target and record a session; refresh and confirm the plan persists from the server.
+- [ ] As Account B, confirm Account A's target and session dates are not shown. Sign out and confirm the anonymous plan remains browser-local and separate.
 - [ ] Export browser-local learning data and inspect the file for the expected allowlisted categories only.
 - [ ] While signed in as Account A, export server-stored account learning data and confirm it includes only Account A's progress, attempts, private journal entries, and saved paper sessions.
 - [ ] Confirm the account export contains no authentication tokens, passwords, service-role credentials, or Account B records, and the response uses `Cache-Control: no-store`.
