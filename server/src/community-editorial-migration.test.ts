@@ -19,6 +19,8 @@ describe('community challenge editorial review migration contract', () => {
     expect(migration).toMatch(/p_decision not in \('approve', 'revision-needed', 'retire'\)/i);
     expect(migration).toMatch(/char_length\(pg_catalog\.btrim\(p_reason\)\) not between 3 and 500/i);
     expect(migration).toMatch(/insert into public\.community_challenge_reviews/i);
+    expect(migration).toMatch(/if p_decision <> 'approve' then[\s\S]*?update public\.community_challenge_entries set[\s\S]*?is_public = false/i);
+    expect(migration).toMatch(/Challenge unpublished during editorial review/i);
     expect(migration).toMatch(/new_published, content_version, reason/i);
   });
 
