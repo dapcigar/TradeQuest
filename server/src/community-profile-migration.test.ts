@@ -16,10 +16,15 @@ describe('community profile migration contract', () => {
 
   it('uses owner-scoped RLS for private reads and all writes', () => {
     expect(migration).toMatch(/alter table public\.community_profiles enable row level security/i);
-    expect(migration).toMatch(/auth\.uid\(\) = user_id or is_public = true/i);
-    expect(migration).toMatch(/for insert to authenticated with check \(auth\.uid\(\) = user_id\)/i);
-    expect(migration).toMatch(/for update to authenticated using \(auth\.uid\(\) = user_id\) with check \(auth\.uid\(\) = user_id\)/i);
-    expect(migration).toMatch(/for delete to authenticated using \(auth\.uid\(\) = user_id\)/i);
-    expect(migration).not.toMatch(/grant all on public\.community_profiles/i);
+    expect(migration).toMatch(/for select to authenticated using \(is_public = true\)/i);
+    expect(migration).toMatch(/grant select \(handle, display_name, bio, updated_at\)\s+on public\.community_profiles to authenticated/i);
+    expect(migration).toMatch(/create or replace function public\.get_my_community_profile\(\) returns jsonb/i);
+    expect(migration).toMatch(/create or replace function public\.save_my_community_profile\(/i);
+    expect(migration).toMatch(/create or replace function public\.delete_my_community_profile\(\) returns void/i);
+    expect(migration).toMatch(/grant execute on function public\.get_my_community_profile\(\) to authenticated/i);
+    expect(migration).toMatch(/grant execute on function public\.save_my_community_profile\(text, text, text, boolean\) to authenticated/i);
+    expect(migration).toMatch(/grant execute on function public\.delete_my_community_profile\(\) to authenticated/i);
+    expect(migration).not.toMatch(/grant\s+(?:insert|update|delete|all)\s+on\s+public\.community_profiles\s+to\s+authenticated/i);
+    expect(migration).not.toMatch(/grant select \([^)]*user_id[^)]*\)\s+on public\.community_profiles/i);
   });
 });
