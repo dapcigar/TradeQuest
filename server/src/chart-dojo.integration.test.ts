@@ -108,6 +108,17 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(finalLedger.status).toBe(200);
     const finalLedgerBody = await finalLedger.json() as { events: Array<{ eventType: string; payload: { virtualEquityAfter?: number | null } }> };
     expect(finalLedgerBody.events.some(event => event.eventType === 'session_closed' && typeof event.payload.virtualEquityAfter === 'number')).toBe(true);
+    const fillsResponse = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/fills', userAToken!);
+    expect(fillsResponse.status).toBe(200);
+    const fillsBody = await fillsResponse.json() as { fills: Array<{ type: string; side: string; price: number | string; units: number | string; realizedPnl: number | string | null; reason: string | null }> };
+    expect(fillsBody.fills.map(fill => fill.type)).toEqual(['entry', 'exit']);
+    expect(fillsBody.fills[0].side).toBe('buy');
+    expect(Number(fillsBody.fills[0].price)).toBe(103);
+    expect(fillsBody.fills[1].side).toBe('sell');
+    expect(Number(fillsBody.fills[1].realizedPnl)).toBeCloseTo(Number(state['outcome'] && (state['outcome'] as { pnl: number }).pnl));
+    expect(fillsBody.fills[1].reason).toBeTruthy();
+    const privateFills = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/fills', userBToken!);
+    expect(privateFills.status).toBe(404);
   });
 
   it('syncs weekly practice plans only to the owning learner', async () => {
