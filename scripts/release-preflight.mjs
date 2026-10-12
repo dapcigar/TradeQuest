@@ -69,7 +69,7 @@ if (!workflow.includes('npm run release:preflight')) {
 try {
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
   const sensitive = tracked.filter(path =>
-    /(^|\/)\.env($|\.local$)/i.test(path) ||
+    /(^|\/)\.env(?:\.(?!example$|template$)[^/]+)?$/i.test(path) ||
     /\.(?:dump|backup|sql\.gz)$/i.test(path)
   );
   if (sensitive.length) failures.push('Potentially sensitive environment/backup files are tracked: ' + sensitive.join(', '));
