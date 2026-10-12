@@ -60,6 +60,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 ### Content governance
 - [ ] Review every published synthetic scenario for correct arithmetic, one defensible answer, balanced choice ordering, and clear rationale.
 - [ ] Record editorial approval and scenario version. Automated tests are not editorial approval.
+- [ ] Reconcile docs/CONTENT_REVIEW_REGISTER.md and obtain named human sign-off for every published module; do not mark automated checks as approval.
 - [ ] Ensure risk-budget examples use internally consistent figures and disclose omitted costs/uncertainty.
 - [ ] Check that no content promises profits, guarantees outcomes, or encourages learners to increase risk after a positive score.
 

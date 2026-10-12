@@ -19,6 +19,7 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 
 - [ ] The app loads without a fatal error and navigation links open the expected screens.
 - [ ] Synthetic scenarios are clearly identified as synthetic; no screen implies live prices or broker execution.
+- [ ] Review changed learning content against docs/CONTENT_REVIEW_REGISTER.md; confirm no placeholders, missing tests, or unlabelled synthetic examples, and record human editorial sign-off separately.
 - [ ] Adaptive Practice and the weekly plan explain that their records are stored in this browser.
 - [ ] Anonymous Decision Journal demo records remain separate from authenticated account records.
 - [ ] Search the glossary, change a category, and confirm the result count and empty state update.
