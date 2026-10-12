@@ -68,9 +68,11 @@ This check is intentionally narrow: it does not prove database migration status,
 - [ ] As Account A, start a clearly labelled synthetic session and confirm the initial response contains only the first revealed candle.
 - [ ] Advance one candle and retry the same expected version; confirm the retry returns the same response and does not advance twice.
 - [ ] Inspect the session event ledger: it records session start, each accepted candle transition, and session closure in sequence; retrying a step does not duplicate events.
+- [ ] Inspect the simulated fill ledger: exactly one entry fill is recorded at the assumed entry price, and exactly one exit fill is recorded at closure with the opposite side, exit price, reason, and reconciled simulated P/L.
+- [ ] Confirm fill rows are read-only to learners, private to the owning account, included in that account's export, and removed only when the owning session is deleted.
 - [ ] Confirm the final ledger event records the simulated outcome and post-session virtual equity without exposing an internal learner ID.
 - [ ] Refresh/reopen the saved session and confirm the revealed candle history and final outcome persist.
-- [ ] As Account B, attempt to open Account A's session and ledger by ID and confirm both are not found; confirm Account A's sessions do not appear in B's history.
+- [ ] As Account B, attempt to open Account A's session, event ledger, and fill ledger by ID and confirm all are not found; confirm Account A's sessions do not appear in B's history.
 - [ ] Submit invalid directional prices and malformed session IDs; confirm the API rejects them without creating a session.
 - [ ] Complete a session and inspect stop/target handling, same-candle stop-first ambiguity, adverse-gap handling, final-candle close, and the displayed P/L assumptions.
 - [ ] Confirm the UI says synthetic/fictional and does not imply broker execution, live data, or predictive performance.
