@@ -39,7 +39,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 ## P1 — Required before inviting external learners
 
 ### Reliability and abuse controls
-- [ ] The API returns defensive response headers and the frontend has a CSP, but verify both on the deployed origins. The in-memory limiter is 60 authenticated requests per learner per minute per serverless instance, not a global quota; configure and test a shared provider firewall/rate limit before external launch.
+- [ ] The API returns defensive response headers and the frontend has a CSP, but verify both on the deployed origins. The API now combines a per-instance 60/minute limiter with database-backed per-account limits for high-risk writes, exports, and deletion. Apply `20261012250000_shared_user_rate_limits.sql` and test its cross-instance behavior in a disposable project. Neither control replaces provider-level IP/edge protection; configure and verify that before external launch.
 - [ ] Configure basic error monitoring and health checks without logging tokens, journal contents, or other sensitive learner data.
 - [ ] Document a backup/export method, restore procedure, recovery owner, and last successful restore test using docs/PRODUCTION_RUNBOOK.md.
 - [ ] Verify deployment rollback and database compatibility for the previous application version.
