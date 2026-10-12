@@ -1,0 +1,54 @@
+name: Disposable Supabase integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_disposable_environment:
+        description: "Confirm the configured API and both test accounts belong to an isolated disposable environment. The suite deletes Account A's saved learning data."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tradequest-disposable-integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  two-account-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TRADEQUEST_RUN_INTEGRATION_TESTS: 'true'
+      TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
+      TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+      TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Require explicit disposable-environment confirmation
+        env:
+          CONFIRM_DISPOSABLE: ${{ inputs.confirm_disposable_environment }}
+        run: |
+          if [ "$CONFIRM_DISPOSABLE" != "true" ]; then
+            echo "::error::Confirm that this endpoint and both accounts are disposable before running destructive integration tests."
+            exit 1
+          fi
+      - name: Require all dedicated test secrets
+        shell: bash
+        run: |
+          for name in TRADEQUEST_TEST_API_URL TRADEQUEST_TEST_USER_A_TOKEN TRADEQUEST_TEST_USER_B_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required repository secret: $name"
+              exit 1
+            fi
+          done
+          echo "All required integration secrets are present; secret values are not printed."
+      - run: npm install
+      - name: Run the two-account API integration suite
+        run: npm run test -- server/src/chart-dojo.integration.test.ts
