@@ -36,8 +36,8 @@ create table if not exists public.paper_trade_synthetic_candles (
   low_price numeric not null,
   close_price numeric not null,
   primary key (scenario_id, candle_index),
-  check (high_price >= pg_catalog.greatest(open_price, close_price)),
-  check (low_price <= pg_catalog.least(open_price, close_price))
+  check (high_price >= greatest(open_price, close_price)),
+  check (low_price <= least(open_price, close_price))
 );
 
 insert into public.paper_trade_synthetic_candles (scenario_id,candle_index,open_price,high_price,low_price,close_price) values
@@ -70,7 +70,7 @@ begin
   select * into v_session from public.paper_trade_sessions where id = p_session_id and user_id = v_user_id;
   if not found then raise exception 'Paper trade session not found' using errcode = 'P0002'; end if;
   select * into v_candle from public.paper_trade_synthetic_candles where scenario_id = v_session.scenario_id and candle_index = v_session.current_index;
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
     'index', candle_index, 'open', open_price, 'high', high_price, 'low', low_price, 'close', close_price
   ) order by candle_index), '[]'::jsonb) into v_candles
   from public.paper_trade_synthetic_candles where scenario_id = v_session.scenario_id and candle_index <= v_session.current_index;
@@ -97,10 +97,10 @@ declare
   v_user_id uuid := auth.uid(); v_id uuid; v_risk_budget numeric; v_units numeric; v_response jsonb;
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if p_direction not in ('long','short') or p_entry is null or p_stop is null or p_target is null or p_virtual_equity is null or p_risk_percent is null
+  if p_direction is null or p_direction not in ('long','short') or p_entry is null or p_stop is null or p_target is null or p_virtual_equity is null or p_risk_percent is null
      or p_entry::text in ('NaN','Infinity','-Infinity') or p_stop::text in ('NaN','Infinity','-Infinity') or p_target::text in ('NaN','Infinity','-Infinity')
      or p_virtual_equity::text in ('NaN','Infinity','-Infinity') or p_risk_percent::text in ('NaN','Infinity','-Infinity')
-     or p_entry <= 0 or p_stop <= 0 or p_target <= 0 or p_entry > 1000000000 or p_stop > 1000000000 or p_target > 1000000000
+     or p_entry < 0.000001 or p_stop < 0.000001 or p_target < 0.000001 or p_entry > 1000000000 or p_stop > 1000000000 or p_target > 1000000000
      or p_virtual_equity <= 0 or p_virtual_equity > 1000000000 or p_risk_percent < 0.01 or p_risk_percent > 5 then
     raise exception 'Invalid paper trade plan' using errcode = '22023';
   end if;
@@ -109,7 +109,7 @@ begin
   end if;
   v_risk_budget := p_virtual_equity * p_risk_percent / 100;
   v_units := v_risk_budget / pg_catalog.abs(p_entry - p_stop);
-  if v_units <= 0 or v_units::text in ('NaN','Infinity','-Infinity') then raise exception 'Invalid position size' using errcode = '22023'; end if;
+  if v_units <= 0 or v_units > 1000000000000000000 or v_units::text in ('NaN','Infinity','-Infinity') then raise exception 'Invalid position size' using errcode = '22023'; end if;
   insert into public.paper_trade_sessions(user_id,direction,entry_price,stop_price,target_price,virtual_equity,risk_percent,risk_budget,units)
   values (v_user_id,p_direction,p_entry,p_stop,p_target,p_virtual_equity,p_risk_percent,v_risk_budget,v_units) returning id into v_id;
   v_response := public.paper_trade_session_payload(v_id);
@@ -125,6 +125,7 @@ declare
   v_status text; v_response jsonb; v_direction_factor numeric;
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+  if p_expected_version is null or p_expected_version < 0 then raise exception 'Invalid paper trade version' using errcode = '22023'; end if;
   select * into v_session from public.paper_trade_sessions where id=p_session_id and user_id=v_user_id for update;
   if not found then raise exception 'Paper trade session not found' using errcode = 'P0002'; end if;
   if p_expected_version = v_session.version - 1 and v_session.last_response is not null then return v_session.last_response; end if;
