@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import JournalView from './JournalView';
 import ReviewQueue from './ReviewQueue';
 import AdaptivePractice from './AdaptivePractice';
@@ -129,6 +129,14 @@ function CandleChart() {
 
 function App() {
   const [view, setView] = useState<View>('overview');
+  const mainContentRef = useRef<HTMLElement | null>(null);
+  const previousViewRef = useRef<View>(view);
+  useEffect(() => {
+    if (previousViewRef.current !== view) {
+      previousViewRef.current = view;
+      mainContentRef.current?.focus({ preventScroll: true });
+    }
+  }, [view]);
   const [progress, setProgress] = useState<Progress>(readProgress);
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -496,6 +504,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''}`}>
         <div className="brand">
           <div className="brand-mark"><Compass size={22} strokeWidth={2.5} /></div>
@@ -509,12 +518,12 @@ function App() {
           <div className="world-bottom"><span>Explorer rank</span><span>02 / 10</span></div>
           <div className="level-track"><span style={{ width: `${Math.min(100, (activeXp % 200) / 2)}%` }} /></div>
         </div>
-        <nav className="main-nav" aria-label="Main navigation">
+        <nav id="primary-navigation" className="main-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             return <div key={item.id}>
               {item.section && <div className="nav-section">{item.section}</div>}
-              <button className={`nav-link ${view === item.id ? 'active' : ''}`} onClick={() => { setView(item.id); setMobileNav(false); }}>
+              <button className={`nav-link ${view === item.id ? 'active' : ''}`} aria-current={view === item.id ? 'page' : undefined} onClick={() => { setView(item.id); setMobileNav(false); }}>
                 <Icon size={17} strokeWidth={1.9} /><span>{item.label}</span>{item.id === 'learn' && <span className="nav-count">04</span>}
               </button>
             </div>;
@@ -528,9 +537,9 @@ function App() {
 
       {mobileNav && <button className="nav-backdrop" aria-label="Close navigation overlay" onClick={() => setMobileNav(false)} />}
 
-      <main className="main-area">
+      <main id="main-content" ref={mainContentRef} aria-label={titleMap[view]} tabIndex={-1} className="main-area">
         <header className="topbar">
-          <div className="topbar-left"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20} /></button><span className="breadcrumb">The Market Frontier</span><span className="crumb-slash">/</span><span className="breadcrumb-current">{titleMap[view]}</span></div>
+          <div className="topbar-left"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu size={20} /></button><span className="breadcrumb">The Market Frontier</span><span className="crumb-slash">/</span><span className="breadcrumb-current">{titleMap[view]}</span></div>
           <div className="topbar-right"><button className="btn-outline account-button" onClick={() => session ? void signOut() : (setAuthOpen(true), setAuthMessage(''))}>{session ? 'Sign out' : 'Sign in'}</button><span className="data-pill"><span className="status-dot" /> SIMULATION MODE</span><div className="top-xp"><Zap size={15} fill="currentColor" /> {activeXp} XP</div><button className="help-button" aria-label="About TradeQuest" title="TradeQuest is an educational simulator, not financial advice." onClick={() => window.alert('TradeQuest is for education only. No live prices, signals or real-money trading. Synthetic chart data is clearly labelled.') }><CircleHelp size={18} /></button></div>
         </header>
 
