@@ -35,8 +35,8 @@ begin
     when 'paper_trade_step' then v_window_seconds := 60; v_limit := 120;
     when 'journal_write' then v_window_seconds := 60; v_limit := 30;
     when 'weekly_plan_write' then v_window_seconds := 60; v_limit := 30;
-    when 'account_export' then v_window_seconds := 3600; v_limit := 3;
-    when 'delete_learning_data' then v_window_seconds := 3600; v_limit := 2;
+    when 'account_export' then v_window_seconds := 3600; v_limit := 10;
+    when 'delete_learning_data' then v_window_seconds := 3600; v_limit := 10;
     else raise exception 'Unsupported rate-limit bucket' using errcode = '22023';
   end case;
 
@@ -61,5 +61,5 @@ begin
   return v_hits <= v_limit;
 end; $$;
 
-revoke all on function public.consume_user_rate_limit(text) from public, anon;
+revoke all on function public.consume_user_rate_limit(text) from public, anon, authenticated;
 grant execute on function public.consume_user_rate_limit(text) to authenticated;
