@@ -6,7 +6,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Synthetic scenarios are visibly labelled; no live market feed is enabled.
 - [ ] No broker connection, copy trading, real-money order path, or personalised financial advice.
-- [ ] Anonymous Adaptive Practice, Weekly Practice Plan, and anonymous Decision Journal use browser-local storage. They are not account-synced and can be lost when browser data is cleared. Signed-in Adaptive Practice uses server-scored Chart Dojo attempts, but the new scenario migration must be applied before those variants are available. Export important local data before changing devices.
+- [ ] Anonymous Adaptive Practice, Weekly Practice Plan, and demo Decision Journal use browser-local storage. Signed-in Adaptive Practice, Weekly Practice Plan, and private Decision Journal use server-saved account data after their migrations are applied. Browser-local records remain separate and can be lost when browser data is cleared. Export important local data before changing devices.
 - [ ] Paper Trade Lab sessions and outcomes are persisted privately in Supabase by `20261012210000_paper_trade_ledger.sql`; verify that migration is applied only after disposable-project tests. The simulator remains a simplified session history, not a tamper-evident event ledger or instrument-accurate execution engine. The separate legacy replay endpoint is stateless. See `PAPER_TRADE_LAB.md`.
 - [ ] Server-scored lessons and Chart Dojo remain authoritative on the API/database; never trust client-submitted score, answer key, XP, or pass state.
 - [ ] Community/leaderboards, licensed historical data, and complete server-authoritative chart simulation remain out of scope until separately reviewed.
@@ -44,7 +44,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Check provider quotas and free-tier limits. A blocked deployment due to a provider quota is not a successful release.
 
 ### Privacy and data lifecycle
-- [ ] Explain which records are server-saved versus browser-local, and how local exports/imports work. A signed-in server-side learning export is implemented at `/v1/me/export`; validate its completeness and privacy in a disposable project before launch.
+- [ ] Explain which records are server-saved versus browser-local, and how local exports/imports work. A signed-in server-side learning export is implemented at `/v1/me/export`, including weekly plans and recorded sessions; validate its completeness and privacy in a disposable project before launch.
 - [ ] Test browser-local export/restore with malformed and oversized files; ensure imports never restore authentication tokens or overwrite unrelated browser storage. Test server export account isolation and confirm oversized exports fail rather than returning partial data.
 - [ ] Self-service deletion of server-saved learning records is implemented by `20261012220000_delete_own_learning_data.sql`; verify it on a disposable project. It does not delete the Supabase Auth identity or browser-local records. Define retention and test those separate deletion paths before collecting more personal data.
 - [ ] Keep journals private by default; never expose private notes or learner activity through public profiles or leaderboards.
