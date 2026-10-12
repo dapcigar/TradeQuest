@@ -6,6 +6,7 @@ import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, deci
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
+import { applyApiSecurityHeaders } from './securityHeaders.js';
 
 // Recall vs application is derived from attempt order, so read generously.
 const MASTERY_ATTEMPT_LIMIT = 500;
@@ -16,6 +17,10 @@ const learnerLimiter = createRateLimiter(LEARNER_RATE_LIMIT, LEARNER_RATE_WINDOW
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
+app.use((_req, res, next) => {
+  applyApiSecurityHeaders(res, env.NODE_ENV === 'production');
+  next();
+});
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', env.WEB_ORIGIN);
   res.setHeader('Vary', 'Origin');
