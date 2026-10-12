@@ -21,6 +21,35 @@ Candle advancement accepts an expected version. A retry of the immediately prece
 
 The simulator records an append-only **session state-transition ledger** (`session_started`, `candle_revealed`, and `session_closed`) and exposes each learner's own events. Retries of the same accepted version do not create duplicate events. A separate append-only simulated fill ledger records one assumed immediate entry fill and, on closure, one exit fill with side, price, units, exit reason, and reconciled realised simulated P/L. The database trigger creates these records transactionally with the session start/closure; uniqueness constraints prevent duplicate entry or exit fills, and learner clients have read-only access to their own rows. Existing sessions are backfilled by the migration. This is still not a full instrument-accurate order/fill ledger. It does not model contract-specific tick values, margin, pending orders, partial fills, commissions, spread, currency conversion, or ordinary slippage. The assumed one-unit P/L per fictional price unit is a teaching simplification, and planned risk is not a guaranteed maximum loss. Do not use simulated P/L as a mastery score or evidence of future performance.
 
+## User-defined execution assumptions
+
+The plan form accepts a user-defined synthetic model; it does not select or verify a real instrument profile.
+
+- `tickSize`: price movement represented by one tick.
+- `tickValue`: virtual account-currency value per tick per unit.
+- `contractSize`: used for the estimated margin calculation; it does not multiply tick-value P/L.
+- `lotStep`: the minimum quantity increment. Position size is rounded down to this step.
+- `spreadTicks`: total round-trip spread in ticks.
+- `commissionPerUnit`: commission per unit per side.
+- `slippageTicks`: slippage in ticks per side.
+- `leverage`: used only for the margin estimate.
+
+The server calculates:
+
+```text
+lossPerUnit = ((abs(entry - stop) / tickSize)
+               + spreadTicks + 2 * slippageTicks) * tickValue
+              + 2 * commissionPerUnit
+
+units = floor((riskBudget / lossPerUnit) / lotStep) * lotStep
+estimatedStopLoss = units * lossPerUnit
+marginRequired = entry * contractSize * units / leverage
+```
+
+The server caps quantity to available virtual equity/margin and rejects plans that cannot fit the configured lot step and risk budget. Effective entry/exit fill prices include half the round-trip spread plus per-side slippage; commissions are deducted from realised P/L. The fill ledger records those effective prices and the same server-calculated P/L. Existing sessions are backfilled with the generic zero-cost model so their historical fills remain unchanged.
+
+**Limitations:** the default `Generic price-unit model` is a neutral fictional baseline, not a verified XAUUSD, FX, index, futures, or CFD specification. Tick values, contract size and costs are only as accurate as the values entered by the learner. Planned stop-loss estimates exclude gap-through risk; a gap can produce a larger loss than the budget. The simulator still has no pending orders, partial fills, margin calls/liquidation, live prices, or broker connectivity.
+
 ## Before calling the simulator release-ready
 
 1. Apply the paper-trade session migration, `20261012240000_paper_trade_ledger_events.sql`, and `20261012250000_paper_trade_fill_ledger.sql` to a disposable Supabase project first; compare the migration ledger and run schema/grant/RLS checks.
