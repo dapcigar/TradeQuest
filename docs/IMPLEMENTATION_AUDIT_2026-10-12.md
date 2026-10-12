@@ -14,7 +14,7 @@ TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Expres
 | #83 | Merged | Private append-only simulated entry/exit fills; database triggers create fills with session start/closure; existing sessions are backfilled; API/UI/export integration and tests added. |
 | #84 | Merged | Signed-in overview uses account-backed lesson completion, XP, and risk-tool evidence rather than browser-local demo state. |
 | #85 | Merged | Solo challenge cards show process rubrics and the latest result from linked synthetic scenarios; results are not based on P/L. |
-| #86 | Merged | Chart Dojo history endpoint and signed-in client state retain up to 500 attempts, matching the mastery engine's bounded history window. |
+| #86 | Merged | Chart Dojo interactive history remains capped at 500 records for responsive UI; the mastery and adaptive recommendation APIs now page through all retained relevant attempts. |
 
 For each of these PRs, GitHub Actions passed npm run test, npm run build, npm run api:build, and npm run release:preflight before merge.
 
@@ -41,7 +41,7 @@ For each of these PRs, GitHub Actions passed npm run test, npm run build, npm ru
 
 ### P1 — Product completeness
 
-1. **Full cross-device adaptive mastery.** Core account-backed attempts, review recommendations, dashboard progress, and a 500-attempt history window are implemented. The product still needs an explicit definition and validation of which additional learning signals should sync, how long-term history is retained/aggregated, and how confidence behaves beyond the bounded recent-attempt window.
+1. **Long-term adaptive mastery operations.** Mastery and signed-in Adaptive Practice now use all retained relevant server attempts with paginated queries and fail closed on partial history. Still define retention/aggregation before per-account histories become large, and validate confidence/retention behaviour against live multi-account data.
 2. **Full simulation engine.** The current simulator remains synthetic and simplified. It does not support instrument-specific tick size/value, contract size, lot increments, margin, spread/fees, ordinary slippage, pending orders, partial fills, or contract-accurate P/L. The fill ledger records the documented immediate-entry and simulated-exit assumptions; it is not a broker ledger.
 3. **Community challenges and profiles.** Public profiles, community challenge submissions, leaderboards, reporting, and moderator workflows are not implemented. The product brief requires opt-in visibility, process-based scoring rather than P/L, no open direct messages, private-data protection, and an audited moderation trail.
 4. **Licensed historical datasets.** No historical dataset should be imported or presented as history until rights, storage, redistribution, symbol mapping, timezone, and data validation requirements are confirmed.

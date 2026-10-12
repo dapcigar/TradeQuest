@@ -29,7 +29,7 @@ function skillFor(id: string): Skill {
   return 'risk-budget';
 }
 type ServerScenario = { scenarioId: string; title: string; prompt: string; choices: Array<{ id: string; label: string }> };
-type ServerAttempt = { scenarioId: string; outcome: string; submittedAt: string };
+export type AdaptiveAttemptSummary = { scenarioId: string; attemptCount: number; positiveCount: number; lastSubmittedAt: string | null };
 
 const storageKey = 'tradequest-adaptive-practice-v1';
 function readAttempts(): Attempt[] {
@@ -58,6 +58,50 @@ export function assessAdaptiveAnswer(variantId: string, choiceId: string): { pos
   return { positive: choiceId === variant.answer, explanation: variant.explanation };
 }
 export function nextAdaptiveVariant(attempts: Attempt[]): Variant { return chooseNext(attempts); }
+
+export function nextAdaptiveVariantFromSummary(summaries: AdaptiveAttemptSummary[]): Variant {
+  const byScenario = new Map(summaries.map(item => [item.scenarioId, item]));
+  const skills: Skill[] = ['risk-definition', 'evidence-patience', 'risk-budget'];
+  const stats = skills.map(skill => {
+    const ids = variants.filter(item => item.skill === skill).map(item => serverScenarioIds[item.id]);
+    const matching = ids.map(id => byScenario.get(id)).filter((item): item is AdaptiveAttemptSummary => Boolean(item));
+    const count = matching.reduce((sum, item) => sum + item.attemptCount, 0);
+    const positive = matching.reduce((sum, item) => sum + item.positiveCount, 0);
+    return { skill, count, rate: count ? positive / count : -1 };
+  }).sort((a, b) => a.rate - b.rate || a.count - b.count);
+  const weakest = stats[0]?.skill ?? skills[0];
+  const seen = new Set(variants.filter(item => (byScenario.get(serverScenarioIds[item.id])?.attemptCount ?? 0) > 0).map(item => item.id));
+  return variants.find(item => item.skill === weakest && !seen.has(item.id))
+    ?? variants.find(item => !seen.has(item.id))
+    ?? variants[0];
+}
+
+export function adaptiveEvidenceFromSummary(summaries: AdaptiveAttemptSummary[], skill: Skill) {
+  const byScenario = new Map(summaries.map(item => [item.scenarioId, item]));
+  const variantsForSkill = variants.filter(item => item.skill === skill);
+  const recall = variantsForSkill.filter(item => item.id.endsWith('-a')).map(item => byScenario.get(serverScenarioIds[item.id]));
+  const transfer = variantsForSkill.filter(item => item.id.endsWith('-b')).map(item => byScenario.get(serverScenarioIds[item.id]));
+  const recallAttempts = recall.reduce((sum, item) => sum + (item?.attemptCount ?? 0), 0);
+  const recallPositive = recall.reduce((sum, item) => sum + (item?.positiveCount ?? 0), 0);
+  const transferAttempts = transfer.reduce((sum, item) => sum + (item?.attemptCount ?? 0), 0);
+  const transferPositive = transfer.reduce((sum, item) => sum + (item?.positiveCount ?? 0), 0);
+  return { recallAttempts, recallPositive, transferAttempts, transferPositive, confidence: transferAttempts < 2 ? 'too-few-to-judge' : 'early-signal' };
+}
+
+export function recordAdaptiveSummaryAttempt(
+  summaries: AdaptiveAttemptSummary[],
+  scenarioId: string,
+  positive: boolean,
+  submittedAt: string,
+): AdaptiveAttemptSummary[] {
+  let found = false;
+  const updated = summaries.map(item => {
+    if (item.scenarioId !== scenarioId) return item;
+    found = true;
+    return { ...item, attemptCount: item.attemptCount + 1, positiveCount: item.positiveCount + Number(positive), lastSubmittedAt: submittedAt };
+  });
+  return found ? updated : [...updated, { scenarioId, attemptCount: 1, positiveCount: Number(positive), lastSubmittedAt: submittedAt }];
+}
 export function adaptiveEvidence(attempts: Attempt[], skill: Skill) {
   const skillAttempts = attempts.filter(item => item.skill === skill);
   const recalled = skillAttempts.filter(item => item.variantId.endsWith('-a'));
@@ -73,6 +117,7 @@ export function adaptiveEvidence(attempts: Attempt[], skill: Skill) {
 
 export default function AdaptivePractice({ session }: { session: Session | null }) {
   const [attempts, setAttempts] = useState<Attempt[]>(() => session ? [] : readAttempts());
+  const [accountSummary, setAccountSummary] = useState<AdaptiveAttemptSummary[]>([]);
   const [variant, setVariant] = useState<Variant>(() => chooseNext(session ? [] : readAttempts()));
   const [serverVariants, setServerVariants] = useState<Record<string, Variant>>({});
   const [choice, setChoice] = useState('');
@@ -81,26 +126,26 @@ export default function AdaptivePractice({ session }: { session: Session | null 
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const next = useMemo(() => chooseNext(attempts), [attempts]);
+  const next = useMemo(() => session ? nextAdaptiveVariantFromSummary(accountSummary) : chooseNext(attempts), [session, accountSummary, attempts]);
   const skills: Array<{ id: Skill; label: string }> = [{ id: 'risk-definition', label: 'Define risk' }, { id: 'evidence-patience', label: 'Wait for evidence' }, { id: 'risk-budget', label: 'Respect the budget' }];
 
   useEffect(() => {
     let cancelled = false;
     if (!session) {
       const local = readAttempts();
-      setAttempts(local); setVariant(chooseNext(local)); setServerVariants({}); setServerError(''); setLoading(false);
+      setAttempts(local); setAccountSummary([]); setVariant(chooseNext(local)); setServerVariants({}); setServerError(''); setLoading(false);
       return () => { cancelled = true; };
     }
-    setLoading(true); setServerError(''); setAttempts([]); setServerVariants({});
+    setLoading(true); setServerError(''); setAttempts([]); setAccountSummary([]); setServerVariants({});
     const base = import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
     const headers = { Authorization: 'Bearer ' + session.access_token };
     Promise.all([
       fetch(base + '/v1/chart-dojo/scenarios', { headers, cache: 'no-store' }),
-      fetch(base + '/v1/chart-dojo/attempts', { headers, cache: 'no-store' }),
-    ]).then(async ([scenarioResponse, attemptResponse]) => {
-      if (!scenarioResponse.ok || !attemptResponse.ok) throw new Error('Account-backed adaptive practice could not load. Confirm the API and adaptive scenario migration are available.');
+      fetch(base + '/v1/chart-dojo/attempts/adaptive-summary', { headers, cache: 'no-store' }),
+    ]).then(async ([scenarioResponse, summaryResponse]) => {
+      if (!scenarioResponse.ok || !summaryResponse.ok) throw new Error('Account-backed adaptive practice could not load. Confirm the API and adaptive scenario migration are available.');
       const scenarioBody = await scenarioResponse.json() as { scenarios?: ServerScenario[] };
-      const attemptBody = await attemptResponse.json() as { attempts?: ServerAttempt[] };
+      const summaryBody = await summaryResponse.json() as { summaries?: AdaptiveAttemptSummary[]; historyComplete?: boolean; error?: string };
       const mapped: Record<string, Variant> = {};
       for (const scenario of scenarioBody.scenarios ?? []) {
         const localId = localVariantIds[scenario.scenarioId];
@@ -108,13 +153,10 @@ export default function AdaptivePractice({ session }: { session: Session | null 
         mapped[localId] = { id: localId, skill: skillFor(localId), title: scenario.title, context: scenario.prompt, choices: scenario.choices, answer: '', explanation: '' };
       }
       if (Object.keys(mapped).length !== Object.keys(serverScenarioIds).length) throw new Error('Adaptive scenarios are missing. Apply the adaptive-practice scenario migration, then retry.');
-      const loaded = (attemptBody.attempts ?? []).flatMap(item => {
-        const localId = localVariantIds[item.scenarioId];
-        if (!localId) return [];
-        return [{ variantId: localId, skill: skillFor(localId), positive: item.outcome === positiveOutcomes[skillFor(localId)], at: item.submittedAt }];
-      });
+      const summaries = Array.isArray(summaryBody.summaries) ? summaryBody.summaries : [];
+      if (summaryBody.historyComplete !== true || summaries.length !== Object.keys(serverScenarioIds).length) throw new Error('Complete adaptive practice evidence is missing. Retry loading the practice set.');
       if (cancelled) return;
-      setServerVariants(mapped); setAttempts(loaded); setVariant(mapped[chooseNext(loaded).id]);
+      setServerVariants(mapped); setAttempts([]); setAccountSummary(summaries); setVariant(mapped[nextAdaptiveVariantFromSummary(summaries).id]);
     }).catch(error => {
       if (!cancelled) setServerError(error instanceof Error ? error.message : 'Account-backed adaptive practice could not load.');
     }).finally(() => { if (!cancelled) setLoading(false); });
@@ -135,8 +177,9 @@ export default function AdaptivePractice({ session }: { session: Session | null 
         const body = await response.json() as { result?: { outcome: string; feedback: string }; error?: string };
         if (!response.ok || !body.result) throw new Error(body.error || 'Your answer could not be saved.');
         const result = { positive: body.result.outcome === positiveOutcomes[variant.skill], explanation: body.result.feedback };
-        const updated = [...attempts, { variantId: variant.id, skill: variant.skill, positive: result.positive, at: new Date().toISOString() }];
-        setAttempts(updated); setFeedback(result);
+        const submittedAt = new Date().toISOString();
+        setAccountSummary(previous => recordAdaptiveSummaryAttempt(previous, scenarioId, result.positive, submittedAt));
+        setFeedback(result);
       } catch (error) { setServerError(error instanceof Error ? error.message : 'Your answer could not be saved.'); }
       finally { setBusy(false); }
       return;
@@ -155,6 +198,6 @@ export default function AdaptivePractice({ session }: { session: Session | null 
     {loading && <p role="status" className="feedback">Loading your account-backed practice history…</p>}
     {serverError && <div className="feedback" role="alert"><p>{serverError}</p>{session && <button className="btn-outline" type="button" onClick={() => setReloadKey(value => value + 1)} disabled={loading}>Retry loading practice</button>}</div>}
     <div className="panel" style={{ padding: 24, marginBottom: 20 }}><div className="panel-heading"><div className="panel-heading-icon"><Sparkles size={19} /></div><div><h2>Your next challenge</h2><p>Recommendations favour the least evidenced skill, then its unseen variant.</p></div></div><span className="tag tag-mint">{session ? 'SERVER-SCORED VARIANT' : 'UNSEEN VARIANT'} · {variant.id.toUpperCase()}</span><h2 style={{ marginTop: 14 }}>{variant.title}</h2><p>{variant.context}</p><div className="scenario-options">{variant.choices.map(item => <button key={item.id} className={choice === item.id ? 'scenario-option selected' : 'scenario-option'} onClick={() => setChoice(item.id)} disabled={Boolean(feedback)}><span className="scenario-radio">{choice === item.id ? <span /> : null}</span>{item.label}</button>)}</div>{!feedback ? <button className="btn-primary" onClick={() => void submit()} disabled={!choice || busy || loading || Boolean(session && !serverVariants[variant.id])}>{busy ? 'Saving…' : 'Check reasoning'} <ArrowRight size={15} /></button> : <div className="scenario-feedback" role="status"><ShieldCheck size={18} /><div><strong>{feedback.positive ? 'Risk-first reasoning recognised' : 'Review the decision process'}</strong><p>{feedback.explanation}</p><button className="btn-primary" onClick={moveNext}>Next adaptive scenario <ArrowRight size={15} /></button></div></div>}</div>
-    <section className="panel" style={{ padding: 24 }}><div className="panel-heading"><div className="panel-heading-icon"><Target size={19} /></div><div><h2>Recall versus application</h2><p>Recall means a previously encountered variant; application means the unfamiliar variant. Small samples are not proof of mastery.</p></div></div><div className="mastery-skill-list">{skills.map(skill => { const evidence = adaptiveEvidence(attempts, skill.id); return <div className="mastery-skill-row" key={skill.id}><div><strong>{skill.label}</strong><p>{evidence.confidence === 'too-few-to-judge' ? 'Transfer evidence is still too limited to judge.' : 'Early transfer signal only; continue practising across contexts.'}</p></div><dl className="mastery-evidence"><div><dt>Recall</dt><dd>{evidence.recallPositive} / {evidence.recallAttempts} positive</dd></div><div><dt>Application / transfer</dt><dd>{evidence.transferPositive} / {evidence.transferAttempts} positive</dd></div></dl></div>; })}</div><p className="form-footnote">{session ? 'Your answers and feedback are scored and saved by the server to your learner account. Recommendations use unseen variants; small samples are not proof of mastery.' : 'Local practice history is saved in this browser only. It is not synced to your learner account.'} Results are educational signals and do not predict real trading outcomes.</p></section>
+    <section className="panel" style={{ padding: 24 }}><div className="panel-heading"><div className="panel-heading-icon"><Target size={19} /></div><div><h2>Recall versus application</h2><p>Recall means a previously encountered variant; application means the unfamiliar variant. Small samples are not proof of mastery.</p></div></div><div className="mastery-skill-list">{skills.map(skill => { const evidence = session ? adaptiveEvidenceFromSummary(accountSummary, skill.id) : adaptiveEvidence(attempts, skill.id); return <div className="mastery-skill-row" key={skill.id}><div><strong>{skill.label}</strong><p>{evidence.confidence === 'too-few-to-judge' ? 'Transfer evidence is still too limited to judge.' : 'Early transfer signal only; continue practising across contexts.'}</p></div><dl className="mastery-evidence"><div><dt>Recall</dt><dd>{evidence.recallPositive} / {evidence.recallAttempts} positive</dd></div><div><dt>Application / transfer</dt><dd>{evidence.transferPositive} / {evidence.transferAttempts} positive</dd></div></dl></div>; })}</div><p className="form-footnote">{session ? 'Your answers and feedback are scored and saved by the server to your learner account. Recommendations use unseen variants; small samples are not proof of mastery.' : 'Local practice history is saved in this browser only. It is not synced to your learner account.'} Results are educational signals and do not predict real trading outcomes.</p></section>
   </>;
 }

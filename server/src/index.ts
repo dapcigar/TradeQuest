@@ -4,11 +4,12 @@ import { env } from './env.js';
 import { getBearerToken } from './auth.js';
 import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
+import { collectAllPages } from './masteryHistory.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
 import { applyApiSecurityHeaders } from './securityHeaders.js';
 
-// Recall vs application is derived from attempt order, so read generously.
+// The interactive history endpoint is bounded; mastery itself pages through all retained account records.
 const MASTERY_ATTEMPT_LIMIT = 500;
 const LEARNER_RATE_LIMIT = 60;
 const LEARNER_RATE_WINDOW_MS = 60_000;
@@ -576,27 +577,33 @@ app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: 
 });
 
 app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const db = req.learnerDb!;
   const [dojoResult, lessonResult, eventResult] = await Promise.all([
-    req.learnerDb!.from('chart_dojo_attempts')
+    collectAllPages(async (from, to) => await db.from('chart_dojo_attempts')
       .select('scenario_id, outcome, submitted_at')
       .eq('user_id', req.learnerId!)
-      .order('submitted_at', { ascending: false })
-      .limit(MASTERY_ATTEMPT_LIMIT),
-    req.learnerDb!.from('lesson_attempts')
+      .order('submitted_at', { ascending: true })
+      .order('attempt_id', { ascending: true })
+      .range(from, to)),
+    collectAllPages(async (from, to) => await db.from('lesson_attempts')
       .select('lesson_id, score, passed, submitted_at')
       .eq('user_id', req.learnerId!)
-      .order('submitted_at', { ascending: false })
-      .limit(100),
-    req.learnerDb!.from('progress_events')
+      .order('submitted_at', { ascending: true })
+      .order('attempt_id', { ascending: true })
+      .range(from, to)),
+    db.from('progress_events')
       .select('event_key, recorded_at')
       .eq('user_id', req.learnerId!)
-      .eq('event_key', 'risk-tool-used-v1'),
+      .eq('event_key', 'risk-tool-used-v1')
+      .limit(1),
   ]);
   if (dojoResult.error || lessonResult.error || eventResult.error) {
-    logError('Mastery signals could not be loaded.', dojoResult.error ?? lessonResult.error ?? eventResult.error);
-    return res.status(500).json({ error: 'Mastery signals could not be loaded.' });
+    logError('Mastery signals could not be loaded completely.', dojoResult.error ?? lessonResult.error ?? eventResult.error);
+    return res.status(500).json({ error: 'Complete mastery history could not be loaded. Please retry shortly.' });
   }
-  return res.json(buildMastery(dojoResult.data ?? [], lessonResult.data ?? [], eventResult.data ?? []));
+  res.setHeader('Cache-Control', 'no-store');
+  const mastery = buildMastery(dojoResult.data ?? [], lessonResult.data ?? [], eventResult.data ?? []);
+  return res.json({ ...mastery, historyScope: 'all-retained-server-attempts', historyComplete: true });
 });
 
 app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
@@ -633,6 +640,39 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
     feedback: item.feedback,
     submittedAt: item.submitted_at,
   })) });
+});
+
+app.get('/v1/chart-dojo/attempts/adaptive-summary', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const positiveOutcomes: Record<string, string> = {
+    'TQ-SYN-019': 'disciplined', 'TQ-SYN-020': 'disciplined',
+    'TQ-SYN-021': 'evidence-led', 'TQ-SYN-022': 'evidence-led',
+    'TQ-SYN-023': 'risk-aware', 'TQ-SYN-024': 'risk-aware',
+  };
+  const scenarioIds = Object.keys(positiveOutcomes);
+  const result = await collectAllPages(async (from, to) => await req.learnerDb!.from('chart_dojo_attempts')
+    .select('scenario_id, outcome, submitted_at')
+    .eq('user_id', req.learnerId!)
+    .in('scenario_id', scenarioIds)
+    .order('submitted_at', { ascending: true })
+    .order('attempt_id', { ascending: true })
+    .range(from, to));
+  if (result.error) {
+    logError('Adaptive practice history could not be loaded completely.', result.error);
+    return res.status(500).json({ error: 'Complete adaptive practice history could not be loaded. Please retry shortly.' });
+  }
+  const attempts = result.data ?? [];
+  const summaries = scenarioIds.map(scenarioId => {
+    const matching = attempts.filter(attempt => attempt.scenario_id === scenarioId);
+    const positiveCount = matching.filter(attempt => attempt.outcome === positiveOutcomes[scenarioId]).length;
+    return {
+      scenarioId,
+      attemptCount: matching.length,
+      positiveCount,
+      lastSubmittedAt: matching.at(-1)?.submitted_at ?? null,
+    };
+  });
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ summaries, historyScope: 'all-retained-adaptive-attempts', historyComplete: true });
 });
 
 app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: Response) => {

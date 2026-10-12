@@ -61,6 +61,10 @@ const communityChallengeMigration = read('supabase/migrations/20261012270000_com
 const communityChallengeContractTests = read('server/src/community-challenge-migration.test.ts');
 const communityChallengesUi = read('src/CommunityChallenges.tsx');
 const communityModerationDocs = read('docs/COMMUNITY_MODERATION.md');
+const masteryHistoryHelper = read('server/src/masteryHistory.ts');
+const masteryHistoryTests = read('server/src/masteryHistory.test.ts');
+const adaptivePracticeUi = read('src/AdaptivePractice.tsx');
+const masteryApi = read('server/src/index.ts');
 const packageJson = JSON.parse(read('package.json'));
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
@@ -123,6 +127,10 @@ for (const [label, content, phrases] of [
   ['Community challenge migration contract tests', communityChallengeContractTests, ['server-scored attempts', 'public entries hidden until approval', 'audit trail']],
   ['Community challenge UI safety controls', communityChallengesUi, ['PROCESS · NOT P/L', 'queued for moderator review', 'Report entry', 'Moderator queue', 'Your original practice attempt will remain']],
   ['Community moderation runbook', communityModerationDocs, ['REPLACE_WITH_VERIFIED_AUTH_USER_UUID', 'assign a moderator automatically', 'no direct messages', 'trusted moderator is provisioned']],
+  ['Complete mastery history pagination', masteryHistoryHelper, ['collectAllPages', 'Invalid page size.']],
+  ['Mastery pagination regression tests', masteryHistoryTests, ['across page boundaries', 'does not return a partial history', 'invalid page sizes']],
+  ['Mastery API all-retained-history contract', masteryApi, ["historyScope: 'all-retained-server-attempts'", 'historyComplete: true', "attempts/adaptive-summary", "historyScope: 'all-retained-adaptive-attempts'", 'Complete mastery history could not be loaded']],
+  ['Adaptive Practice aggregate evidence contract', adaptivePracticeUi, ['nextAdaptiveVariantFromSummary', 'adaptiveEvidenceFromSummary', 'historyComplete !== true']],
   ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
