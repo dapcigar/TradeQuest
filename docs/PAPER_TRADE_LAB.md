@@ -52,6 +52,8 @@ The server caps quantity to available virtual equity/margin and rejects plans th
 
 ## Before calling the simulator release-ready
 
+Apply `20261012290000_paper_trade_execution_assumptions.sql` after the paper-trade session and fill-ledger migrations. It backfills existing sessions to the zero-cost generic model, preserving historical fills. Run the custom-cost integration case against the connected test project and verify the entry/exit fill ledger, margin/risk constraints, export fields, and account isolation.
+
 1. Apply the paper-trade session migration, `20261012240000_paper_trade_ledger_events.sql`, and `20261012250000_paper_trade_fill_ledger.sql` to a disposable Supabase project first; compare the migration ledger and run schema/grant/RLS checks.
 2. Run the opt-in integration suite with two dedicated test accounts and confirm the tests actually ran rather than skipped.
 3. Verify account A cannot read, change, or infer account B's sessions and that malformed, stale, concurrent, and replayed advancement requests cannot skip candles or duplicate outcomes.
