@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
@@ -230,6 +230,53 @@ app.post('/v1/me/delete-learning-data', requireLearner, async (req: AuthedReques
   }
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json(data);
+});
+
+// Signed-in weekly practice data syncs across devices; anonymous plans remain browser-local.
+app.get('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticePlanQuerySchema.safeParse({ weekStart: req.query.weekStart });
+  if (!parsed.success) return res.status(400).json({ error: 'A valid Monday weekStart date is required.' });
+  const { data, error } = await req.learnerDb!.rpc('get_weekly_practice_plan', { p_week_start: parsed.data.weekStart });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The weekly practice week is invalid.' });
+    logError('Weekly practice plan could not be loaded.', error);
+    return res.status(503).json({ error: 'Weekly practice plan is temporarily unavailable. Check that the weekly plan migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
+});
+
+app.put('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticeTargetSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose a supported weekly target and valid week.' });
+  const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_target', {
+    p_week_start: parsed.data.weekStart, p_target: parsed.data.target,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The weekly practice plan is invalid.' });
+    logError('Weekly practice target could not be saved.', error);
+    return res.status(503).json({ error: 'Weekly practice target could not be saved.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
+});
+
+app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticeSessionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'A valid week, session date, and completion state are required.' });
+  const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_session', {
+    p_week_start: parsed.data.weekStart, p_session_date: parsed.data.sessionDate, p_completed: parsed.data.completed,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The session date must belong to the selected week.' });
+    logError('Weekly practice session could not be saved.', error);
+    return res.status(503).json({ error: 'Weekly practice session could not be saved.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
 });
 
 // Export only the signed-in learner's application data. This endpoint deliberately
