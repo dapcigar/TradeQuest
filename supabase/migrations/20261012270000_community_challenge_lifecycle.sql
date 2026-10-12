@@ -22,14 +22,7 @@ values
    'Compare hypothetical plans and choose the one that respects a stated loss limit.',
    'Keep the planned loss within the stated budget; resize or pass when it does not fit.',
    'risk-aware', 8, true)
-on conflict (challenge_id) do update set
-  scenario_id = excluded.scenario_id,
-  title = excluded.title,
-  description = excluded.description,
-  rubric = excluded.rubric,
-  positive_outcome = excluded.positive_outcome,
-  estimated_minutes = excluded.estimated_minutes,
-  published = excluded.published;
+on conflict (challenge_id) do nothing;
 
 alter table public.community_challenges enable row level security;
 revoke all on public.community_challenges from public, anon, authenticated;
@@ -146,18 +139,19 @@ begin
   if p_limit is null or p_limit < 1 or p_limit > 50 then raise exception 'Invalid page size' using errcode = '22023'; end if;
   return coalesce((
     select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-      'entryId', e.entry_id, 'challengeId', e.challenge_id, 'title', c.title,
-      'handle', p.handle, 'displayName', p.display_name, 'reflection', e.reflection,
-      'rubricMet', e.rubric_met, 'createdAt', e.created_at
-    ) order by e.created_at desc)
+      'entryId', q.entry_id, 'challengeId', q.challenge_id, 'title', q.title,
+      'handle', q.handle, 'displayName', q.display_name, 'reflection', q.reflection,
+      'rubricMet', q.rubric_met, 'createdAt', q.created_at
+    ) order by q.created_at desc)
     from (
-      select entry_id, user_id, challenge_id, reflection, rubric_met, created_at
-      from public.community_challenge_entries
-      where is_public = true and moderation_status = 'approved'
-      order by created_at desc limit p_limit
-    ) e
-    join public.community_challenges c on c.challenge_id = e.challenge_id and c.published = true
-    join public.community_profiles p on p.user_id = e.user_id and p.is_public = true
+      select e.entry_id, e.challenge_id, c.title, p.handle, p.display_name,
+        e.reflection, e.rubric_met, e.created_at
+      from public.community_challenge_entries e
+      join public.community_challenges c on c.challenge_id = e.challenge_id and c.published = true
+      join public.community_profiles p on p.user_id = e.user_id and p.is_public = true
+      where e.is_public = true and e.moderation_status = 'approved'
+      order by e.created_at desc limit p_limit
+    ) q
   ), '[]'::jsonb);
 end;
 $$;
@@ -243,7 +237,7 @@ language plpgsql security definer set search_path = '' as $$
 declare v_user_id uuid := auth.uid(); v_report public.community_reports%rowtype;
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if p_entry_id is null or p_category not in ('spam', 'harassment', 'personal-information', 'unsafe-advice', 'copyright', 'other')
+  if p_entry_id is null or p_category is null or p_category not in ('spam', 'harassment', 'personal-information', 'unsafe-advice', 'copyright', 'other')
      or p_details is null or pg_catalog.char_length(pg_catalog.btrim(p_details)) > 1000 then
     raise exception 'Invalid community report' using errcode = '22023';
   end if;
@@ -307,7 +301,7 @@ declare
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
   if not public.is_community_moderator() then raise exception 'Moderator access required' using errcode = '42501'; end if;
-  if p_entry_id is null or p_action not in ('approve', 'hide', 'remove')
+  if p_entry_id is null or p_action is null or p_action not in ('approve', 'hide', 'remove')
      or p_reason is null or pg_catalog.char_length(pg_catalog.btrim(p_reason)) not between 3 and 500 then
     raise exception 'Invalid moderation action' using errcode = '22023';
   end if;
