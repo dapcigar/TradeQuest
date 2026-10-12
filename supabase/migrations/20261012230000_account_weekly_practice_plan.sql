@@ -45,6 +45,7 @@ begin
   end if;
   select target into v_target from public.weekly_practice_plans
     where user_id = v_user_id and week_start = p_week_start;
+  if not found then v_target := 3; end if;
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.to_char(session_date, 'YYYY-MM-DD') order by session_date), '[]'::jsonb)
     into v_dates from public.weekly_practice_sessions
     where user_id = v_user_id and week_start = p_week_start;
@@ -98,3 +99,50 @@ revoke all on function public.set_weekly_practice_session(date,date,boolean) fro
 grant execute on function public.get_weekly_practice_plan(date) to authenticated;
 grant execute on function public.set_weekly_practice_target(date,integer) to authenticated;
 grant execute on function public.set_weekly_practice_session(date,date,boolean) to authenticated;
+
+-- Extend the existing self-service deletion function to cover the new account-backed plan.
+create or replace function public.delete_own_learning_data() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_deleted integer;
+  v_counts jsonb := '{}'::jsonb;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+
+  delete from public.weekly_practice_sessions where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('weeklyPracticeSessions', v_deleted);
+
+  delete from public.weekly_practice_plans where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('weeklyPracticePlans', v_deleted);
+
+  delete from public.paper_trade_sessions where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('paperTradeSessions', v_deleted);
+
+  delete from public.decision_journal_entries where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('decisionJournalEntries', v_deleted);
+
+  delete from public.chart_dojo_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('chartDojoAttempts', v_deleted);
+
+  delete from public.lesson_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('lessonAttempts', v_deleted);
+
+  delete from public.progress_events where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('progressEvents', v_deleted);
+
+  delete from public.learner_progress where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('learnerProgress', v_deleted);
+
+  return pg_catalog.jsonb_build_object('deleted', v_counts);
+end; $$;
+revoke all on function public.delete_own_learning_data() from public, anon, authenticated;
+grant execute on function public.delete_own_learning_data() to authenticated;
