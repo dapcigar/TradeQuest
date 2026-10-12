@@ -24,6 +24,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Run the opt-in integration suite against a disposable Supabase project with two dedicated test accounts; verify it actually ran rather than skipped.
 - [ ] Verify account A cannot read, edit, delete, or infer account B's journal, attempts, progress, adaptive practice history, or mastery.
 - [ ] Record the result of the two-account cross-account tests; a skipped integration suite is not evidence that isolation passed.
+- [ ] Run the manual GitHub Actions workflow `Disposable Supabase integration` against a disposable project using two dedicated accounts; save the successful run URL.
 - [ ] Verify database grants and RLS deny unauthorised access even when requests bypass the UI.
 - [ ] Verify retries and concurrent requests cannot duplicate XP or milestone rewards.
 - [ ] Verify invalid scenario IDs, stale versions, unknown choices, malformed inputs, and client-supplied outcome fields are rejected.

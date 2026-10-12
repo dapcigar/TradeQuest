@@ -19,7 +19,20 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 - Record the backup timestamp, project reference, migration ledger version, operator, artifact location, and retention/expiry date.
 - If a complete backup and restore path cannot be established, stop before a destructive or difficult-to-reverse migration.
 
-## 3. Restore rehearsal
+## 3. Disposable two-account integration workflow
+
+The manual GitHub Actions workflow **Disposable Supabase integration** runs the opt-in API suite without allowing the normal pull-request test job to silently count a skipped suite as a pass.
+
+Before running it:
+
+- Deploy the API against a disposable Supabase project with all migrations applied and required synthetic scenarios seeded.
+- Create two dedicated test accounts. The suite deletes Account A's saved learning data at the end, so neither account may contain real learner data.
+- Configure these repository Actions secrets: `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`. Never paste token values into workflow inputs or logs.
+- Name the test API host clearly as test/staging/preview (or use localhost); the workflow rejects production-looking hostnames.
+- Run Actions → **Disposable Supabase integration** and explicitly confirm the disposable environment. A missing confirmation, secret, or non-production hostname causes the workflow to fail before running tests.
+- Save the successful workflow run URL in the release evidence record. A skipped suite or missing credentials is not a successful isolation test.
+
+## 4. Restore rehearsal
 
 1. Restore the backup into a disposable Supabase project or other approved isolated target. Do not overwrite production to test recovery.
 2. Confirm the schema and migration ledger, then verify the required environment variables and auth redirect settings for the isolated project.
@@ -28,7 +41,7 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 5. Record what was restored, what was not restored (including auth identity or storage objects if applicable), elapsed recovery time, errors, and the corrective actions.
 6. A backup is not considered verified until the restore succeeds and application-level checks pass.
 
-## 4. Deployment and rollback
+## 5. Deployment and rollback
 
 - Prefer additive/expand-contract schema changes. Keep old columns/functions compatible until the previous application version is no longer deployed.
 - Deploy code only after its required migrations are applied to the intended environment and validated. Never mark a migration as applied merely to silence a warning.
@@ -36,7 +49,7 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 - If an application regression occurs after a compatible additive migration, roll back to the last known-good application deployment and preserve the migration. Prefer a forward-fix over a speculative destructive down migration.
 - If the schema change is incompatible or data is corrupted, stop writes where appropriate, follow the rehearsed restore plan, and verify data integrity before reopening access.
 
-## 5. Incident response
+## 6. Incident response
 
 1. Record the first observed time, affected environment, commit/deployment ID, symptoms, and user impact.
 2. Check the frontend deployment, API health endpoint, GitHub Actions, Supabase service status, quotas, and migration ledger.
@@ -44,7 +57,7 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 4. For account-isolation concerns, restrict the affected route/feature, preserve relevant non-sensitive logs, and run cross-account tests in a disposable environment.
 5. Communicate known limitations honestly. Do not claim that an export, backup, restore, migration, or deployment succeeded without evidence.
 
-## 6. Release evidence record
+## 7. Release evidence record
 
 For every release, record:
 
