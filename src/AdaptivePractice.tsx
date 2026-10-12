@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { ArrowRight, ShieldCheck, Sparkles, Target } from 'lucide-react';
 
 type Skill = 'risk-definition' | 'evidence-patience' | 'risk-budget';
@@ -13,6 +14,22 @@ const variants: Variant[] = [
   { id: 'risk-budget-a', skill: 'risk-budget', title: 'The loss exceeds the limit', context: 'A hypothetical plan has a planned loss of £180, while the learner’s stated maximum for this exercise is £75. The thesis may be plausible, but the figures do not fit.', choices: [{ id: 'resize', label: 'Recalculate size or reject the plan if it cannot fit the limit' }, { id: 'accept', label: 'Accept the larger loss because the thesis seems strong' }, { id: 'hide', label: 'Ignore the limit and focus on the possible upside' }], answer: 'resize', explanation: 'The risk budget is a constraint, not a target to exceed when confidence rises. Resize using valid assumptions or do not proceed.' },
   { id: 'risk-budget-b', skill: 'risk-budget', title: 'Two plans, one budget', context: 'A fictional exercise sets a maximum loss of 1% of virtual equity. Plan A would risk 0.7%; Plan B would risk 1.6%, before any omitted costs.', choices: [{ id: 'choose-a', label: 'Treat A as within the stated limit and review omitted costs' }, { id: 'choose-b', label: 'Choose B because a wider risk can capture more movement' }, { id: 'average', label: 'Average the two losses to make both acceptable' }], answer: 'choose-a', explanation: 'Compare the planned loss with the explicit limit and remember omitted costs or gaps can increase realised loss. The exercise is educational, not a trade recommendation.' },
 ];
+
+
+const serverScenarioIds: Record<string, string> = {
+  'risk-definition-a': 'TQ-SYN-019', 'risk-definition-b': 'TQ-SYN-020',
+  'evidence-patience-a': 'TQ-SYN-021', 'evidence-patience-b': 'TQ-SYN-022',
+  'risk-budget-a': 'TQ-SYN-023', 'risk-budget-b': 'TQ-SYN-024',
+};
+const localVariantIds = Object.fromEntries(Object.entries(serverScenarioIds).map(([localId, serverId]) => [serverId, localId])) as Record<string, string>;
+const positiveOutcomes: Record<Skill, string> = { 'risk-definition': 'disciplined', 'evidence-patience': 'evidence-led', 'risk-budget': 'risk-aware' };
+function skillFor(id: string): Skill {
+  if (id.startsWith('risk-definition')) return 'risk-definition';
+  if (id.startsWith('evidence-patience')) return 'evidence-patience';
+  return 'risk-budget';
+}
+type ServerScenario = { scenarioId: string; title: string; prompt: string; choices: Array<{ id: string; label: string }> };
+type ServerAttempt = { scenarioId: string; outcome: string; submittedAt: string };
 
 const storageKey = 'tradequest-adaptive-practice-v1';
 function readAttempts(): Attempt[] {
@@ -54,24 +71,90 @@ export function adaptiveEvidence(attempts: Attempt[], skill: Skill) {
   };
 }
 
-export default function AdaptivePractice() {
-  const [attempts, setAttempts] = useState<Attempt[]>(readAttempts);
-  const [variant, setVariant] = useState<Variant>(() => chooseNext(readAttempts()));
+export default function AdaptivePractice({ session }: { session: Session | null }) {
+  const [attempts, setAttempts] = useState<Attempt[]>(() => session ? [] : readAttempts());
+  const [variant, setVariant] = useState<Variant>(() => chooseNext(session ? [] : readAttempts()));
+  const [serverVariants, setServerVariants] = useState<Record<string, Variant>>({});
   const [choice, setChoice] = useState('');
   const [feedback, setFeedback] = useState<{ positive: boolean; explanation: string } | null>(null);
+  const [loading, setLoading] = useState(Boolean(session));
+  const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const next = useMemo(() => chooseNext(attempts), [attempts]);
   const skills: Array<{ id: Skill; label: string }> = [{ id: 'risk-definition', label: 'Define risk' }, { id: 'evidence-patience', label: 'Wait for evidence' }, { id: 'risk-budget', label: 'Respect the budget' }];
-  function submit() {
-    if (!choice || feedback) return;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session) {
+      const local = readAttempts();
+      setAttempts(local); setVariant(chooseNext(local)); setServerVariants({}); setServerError(''); setLoading(false);
+      return () => { cancelled = true; };
+    }
+    setLoading(true); setServerError(''); setAttempts([]); setServerVariants({});
+    const base = import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
+    const headers = { Authorization: 'Bearer ' + session.access_token };
+    Promise.all([
+      fetch(base + '/v1/chart-dojo/scenarios', { headers, cache: 'no-store' }),
+      fetch(base + '/v1/chart-dojo/attempts', { headers, cache: 'no-store' }),
+    ]).then(async ([scenarioResponse, attemptResponse]) => {
+      if (!scenarioResponse.ok || !attemptResponse.ok) throw new Error('Account-backed adaptive practice could not load. Confirm the API and adaptive scenario migration are available.');
+      const scenarioBody = await scenarioResponse.json() as { scenarios?: ServerScenario[] };
+      const attemptBody = await attemptResponse.json() as { attempts?: ServerAttempt[] };
+      const mapped: Record<string, Variant> = {};
+      for (const scenario of scenarioBody.scenarios ?? []) {
+        const localId = localVariantIds[scenario.scenarioId];
+        if (!localId) continue;
+        mapped[localId] = { id: localId, skill: skillFor(localId), title: scenario.title, context: scenario.prompt, choices: scenario.choices, answer: '', explanation: '' };
+      }
+      if (Object.keys(mapped).length !== Object.keys(serverScenarioIds).length) throw new Error('Adaptive scenarios are missing. Apply the adaptive-practice scenario migration, then retry.');
+      const loaded = (attemptBody.attempts ?? []).flatMap(item => {
+        const localId = localVariantIds[item.scenarioId];
+        if (!localId) return [];
+        return [{ variantId: localId, skill: skillFor(localId), positive: item.outcome === positiveOutcomes[skillFor(localId)], at: item.submittedAt }];
+      });
+      if (cancelled) return;
+      setServerVariants(mapped); setAttempts(loaded); setVariant(mapped[chooseNext(loaded).id]);
+    }).catch(error => {
+      if (!cancelled) setServerError(error instanceof Error ? error.message : 'Account-backed adaptive practice could not load.');
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [session?.access_token, reloadKey]);
+
+  async function submit() {
+    if (!choice || feedback || busy) return;
+    if (session) {
+      const scenarioId = serverScenarioIds[variant.id];
+      if (!scenarioId || !serverVariants[variant.id]) { setServerError('This server-scored scenario is not ready. Retry loading the practice set.'); return; }
+      setBusy(true); setServerError('');
+      try {
+        const response = await fetch((import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000') + '/v1/chart-dojo/attempts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({ attemptId: crypto.randomUUID(), scenarioId, choiceId: choice }),
+        });
+        const body = await response.json() as { result?: { outcome: string; feedback: string }; error?: string };
+        if (!response.ok || !body.result) throw new Error(body.error || 'Your answer could not be saved.');
+        const result = { positive: body.result.outcome === positiveOutcomes[variant.skill], explanation: body.result.feedback };
+        const updated = [...attempts, { variantId: variant.id, skill: variant.skill, positive: result.positive, at: new Date().toISOString() }];
+        setAttempts(updated); setFeedback(result);
+      } catch (error) { setServerError(error instanceof Error ? error.message : 'Your answer could not be saved.'); }
+      finally { setBusy(false); }
+      return;
+    }
     const result = assessAdaptiveAnswer(variant.id, choice);
-    const attempt: Attempt = { variantId: variant.id, skill: variant.skill, positive: result.positive, at: new Date().toISOString() };
-    const updated = [...attempts, attempt];
+    const updated = [...attempts, { variantId: variant.id, skill: variant.skill, positive: result.positive, at: new Date().toISOString() }];
     setAttempts(updated); setFeedback(result);
     try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch { /* in-memory practice remains available */ }
   }
-  function moveNext() { setVariant(next); setChoice(''); setFeedback(null); }
+  function moveNext() {
+    const nextLocal = next;
+    setVariant(session ? (serverVariants[nextLocal.id] ?? nextLocal) : nextLocal);
+    setChoice(''); setFeedback(null); setServerError('');
+  }
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> ADAPTIVE PRACTICE · SYNTHETIC SCENARIOS</div><h1>Can you apply it <span>somewhere new?</span></h1><p>Practice adapts to your observed gaps. New scenario variants test transfer—not just remembering an answer. All cases are fictional teaching exercises.</p></div>
-    <div className="panel" style={{ padding: 24, marginBottom: 20 }}><div className="panel-heading"><div className="panel-heading-icon"><Sparkles size={19} /></div><div><h2>Your next challenge</h2><p>Recommendations favour the least evidenced skill, then its unseen variant.</p></div></div><span className="tag tag-mint">UNSEEN VARIANT · {variant.id.toUpperCase()}</span><h2 style={{ marginTop: 14 }}>{variant.title}</h2><p>{variant.context}</p><div className="scenario-options">{variant.choices.map(item => <button key={item.id} className={choice === item.id ? 'scenario-option selected' : 'scenario-option'} onClick={() => setChoice(item.id)} disabled={Boolean(feedback)}><span className="scenario-radio">{choice === item.id ? <span /> : null}</span>{item.label}</button>)}</div>{!feedback ? <button className="btn-primary" onClick={submit} disabled={!choice}>Check reasoning <ArrowRight size={15} /></button> : <div className="scenario-feedback" role="status"><ShieldCheck size={18} /><div><strong>{feedback.positive ? 'Risk-first reasoning recognised' : 'Review the decision process'}</strong><p>{feedback.explanation}</p><button className="btn-primary" onClick={moveNext}>Next adaptive scenario <ArrowRight size={15} /></button></div></div>}</div>
-    <section className="panel" style={{ padding: 24 }}><div className="panel-heading"><div className="panel-heading-icon"><Target size={19} /></div><div><h2>Recall versus application</h2><p>Recall means a previously encountered variant; application means the unfamiliar variant. Small samples are not proof of mastery.</p></div></div><div className="mastery-skill-list">{skills.map(skill => { const evidence = adaptiveEvidence(attempts, skill.id); return <div className="mastery-skill-row" key={skill.id}><div><strong>{skill.label}</strong><p>{evidence.confidence === 'too-few-to-judge' ? 'Transfer evidence is still too limited to judge.' : 'Early transfer signal only; continue practising across contexts.'}</p></div><dl className="mastery-evidence"><div><dt>Recall</dt><dd>{evidence.recallPositive} / {evidence.recallAttempts} positive</dd></div><div><dt>Application / transfer</dt><dd>{evidence.transferPositive} / {evidence.transferAttempts} positive</dd></div></dl></div>; })}</div><p className="form-footnote">Local practice history is saved in this browser only. It is not synced to your learner account. Results are educational signals and do not predict real trading outcomes.</p></section>
+    {loading && <p role="status" className="feedback">Loading your account-backed practice history…</p>}
+    {serverError && <div className="feedback" role="alert"><p>{serverError}</p>{session && <button className="btn-outline" type="button" onClick={() => setReloadKey(value => value + 1)} disabled={loading}>Retry loading practice</button>}</div>}
+    <div className="panel" style={{ padding: 24, marginBottom: 20 }}><div className="panel-heading"><div className="panel-heading-icon"><Sparkles size={19} /></div><div><h2>Your next challenge</h2><p>Recommendations favour the least evidenced skill, then its unseen variant.</p></div></div><span className="tag tag-mint">{session ? 'SERVER-SCORED VARIANT' : 'UNSEEN VARIANT'} · {variant.id.toUpperCase()}</span><h2 style={{ marginTop: 14 }}>{variant.title}</h2><p>{variant.context}</p><div className="scenario-options">{variant.choices.map(item => <button key={item.id} className={choice === item.id ? 'scenario-option selected' : 'scenario-option'} onClick={() => setChoice(item.id)} disabled={Boolean(feedback)}><span className="scenario-radio">{choice === item.id ? <span /> : null}</span>{item.label}</button>)}</div>{!feedback ? <button className="btn-primary" onClick={() => void submit()} disabled={!choice || busy || loading || Boolean(session && !serverVariants[variant.id])}>{busy ? 'Saving…' : 'Check reasoning'} <ArrowRight size={15} /></button> : <div className="scenario-feedback" role="status"><ShieldCheck size={18} /><div><strong>{feedback.positive ? 'Risk-first reasoning recognised' : 'Review the decision process'}</strong><p>{feedback.explanation}</p><button className="btn-primary" onClick={moveNext}>Next adaptive scenario <ArrowRight size={15} /></button></div></div>}</div>
+    <section className="panel" style={{ padding: 24 }}><div className="panel-heading"><div className="panel-heading-icon"><Target size={19} /></div><div><h2>Recall versus application</h2><p>Recall means a previously encountered variant; application means the unfamiliar variant. Small samples are not proof of mastery.</p></div></div><div className="mastery-skill-list">{skills.map(skill => { const evidence = adaptiveEvidence(attempts, skill.id); return <div className="mastery-skill-row" key={skill.id}><div><strong>{skill.label}</strong><p>{evidence.confidence === 'too-few-to-judge' ? 'Transfer evidence is still too limited to judge.' : 'Early transfer signal only; continue practising across contexts.'}</p></div><dl className="mastery-evidence"><div><dt>Recall</dt><dd>{evidence.recallPositive} / {evidence.recallAttempts} positive</dd></div><div><dt>Application / transfer</dt><dd>{evidence.transferPositive} / {evidence.transferAttempts} positive</dd></div></dl></div>; })}</div><p className="form-footnote">{session ? 'Your answers and feedback are scored and saved by the server to your learner account. Recommendations use unseen variants; small samples are not proof of mastery.' : 'Local practice history is saved in this browser only. It is not synced to your learner account.'} Results are educational signals and do not predict real trading outcomes.</p></section>
   </>;
 }
