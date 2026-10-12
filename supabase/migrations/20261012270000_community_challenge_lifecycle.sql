@@ -350,7 +350,8 @@ language plpgsql security definer set search_path = '' as $$
 declare v_user_id uuid := auth.uid();
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  update public.community_challenge_entries set is_public = false
+  update public.community_challenge_entries set is_public = false,
+    moderation_status = case when moderation_status = 'pending' then 'approved' else moderation_status end
     where user_id = v_user_id and is_public = true;
   delete from public.community_profiles where user_id = v_user_id;
 end;
@@ -458,7 +459,8 @@ grant execute on function public.moderate_community_challenge_entry(uuid, text, 
     is_public = excluded.is_public
   returning * into v_profile;
   if not p_is_public then
-    update public.community_challenge_entries set is_public = false
+    update public.community_challenge_entries set is_public = false,
+      moderation_status = case when moderation_status = 'pending' then 'approved' else moderation_status end
       where user_id = v_user_id and is_public = true;
   end if;
   return pg_catalog.jsonb_build_object(
