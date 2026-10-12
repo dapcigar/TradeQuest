@@ -3,6 +3,7 @@
 ## Current behaviour
 
 - Curated challenges use synthetic Chart Dojo scenarios only.
+- The current challenge catalogue reuses the two existing solo-challenge scenarios and process rubrics. New or changed challenge definitions must be added through a reviewed migration and receive human editorial sign-off; there is no learner-facing challenge authoring or publication control.
 - A challenge entry must reference a saved attempt owned by the submitting learner. The database derives its outcome and process-rubric result from that server-scored attempt; clients cannot submit a score or P/L.
 - Private reflections are visible only to their author. Public submissions require the learner's profile to be explicitly public and are hidden until a moderator approves them.
 - Public entries are shown only while the author's profile is opted in, the entry is marked public, and moderation status is `approved`.
