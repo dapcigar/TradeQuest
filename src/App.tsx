@@ -19,6 +19,7 @@ import BacktestingEvidenceLiteracy from './BacktestingEvidenceLiteracy';
 import AssetClassLiteracy from './AssetClassLiteracy';
 import TradePlanLiteracy from './TradePlanLiteracy';
 import ReplayLab from './ReplayLab';
+import PaperTradeLab from './PaperTradeLab';
 import {
   Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
@@ -33,7 +34,7 @@ import { useModalFocus } from './useModalFocus';
 import { describeEvidence, describeTransfer, type ApplicationBucket, type EvidenceBucket } from './masteryDisplay';
 import type { Session } from '@supabase/supabase-js';
 
-type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure' | 'trend' | 'breakout' | 'risk-reward' | 'leverage' | 'position-sizing' | 'drawdown' | 'psychology' | 'execution' | 'conditions' | 'backtesting' | 'assets' | 'trade-plan' | 'replay';
+type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure' | 'trend' | 'breakout' | 'risk-reward' | 'leverage' | 'position-sizing' | 'drawdown' | 'psychology' | 'execution' | 'conditions' | 'backtesting' | 'assets' | 'trade-plan' | 'replay' | 'paper';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
 type MasterySummary = {
   skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string; distinctScenarios: number; scenariosAvailable: number; recall: EvidenceBucket; application: ApplicationBucket; lastPractisedAt: string | null; reviewStatus: string; firstAttemptPositive: boolean | null; delayedReviewAttempts: number; retentionStatus: string }>;
@@ -291,7 +292,8 @@ function App() {
     { id: 'assets', label: 'Understanding asset classes', icon: BarChart3 },
     { id: 'trade-plan', label: 'Trade planning & no-trade decisions', icon: ShieldCheck },        
     { id: 'practice', label: 'Chart dojo', icon: Activity, section: 'PRACTICE LABS' },
-    { id: 'replay', label: 'Synthetic replay lab', icon: Play }, 
+    { id: 'replay', label: 'Synthetic replay lab', icon: Play },
+    { id: 'paper', label: 'Paper trade lab', icon: Wallet }, 
     { id: 'risk', label: 'Risk simulator', icon: ShieldCheck },
     { id: 'journal', label: 'Decision journal', icon: BookOpen, section: 'REFLECT' },
     { id: 'review', label: 'Review queue', icon: Target, section: 'KEEP LEARNING' },
@@ -542,6 +544,7 @@ function App() {
           {view === 'assets' && <AssetClassLiteracy />}
           {view === 'trade-plan' && <TradePlanLiteracy />}
           {view === 'replay' && <ReplayLab session={session} />}
+          {view === 'paper' && <PaperTradeLab session={session} />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} onRetryQuiz={() => { setQuizChoice(''); setQuizSubmitted(false); setQuizResult(null); setQuizError(''); }} accountMode={Boolean(session)} />}
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'journal' && <JournalView session={session} scenarioId={activeScenarioId} />}
