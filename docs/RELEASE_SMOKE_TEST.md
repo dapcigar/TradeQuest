@@ -94,7 +94,8 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 - [ ] Inspect the deployed API health response and a malformed JSON response for defensive API headers; confirm HSTS appears only on the production HTTPS deployment.
 - [ ] Confirm the CSP allows only the documented frontend dependencies and API/Supabase origins; do not add wildcard script sources.
 - [ ] Verify the authenticated per-instance rate limit returns 429 and Retry-After when exceeded in a test environment.
-- [ ] Separately verify a shared provider firewall/rate limit is configured if the app is exposed to external learners; the in-memory API limiter is not a global quota.
+- [ ] In a disposable project, exhaust a shared per-account bucket from more than one API instance; confirm it returns 429 with Retry-After and that counters are not directly readable/writable by clients.
+- [ ] Separately verify a shared provider firewall/rate limit is configured if the app is exposed to external learners; the database limiter is per-account, not per-IP.
 
 ## Accessibility and responsive checks
 
