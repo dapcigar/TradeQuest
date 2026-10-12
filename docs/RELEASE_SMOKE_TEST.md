@@ -98,6 +98,7 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 ## Accessibility and responsive checks
 
 - [ ] Tab from page load and activate Skip to main content; confirm focus moves to the main landmark.
+- [ ] Change views from the navigation and from an in-page card; confirm focus moves to the labelled main landmark and the new page heading is discoverable.
 - [ ] Navigate the main menu, forms, filters, and confirmation actions using only Tab, Shift+Tab, Enter, Space, and Escape where appropriate.
 - [ ] Open the mobile menu and verify aria-expanded changes, the control relationship is announced, the active page is identified, and the close action remains reachable.
 - [ ] Focus remains visible and moves sensibly when dialogs or confirmation panels open and close.
