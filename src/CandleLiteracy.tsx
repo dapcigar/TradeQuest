@@ -6,7 +6,6 @@ export default function CandleLiteracy() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState(false);
   const correct = candleQuestions.filter(question => answers[question.id] === question.correctOptionId).length;
-  const complete = revealed && Object.keys(answers).length === candleQuestions.length;
   return <div className="candle-literacy-page">
     <div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> CHART SKILLS · LESSON 01</div><h1>Read the candle, <span>not the future.</span></h1><p>Learn what one candlestick records, then check your understanding. Candles describe a period of price movement; they do not predict the next one.</p></div>
     <section className="panel candle-lesson-card" aria-labelledby="candle-anatomy-title">
