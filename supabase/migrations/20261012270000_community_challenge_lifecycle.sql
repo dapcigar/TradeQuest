@@ -295,7 +295,7 @@ begin
     'reports', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
         'reportId', q.report_id, 'entryId', q.entry_id, 'category', q.category,
-        'details', q.details, 'createdAt', q.created_at, 'handle', q.handle,
+        'details', q.details, 'createdAt', q.created_at, 'handle', coalesce(q.handle, '[profile withdrawn]'),
         'entryReflection', q.reflection
       ) order by q.created_at asc)
       from (
@@ -303,7 +303,7 @@ begin
           p.handle, e.reflection
         from public.community_reports r
         join public.community_challenge_entries e on e.entry_id = r.entry_id
-        join public.community_profiles p on p.user_id = e.user_id
+        left join public.community_profiles p on p.user_id = e.user_id
         where r.status = 'open'
         order by r.created_at asc limit 100
       ) q
