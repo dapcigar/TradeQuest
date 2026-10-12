@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "api:dev": "tsx watch server/src/index.ts",
     "api:build": "tsc -p server/tsconfig.json",
-    "api:start": "node server/dist/index.js"
+    "api:start": "node server/dist/index.js",
+    "release:preflight": "node scripts/release-preflight.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

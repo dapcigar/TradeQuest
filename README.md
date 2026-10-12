@@ -59,7 +59,6 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/20261012220000_delete_own_learning_data.sql`
    - `supabase/migrations/20261012230000_account_weekly_practice_plan.sql`
    - `supabase/migrations/20261012240000_paper_trade_ledger_events.sql`
-   - `supabase/migrations/20261012240000_paper_trade_ledger_events.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
@@ -71,6 +70,7 @@ Do not apply migrations to production until SQL, row-level security, RPC idempot
 npm run test
 npm run build
 npm run api:build
+npm run release:preflight
 ```
 
-See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/SECURITY_ARCHITECTURE.md` for trust boundaries and security controls, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
+See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/SECURITY_ARCHITECTURE.md` for trust boundaries and security controls, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, `docs/PRODUCTION_RUNBOOK.md` for backup/restore and rollback procedures, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
