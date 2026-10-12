@@ -44,6 +44,7 @@ const smoke = read('docs/RELEASE_SMOKE_TEST.md');
 const readiness = read('docs/PRODUCTION_READINESS.md');
 const runbook = read('docs/PRODUCTION_RUNBOOK.md');
 const accessibility = read('docs/ACCESSIBILITY.md');
+const contentRegister = read('docs/CONTENT_REVIEW_REGISTER.md');
 const appSource = read('src/App.tsx');
 const styles = read('src/styles.css');
 const workflow = read('.github/workflows/ci.yml');
@@ -52,6 +53,42 @@ const packageJson = JSON.parse(read('package.json'));
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
 checkOrderedMigrationList('docs/M2_IMPLEMENTATION_PLAN.md', plan, 'Current ordered migrations are:', 'The development-only seed file');
 
+const curriculumModules = [
+  ['Core learning catalogue', 'src/learning.ts', 'src/learning.test.ts'],
+  ['Candle literacy', 'src/candleLiteracy.ts', 'src/candleLiteracy.test.ts'],
+  ['Support and resistance', 'src/supportResistance.ts', 'src/supportResistance.test.ts'],
+  ['Trend structure', 'src/trendStructure.ts', 'src/trendStructure.test.ts'],
+  ['Breakouts', 'src/breakoutLiteracy.ts', 'src/breakoutLiteracy.test.ts'],
+  ['Risk/reward', 'src/riskRewardLiteracy.ts', 'src/riskRewardLiteracy.test.ts'],
+  ['Leverage and margin', 'src/leverageMarginLiteracy.ts', 'src/leverageMarginLiteracy.test.ts'],
+  ['Position sizing', 'src/positionSizingLiteracy.ts', 'src/positionSizingLiteracy.test.ts'],
+  ['Drawdown', 'src/drawdownLiteracy.ts', 'src/drawdownLiteracy.test.ts'],
+  ['Trading psychology', 'src/psychologyLiteracy.ts', 'src/psychologyLiteracy.test.ts'],
+  ['Execution', 'src/executionLiteracy.ts', 'src/executionLiteracy.test.ts'],
+  ['Market conditions', 'src/marketConditionsLiteracy.ts', 'src/marketConditionsLiteracy.test.ts'],
+  ['Asset classes', 'src/assetClassLiteracy.ts', 'src/assetClassLiteracy.test.ts'],
+  ['Backtesting evidence', 'src/backtestingEvidenceLiteracy.ts', 'src/backtestingEvidenceLiteracy.test.ts'],
+  ['Trade planning', 'src/tradePlanLiteracy.ts', 'src/tradePlanLiteracy.test.ts'],
+  ['Glossary', 'src/glossary.ts', 'src/glossary.test.ts'],
+  ['Adaptive practice', 'src/AdaptivePractice.tsx', 'src/adaptivePractice.test.ts'],
+  ['Synthetic replay', 'src/ReplayLab.tsx', 'src/replayCheckpoint.test.ts'],
+  ['Synthetic paper trade', 'src/PaperTradeLab.tsx', 'server/src/chart-dojo.integration.test.ts'],
+];
+
+for (const [label, sourcePath, testPath] of curriculumModules) {
+  const source = read(sourcePath);
+  read(testPath);
+  if (!contentRegister.includes(sourcePath) || !contentRegister.includes(testPath)) {
+    failures.push('Content review register is missing source/test coverage for ' + label + '.');
+  }
+  if (/\\b(?:TODO|TBD|FIXME|Lorem ipsum|placeholder text)\\b/i.test(source)) {
+    failures.push(label + ': placeholder content marker found in ' + sourcePath + '.');
+  }
+}
+for (const path of ['src/AdaptivePractice.tsx', 'src/ReplayLab.tsx', 'src/PaperTradeLab.tsx']) {
+  if (!/\\bsynthetic\\b/i.test(read(path))) failures.push(path + ': explicit synthetic-data disclosure is missing.');
+}
+
 for (const [label, content, phrases] of [
   ['Release smoke test', smoke, ['Paper Trade Lab persistence and isolation', 'session event ledger', 'DELETE_MY_LEARNING_DATA', 'Security headers and abuse controls', 'weekly target']],
   ['Production readiness', readiness, ['not a global quota', 'restore', 'screen-reader', 'cross-account tests']],
@@ -59,6 +96,7 @@ for (const [label, content, phrases] of [
   ['Accessibility navigation', appSource, ['href="#main-content"', 'id="main-content"', 'aria-label={titleMap[view]}', 'mainContentRef.current?.focus({ preventScroll: true })', 'aria-controls="primary-navigation"', 'aria-expanded={mobileNav}', "aria-current={view === item.id ? 'page' : undefined}"]],
   ['Accessibility focus styles', styles, ['a:focus-visible', 'select:focus-visible', '.skip-link:focus', 'prefers-reduced-motion:reduce']],
   ['Accessibility manual audit', accessibility, ['Keyboard only', 'Screen reader', '200% zoom', '320 CSS-pixel viewport width']],
+  ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
