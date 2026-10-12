@@ -26,6 +26,7 @@ This register tracks source-controlled learning content. TradeQuest does not cur
 | Synthetic replay | `src/ReplayLab.tsx` | `src/replayCheckpoint.test.ts` and release smoke test | Pending |
 | Synthetic paper-trade simulation | `src/PaperTradeLab.tsx` | `server/src/chart-dojo.integration.test.ts` and release smoke test | Pending |
 | Community challenge rubrics and publication rules | `supabase/migrations/20261012270000_community_challenge_lifecycle.sql` | `server/src/community-challenge-migration.test.ts` and two-account integration test | Pending |
+| Community challenge provenance and editorial review workflow | `supabase/migrations/20261012280000_community_challenge_editorial_review.sql` | `server/src/community-editorial-migration.test.ts` and editorial admin workflow | Pending |
 
 ## Editorial checklist
 

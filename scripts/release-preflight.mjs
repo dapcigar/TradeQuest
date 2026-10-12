@@ -65,6 +65,8 @@ const masteryHistoryHelper = read('server/src/masteryHistory.ts');
 const masteryHistoryTests = read('server/src/masteryHistory.test.ts');
 const adaptivePracticeUi = read('src/AdaptivePractice.tsx');
 const masteryApi = read('server/src/index.ts');
+const communityEditorialMigration = read('supabase/migrations/20261012280000_community_challenge_editorial_review.sql');
+const communityEditorialContractTests = read('server/src/community-editorial-migration.test.ts');
 const packageJson = JSON.parse(read('package.json'));
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
@@ -91,6 +93,7 @@ const curriculumModules = [
   ['Synthetic replay', 'src/ReplayLab.tsx', 'src/replayCheckpoint.test.ts'],
   ['Synthetic paper trade', 'src/PaperTradeLab.tsx', 'server/src/chart-dojo.integration.test.ts'],
   ['Community challenge rubrics', 'supabase/migrations/20261012270000_community_challenge_lifecycle.sql', 'server/src/community-challenge-migration.test.ts'],
+  ['Community challenge editorial review', 'supabase/migrations/20261012280000_community_challenge_editorial_review.sql', 'server/src/community-editorial-migration.test.ts'],
 ];
 
 for (const [label, sourcePath, testPath] of curriculumModules) {
@@ -131,6 +134,10 @@ for (const [label, content, phrases] of [
   ['Mastery pagination regression tests', masteryHistoryTests, ['across page boundaries', 'does not return a partial history', 'invalid page sizes']],
   ['Mastery API all-retained-history contract', masteryApi, ["historyScope: 'all-retained-server-attempts'", 'historyComplete: true', "attempts/adaptive-summary", "historyScope: 'all-retained-adaptive-attempts'", 'Complete mastery history could not be loaded']],
   ['Adaptive Practice aggregate evidence contract', adaptivePracticeUi, ['nextAdaptiveVariantFromSummary', 'adaptiveEvidenceFromSummary', 'historyComplete !== true']],
+  ['Challenge editorial provenance and publication gate', communityEditorialMigration, ['source_reference text not null', 'editorial_status text not null default \'draft\'', 'is_community_admin', 'community_challenge_reviews', 'editorial_status in (\'approved\', \'legacy-published\')']],
+  ['Challenge editorial migration tests', communityEditorialContractTests, ['records provenance', 'requires an admin role', 'hides draft, rejected and retired content']],
+  ['Editorial admin UI and routes', communityChallengesUi + communityProfileApi, ['Editorial review queue', 'Approve &amp; publish', "app.get('/v1/community/editorial/queue'", "app.post('/v1/community/editorial/:id/review'"]],
+  ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']],
   ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();

@@ -52,6 +52,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Keep journals private by default; never expose private notes or learner activity through public profiles or leaderboards.
 - [ ] Community profiles are private by default; direct table grants must not expose user IDs, email, progress, journals, balances, or trading history. Public entries require explicit entry visibility, an opted-in profile, and moderator approval.
 - [ ] Provision a trusted community moderator through the documented database-admin procedure before enabling public entries; test reporting, 403 denial for ordinary learners, reason-required moderation actions, and immutable action history.
+- [ ] Provision a trusted community admin, review the legacy-published challenge definitions in the editorial queue, and record human sign-off. Verify new drafts remain unpublished, revision/retire decisions withdraw public entries, and each decision is preserved in `community_challenge_reviews`.
 - [ ] Confirm profile opt-out withdraws public entries and account learning-data deletion removes community entries/reports/profile while preserving the moderation audit trail.
 - [ ] Review third-party logging, analytics, and hosting data handling.
 

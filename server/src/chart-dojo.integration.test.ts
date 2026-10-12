@@ -567,6 +567,15 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
       expect(reportPending.status).toBe(404);
       const nonModeratorQueue = await request('/v1/community/moderation/queue', userBToken!);
       expect(nonModeratorQueue.status).toBe(403);
+      const editorialRole = await request('/v1/community/editorial/me', userBToken!);
+      expect(editorialRole.status).toBe(200);
+      expect(await editorialRole.json()).toMatchObject({ isEditor: false });
+      const nonEditorQueue = await request('/v1/community/editorial/queue', userBToken!);
+      expect(nonEditorQueue.status).toBe(403);
+      const nonEditorReview = await request('/v1/community/editorial/QUEST-001/review', userBToken!, {
+        method: 'POST', body: JSON.stringify({ decision: 'approve', reason: 'This learner must not publish content.' }),
+      });
+      expect(nonEditorReview.status).toBe(403);
 
       const privateAttempt = await request('/v1/chart-dojo/attempts', userAToken!, {
         method: 'POST', body: JSON.stringify({ attemptId: privateAttemptId, scenarioId: 'TQ-SYN-002', choiceId: 'recalculate' }),

@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { collectAllPages } from './masteryHistory.js';
 import { createRateLimiter } from './rateLimit.js';
@@ -313,6 +313,48 @@ app.post('/v1/community/challenges/entries/:id/report', requireLearner, async (r
     return res.status(503).json({ error: 'Community report could not be submitted.' });
   }
   return res.status(201).json({ report: data });
+});
+
+app.get('/v1/community/editorial/me', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('is_community_admin');
+  if (error) {
+    logError('Community editorial role could not be checked.', error);
+    return res.status(503).json({ error: 'Community editorial role is temporarily unavailable.' });
+  }
+  return res.json({ isEditor: data === true });
+});
+
+app.get('/v1/community/editorial/queue', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_community_editorial_queue');
+  if (error) {
+    if (error.code === '42501' && /Editorial admin access required/i.test(error.message)) return res.status(403).json({ error: 'Editorial admin access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community editorial queue could not be loaded.', error);
+    return res.status(503).json({ error: 'Community editorial queue is temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ challenges: Array.isArray(data) ? data : [] });
+});
+
+app.post('/v1/community/editorial/:id/review', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const challengeId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof challengeId !== 'string' || !/^QUEST-[0-9]{3}$/.test(challengeId)) {
+    return res.status(400).json({ error: 'Invalid community challenge id.' });
+  }
+  const parsed = communityEditorialReviewSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid editorial decision.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('review_community_challenge', {
+    p_challenge_id: challengeId, p_decision: parsed.data.decision, p_reason: parsed.data.reason,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'Community challenge not found.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Invalid editorial decision.' });
+    if (error.code === '42501' && /Editorial admin access required/i.test(error.message)) return res.status(403).json({ error: 'Editorial admin access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community editorial decision could not be recorded.', error);
+    return res.status(503).json({ error: 'Community editorial decision could not be recorded.' });
+  }
+  return res.json({ review: data });
 });
 
 app.get('/v1/community/moderation/me', requireLearner, async (req: AuthedRequest, res: Response) => {
