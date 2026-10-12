@@ -93,6 +93,33 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(state.complete).toBe(true);
   });
 
+  it('exports only the signed-in learner\'s server-stored data', async () => {
+    const title = 'Account export isolation ' + crypto.randomUUID();
+    const created = await request('/v1/decision-journal', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({ title, decision: 'waited', thesis: 'Test-only export fixture.' }),
+    });
+    expect(created.status).toBe(201);
+    const createdBody = await created.json() as { entry: { id: string } };
+    const exportA = await request('/v1/me/export', userAToken!);
+    expect(exportA.status).toBe(200);
+    expect(exportA.headers.get('cache-control')).toContain('no-store');
+    const bodyA = await exportA.json() as { product: string; formatVersion: number; scope: string; data: { decisionJournalEntries: Array<{ id: string; title: string; user_id?: string }> } };
+    expect(bodyA.product).toBe('TradeQuest');
+    expect(bodyA.formatVersion).toBe(1);
+    expect(bodyA.data.decisionJournalEntries.some(entry => entry.id === createdBody.entry.id && entry.title === title)).toBe(true);
+    expect(bodyA.data.decisionJournalEntries.every(entry => entry.user_id === undefined)).toBe(true);
+    expect(JSON.stringify(bodyA)).not.toContain('access_token');
+
+    const exportB = await request('/v1/me/export', userBToken!);
+    expect(exportB.status).toBe(200);
+    const bodyB = await exportB.json() as { data: { decisionJournalEntries: Array<{ id: string; title: string }> } };
+    expect(bodyB.data.decisionJournalEntries.some(entry => entry.id === createdBody.entry.id || entry.title === title)).toBe(false);
+
+    const deleted = await request('/v1/decision-journal/' + createdBody.entry.id, userAToken!, { method: 'DELETE' });
+    expect(deleted.status).toBe(204);
+  });
+
   it('persists attempts privately and handles replay safely', async () => {
     const attemptId = crypto.randomUUID();
     const payload = { attemptId, scenarioId: 'TQ-SYN-001', choiceId: 'wait' };
