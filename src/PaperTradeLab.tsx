@@ -10,7 +10,7 @@ type PaperResponse = {
   policy: string;
 };
 type SavedSession = { sessionId: string; direction: 'long' | 'short'; currentIndex: number; status: 'open' | 'closed'; pnl: number | null; exitReason: string | null; createdAt: string; closedAt: string | null; version: number };
-type LedgerEvent = { eventId: string; sequence: number | string; eventType: 'session_started' | 'candle_revealed' | 'session_closed'; version: number; candleIndex: number; payload: { status?: string; exitReason?: string | null; pnl?: number | null; virtualEquity?: number; virtualEquityAfter?: number | null; exitPrice?: number | null }; createdAt: string };
+type LedgerEvent = { eventId: string; eventType: 'session_started' | 'candle_revealed' | 'session_closed'; version: number; candleIndex: number; payload: { status?: string; exitReason?: string | null; pnl?: number | null; virtualEquity?: number; virtualEquityAfter?: number | null; exitPrice?: number | null }; createdAt: string };
 const money = (value: number) => value.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
 
 export default function PaperTradeLab({ session }: { session: Session | null }) {
