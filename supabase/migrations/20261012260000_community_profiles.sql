@@ -15,26 +15,92 @@ create unique index if not exists community_profiles_handle_ci_unique
 
 alter table public.community_profiles enable row level security;
 revoke all on public.community_profiles from public, anon, authenticated;
-grant select (user_id, handle, display_name, bio, is_public, updated_at)
+-- Direct table reads expose only opted-in profile fields. Ownership IDs and writes
+-- are handled by narrowly scoped SECURITY DEFINER functions bound to auth.uid().
+grant select (handle, display_name, bio, updated_at)
   on public.community_profiles to authenticated;
-grant insert (user_id, handle, display_name, bio, is_public)
-  on public.community_profiles to authenticated;
-grant update (user_id, handle, display_name, bio, is_public)
-  on public.community_profiles to authenticated;
-grant delete on public.community_profiles to authenticated;
 
 drop policy if exists "Learners read own or public community profiles" on public.community_profiles;
-create policy "Learners read own or public community profiles" on public.community_profiles
-  for select to authenticated using (auth.uid() = user_id or is_public = true);
-drop policy if exists "Learners create own community profile" on public.community_profiles;
-create policy "Learners create own community profile" on public.community_profiles
-  for insert to authenticated with check (auth.uid() = user_id);
-drop policy if exists "Learners update own community profile" on public.community_profiles;
-create policy "Learners update own community profile" on public.community_profiles
-  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
-drop policy if exists "Learners delete own community profile" on public.community_profiles;
-create policy "Learners delete own community profile" on public.community_profiles
-  for delete to authenticated using (auth.uid() = user_id);
+create policy "Learners read public community profiles" on public.community_profiles
+  for select to authenticated using (is_public = true);
+
+create or replace function public.get_my_community_profile() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_profile public.community_profiles%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Authentication required' using errcode = '42501';
+  end if;
+  select * into v_profile from public.community_profiles where user_id = v_user_id;
+  if not found then return null; end if;
+  return pg_catalog.jsonb_build_object(
+    'handle', v_profile.handle,
+    'displayName', v_profile.display_name,
+    'bio', v_profile.bio,
+    'isPublic', v_profile.is_public,
+    'updatedAt', v_profile.updated_at
+  );
+end;
+$$;
+
+create or replace function public.save_my_community_profile(
+  p_handle text,
+  p_display_name text,
+  p_bio text,
+  p_is_public boolean
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_profile public.community_profiles%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Authentication required' using errcode = '42501';
+  end if;
+  if p_handle is null or p_handle !~ '^[a-z0-9][a-z0-9_-]{2,19}$'
+     or p_display_name is null or pg_catalog.char_length(pg_catalog.btrim(p_display_name)) not between 2 and 40
+     or p_bio is null or pg_catalog.char_length(pg_catalog.btrim(p_bio)) > 280
+     or p_is_public is null then
+    raise exception 'Invalid community profile' using errcode = '22023';
+  end if;
+  insert into public.community_profiles(user_id, handle, display_name, bio, is_public)
+  values (v_user_id, p_handle, pg_catalog.btrim(p_display_name), pg_catalog.btrim(p_bio), p_is_public)
+  on conflict (user_id) do update set
+    handle = excluded.handle,
+    display_name = excluded.display_name,
+    bio = excluded.bio,
+    is_public = excluded.is_public
+  returning * into v_profile;
+  return pg_catalog.jsonb_build_object(
+    'handle', v_profile.handle,
+    'displayName', v_profile.display_name,
+    'bio', v_profile.bio,
+    'isPublic', v_profile.is_public,
+    'updatedAt', v_profile.updated_at
+  );
+end;
+$$;
+
+create or replace function public.delete_my_community_profile() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception 'Authentication required' using errcode = '42501';
+  end if;
+  delete from public.community_profiles where user_id = v_user_id;
+end;
+$$;
+
+revoke all on function public.get_my_community_profile() from public, anon;
+revoke all on function public.save_my_community_profile(text, text, text, boolean) from public, anon;
+revoke all on function public.delete_my_community_profile() from public, anon;
+grant execute on function public.get_my_community_profile() to authenticated;
+grant execute on function public.save_my_community_profile(text, text, text, boolean) to authenticated;
+grant execute on function public.delete_my_community_profile() to authenticated;
 
 create or replace function public.set_community_profile_updated_at() returns trigger
 language plpgsql set search_path = '' as $$
