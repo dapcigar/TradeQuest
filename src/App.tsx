@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import JournalView from './JournalView';
 import ReviewQueue from './ReviewQueue';
 import AdaptivePractice from './AdaptivePractice';
@@ -129,6 +129,14 @@ function CandleChart() {
 
 function App() {
   const [view, setView] = useState<View>('overview');
+  const mainContentRef = useRef<HTMLElement | null>(null);
+  const previousViewRef = useRef<View>(view);
+  useEffect(() => {
+    if (previousViewRef.current !== view) {
+      previousViewRef.current = view;
+      mainContentRef.current?.focus({ preventScroll: true });
+    }
+  }, [view]);
   const [progress, setProgress] = useState<Progress>(readProgress);
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -529,7 +537,7 @@ function App() {
 
       {mobileNav && <button className="nav-backdrop" aria-label="Close navigation overlay" onClick={() => setMobileNav(false)} />}
 
-      <main id="main-content" tabIndex={-1} className="main-area">
+      <main id="main-content" ref={mainContentRef} aria-label={titleMap[view]} tabIndex={-1} className="main-area">
         <header className="topbar">
           <div className="topbar-left"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu size={20} /></button><span className="breadcrumb">The Market Frontier</span><span className="crumb-slash">/</span><span className="breadcrumb-current">{titleMap[view]}</span></div>
           <div className="topbar-right"><button className="btn-outline account-button" onClick={() => session ? void signOut() : (setAuthOpen(true), setAuthMessage(''))}>{session ? 'Sign out' : 'Sign in'}</button><span className="data-pill"><span className="status-dot" /> SIMULATION MODE</span><div className="top-xp"><Zap size={15} fill="currentColor" /> {activeXp} XP</div><button className="help-button" aria-label="About TradeQuest" title="TradeQuest is an educational simulator, not financial advice." onClick={() => window.alert('TradeQuest is for education only. No live prices, signals or real-money trading. Synthetic chart data is clearly labelled.') }><CircleHelp size={18} /></button></div>
