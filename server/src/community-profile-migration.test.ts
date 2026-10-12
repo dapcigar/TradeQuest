@@ -17,7 +17,7 @@ describe('community profile migration contract', () => {
   it('uses owner-scoped RLS for private reads and all writes', () => {
     expect(migration).toMatch(/alter table public\.community_profiles enable row level security/i);
     expect(migration).toMatch(/for select to authenticated using \(is_public = true\)/i);
-    expect(migration).toMatch(/grant select \(handle, display_name, bio, updated_at\)\s+on public\.community_profiles to authenticated/i);
+    expect(migration).toMatch(/grant select \(handle, display_name, bio, is_public, updated_at\)\s+on public\.community_profiles to authenticated/i);
     expect(migration).toMatch(/create or replace function public\.get_my_community_profile\(\) returns jsonb/i);
     expect(migration).toMatch(/create or replace function public\.save_my_community_profile\(/i);
     expect(migration).toMatch(/create or replace function public\.delete_my_community_profile\(\) returns void/i);
