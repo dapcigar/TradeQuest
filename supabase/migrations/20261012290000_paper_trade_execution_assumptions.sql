@@ -187,7 +187,14 @@ begin
   if p_expected_version is null or p_expected_version < 0 then raise exception 'Invalid paper trade version' using errcode = '22023'; end if;
   select * into v_session from public.paper_trade_sessions where id=p_session_id and user_id=v_user_id for update;
   if not found then raise exception 'Paper trade session not found' using errcode = 'P0002'; end if;
-  if p_expected_version = v_session.version - 1 and v_session.last_response is not null then return v_session.last_response; end if;
+  if p_expected_version = v_session.version - 1 and v_session.last_response is not null then
+    if v_session.last_response #>> '{position,instrumentSpec}' is null then
+      v_response := public.paper_trade_session_payload(p_session_id);
+      update public.paper_trade_sessions set last_response = v_response where id = p_session_id and user_id = v_user_id;
+      return v_response;
+    end if;
+    return v_session.last_response;
+  end if;
   if p_expected_version <> v_session.version then raise exception 'Stale paper trade version' using errcode = '40001'; end if;
   if v_session.status = 'closed' then raise exception 'Paper trade session is closed' using errcode = '22023'; end if;
   v_next_index := v_session.current_index + 1;
