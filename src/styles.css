@@ -214,3 +214,22 @@
 .replay-process-counts dd{margin:4px 0 0;font-size:1.35rem;font-weight:750;color:var(--ink);font-variant-numeric:tabular-nums}
 .replay-process-prompt{padding:12px;border-left:3px solid var(--blue);background:var(--surface,transparent);border-radius:0 8px 8px 0}
 @media(max-width:480px){.replay-process-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.replay-process-debrief{padding:14px}}
+
+
+/* Synthetic paper trade lab */
+.paper-lab-layout{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.15fr);gap:20px;align-items:start}
+.paper-lab-form,.paper-lab-chart{padding:22px;min-width:0}
+.paper-lab-form select{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;color:var(--ink);background:var(--paper);margin-bottom:12px}
+.paper-lab-chart .candle-lesson-heading{align-items:flex-start}
+.paper-lab-position{margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.paper-lab-position h3,.paper-lab-outcome h3{margin:0 0 10px;color:var(--ink)}
+.paper-lab-position dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+.paper-lab-position dl div{padding:9px;border:1px solid var(--line);border-radius:8px;min-width:0}
+.paper-lab-position dt{font-size:.78rem;color:var(--muted)}
+.paper-lab-position dd{margin:4px 0 0;font-weight:700;overflow-wrap:anywhere}
+.paper-lab-outcome{display:grid;gap:7px;margin:16px 0;padding:16px;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:12px;background:var(--paper)}
+.paper-lab-outcome p{margin:0;line-height:1.45}
+.paper-lab-outcome small{color:var(--muted);line-height:1.5;margin:4px 0 8px}
+.paper-lab-outcome .btn-outline{justify-self:start}
+@media(max-width:850px){.paper-lab-layout{grid-template-columns:1fr}.paper-lab-form,.paper-lab-chart{padding:16px}}
+@media(max-width:420px){.paper-lab-position dl{grid-template-columns:1fr}}
