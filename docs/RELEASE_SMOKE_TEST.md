@@ -4,6 +4,18 @@ Use this checklist after a deployment or a change to authentication, learner pro
 
 This is a **manual release check**, not proof of production readiness. Run it against a disposable/test environment with two dedicated test accounts. Do not use personal learner records or production credentials for write-heavy checks. Record the deployment URL, commit SHA, environment, tester, date, and pass/fail evidence. Never paste passwords, access tokens, journal text, or secrets into the evidence.
 
+## Automated read-only API smoke check
+
+Before the browser-based checklist, run the automated check against the intended API deployment:
+
+```bash
+TRADEQUEST_SMOKE_API_URL=https://your-test-api.example npm run api:smoke
+```
+
+The command checks that `GET /health` returns the expected TradeQuest API identity, that defensive response headers are present, and that selected learner-only endpoints return HTTP 401 without a bearer token. It uses GET requests only, does not sign in, and does not create, modify, export, or delete learner records. It exits non-zero on a failed assertion or network/timeout error.
+
+This check is intentionally narrow: it does not prove database migration status, authenticated account isolation, rate-limit behaviour, browser accessibility, or successful learner journeys. Those remain separate release gates. Do not run it against an unintended URL; the supplied URL must be the API origin/base path, without credentials, query strings, or fragments.
+
 ## Before starting
 
 - [ ] Confirm the target URL and environment are the intended test environment.
