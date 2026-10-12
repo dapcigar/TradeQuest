@@ -94,9 +94,12 @@ app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, async (req: Aut
   const parsed = paperTradePlanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade plan.' });
   const d = parsed.data;
-  const { data, error } = await req.learnerDb!.rpc('start_paper_trade_session', {
+  const { data, error } = await req.learnerDb!.rpc('start_paper_trade_session_with_specs', {
     p_direction: d.direction, p_entry: d.entry, p_stop: d.stop, p_target: d.target,
     p_virtual_equity: d.equity, p_risk_percent: d.riskPercent,
+    p_instrument_label: d.instrumentLabel, p_tick_size: d.tickSize, p_tick_value: d.tickValue,
+    p_contract_size: d.contractSize, p_lot_step: d.lotStep, p_spread_ticks: d.spreadTicks,
+    p_commission_per_unit: d.commissionPerUnit, p_slippage_ticks: d.slippageTicks, p_leverage: d.leverage,
   });
   if (error) {
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
