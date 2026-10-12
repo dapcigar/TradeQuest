@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
@@ -232,25 +232,74 @@ app.post('/v1/me/delete-learning-data', requireLearner, async (req: AuthedReques
   return res.status(200).json(data);
 });
 
+// Signed-in weekly practice data syncs across devices; anonymous plans remain browser-local.
+app.get('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticePlanQuerySchema.safeParse({ weekStart: req.query.weekStart });
+  if (!parsed.success) return res.status(400).json({ error: 'A valid Monday weekStart date is required.' });
+  const { data, error } = await req.learnerDb!.rpc('get_weekly_practice_plan', { p_week_start: parsed.data.weekStart });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The weekly practice week is invalid.' });
+    logError('Weekly practice plan could not be loaded.', error);
+    return res.status(503).json({ error: 'Weekly practice plan is temporarily unavailable. Check that the weekly plan migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
+});
+
+app.put('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticeTargetSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Choose a supported weekly target and valid week.' });
+  const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_target', {
+    p_week_start: parsed.data.weekStart, p_target: parsed.data.target,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The weekly practice plan is invalid.' });
+    logError('Weekly practice target could not be saved.', error);
+    return res.status(503).json({ error: 'Weekly practice target could not be saved.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
+});
+
+app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = weeklyPracticeSessionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'A valid week, session date, and completion state are required.' });
+  const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_session', {
+    p_week_start: parsed.data.weekStart, p_session_date: parsed.data.sessionDate, p_completed: parsed.data.completed,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The session date must belong to the selected week.' });
+    logError('Weekly practice session could not be saved.', error);
+    return res.status(503).json({ error: 'Weekly practice session could not be saved.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ plan: data });
+});
+
 // Export only the signed-in learner's application data. This endpoint deliberately
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
   const db = req.learnerDb!;
-  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult] = await Promise.all([
+  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
     db.from('progress_events').select('event_id, event_key, xp_awarded, recorded_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('recorded_at', { ascending: true }).limit(10000),
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('chart_dojo_attempts').select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('decision_journal_entries').select('id, title, scenario_id, decision, thesis, invalidation, risk_plan, reflection, lesson_learned, created_at, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
     db.from('paper_trade_sessions').select('id, scenario_id, direction, entry_price, stop_price, target_price, virtual_equity, risk_percent, risk_budget, units, current_index, status, exit_price, exit_reason, pnl, version, created_at, updated_at, closed_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
+    db.from('weekly_practice_plans').select('week_start, target, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('week_start', { ascending: true }).limit(10000),
+    db.from('weekly_practice_sessions').select('week_start, session_date, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('session_date', { ascending: true }).limit(10000),
   ]);
-  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult];
+  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
   const failed = results.find(result => result.error);
   if (failed?.error) {
     logError('Account learning data export failed.', failed.error);
     return res.status(503).json({ error: 'Account learning data could not be exported right now.' });
   }
-  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult];
+  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
   if (collections.some(result => result.count !== null && result.count > (result.data?.length ?? 0))) {
     return res.status(413).json({ error: 'This account has more records than one export can safely include. No partial export was created.' });
   }
@@ -270,6 +319,8 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
       chartDojoAttempts: dojoResult.data ?? [],
       decisionJournalEntries: journalResult.data ?? [],
       paperTradeSessions: paperResult.data ?? [],
+      weeklyPracticePlans: weeklyPlansResult.data ?? [],
+      weeklyPracticeSessions: weeklySessionsResult.data ?? [],
     },
   });
 });

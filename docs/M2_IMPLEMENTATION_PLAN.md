@@ -17,29 +17,36 @@
 Copy `.env.example` to `.env.local` for Vite development. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and optionally `VITE_TRADEQUEST_API_URL` (defaults to `http://localhost:4000`). Create `server/.env` for the API using the server variables in `.env.example`. Never commit actual environment files or expose a service-role key.
 
 ## Database setup (development only)
-Apply in order:
+Apply migrations in lexicographic filename order to a disposable development project first. Reconcile the target project's migration ledger before applying any file; do not assume a repository migration has already been applied. Current ordered migrations are:
+
 1. `supabase/migrations/202610110001_m2_learner_progress.sql`
 2. `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
 3. `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
 4. `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
 5. `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
 6. `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
-7. `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
-8. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
-9. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
-10. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
-11. `supabase/migrations/20261011190000_risk_budget_reasoning.sql` (already applied manually to the dev project; reconcile its ledger entry before using `supabase db push`)
-11. `supabase/seed/dev_spread_lesson.sql`
+7. `supabase/migrations/202610110011_risk_budget_reasoning.sql` (previously reported as manually applied to the dev project; verify the actual migration ledger before pushing)
+8. `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
+9. `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
+10. `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
+11. `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
+12. `supabase/migrations/20261011200000_decision_journal.sql`
+13. `supabase/migrations/20261012201500_adaptive_practice_server_scenarios.sql`
+14. `supabase/migrations/20261012210000_paper_trade_ledger.sql`
+15. `supabase/migrations/20261012220000_delete_own_learning_data.sql`
+16. `supabase/migrations/20261012230000_account_weekly_practice_plan.sql`
 
-Migration 006 seeds three synthetic scenarios and creates a published-scenario read API. Authenticated learners can read published scenario prompts/choices, but not answer keys. Attempt records store the exact scenario version used. The first Chart Dojo XP milestone remains one-time per learner.
+The development-only seed file `supabase/seed/dev_spread_lesson.sql` is separate from the migration sequence and must not be treated as a production seed.
+
+Migration 006 establishes the published-scenario read API; later versioned-scenario migrations add the synthetic scenario catalogue and variants. Authenticated learners can read published scenario prompts/choices, but not answer keys. Attempt records store the exact scenario version used. The first Chart Dojo XP milestone remains one-time per learner.
 
 Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins. Test with at least two separate users. Verify RLS isolation, progress event idempotency, quiz attempt retries and XP awards in a disposable project before production use.
 
 ## Current scope
-Account persistence covers the spread knowledge check, foundations lesson completion, risk calculator use, and Chart Dojo choice/feedback history. The frontend loads the published scenario catalogue. Eighteen synthetic Chart Dojo scenarios now provide five planning variants, eight risk-management variants, and five evidence variants. The additional risk scenarios test stop-based sizing, combined exposure, and fees/slippage against a stated budget. Anonymous demo progress remains local and separate. The API exposes an evidence-based mastery summary at `GET /v1/me/mastery`. It aggregates the learner's own Chart Dojo attempts, server-scored spread-basics quiz attempts, and the risk-calculator participation milestone. It recommends a skill for spaced review when its latest recorded Chart Dojo attempt is at least 14 days old; otherwise it recommends the least-practised skill and uses positive-decision rate only to break practice-count ties. The API reports each skill's latest practice timestamp and review status, and labels sample confidence. Missing or invalid timestamps never trigger a review-due state. Risk calculator use is explicitly treated as participation rather than proof of mastery. Production deployment and comprehensive multi-user database integration validation remain outstanding.
+Account persistence covers the spread knowledge check, foundations lesson completion, risk calculator use, and Chart Dojo choice/feedback history. The frontend loads the published scenario catalogue. Twenty-four synthetic Chart Dojo scenarios now provide five planning variants, eight risk-management variants, and five evidence variants. The additional risk scenarios test stop-based sizing, combined exposure, and fees/slippage against a stated budget. Anonymous demo progress remains local and separate. Signed-in weekly practice plans, private decision journal entries, and synthetic paper-trade sessions are persisted under learner ownership, and are included in the account export/deletion flows. The API exposes an evidence-based mastery summary at `GET /v1/me/mastery`. It aggregates the learner's own Chart Dojo attempts, server-scored spread-basics quiz attempts, and the risk-calculator participation milestone. It recommends a skill for spaced review when its latest recorded Chart Dojo attempt is at least 14 days old; otherwise it recommends the least-practised skill and uses positive-decision rate only to break practice-count ties. The API reports each skill's latest practice timestamp and review status, and labels sample confidence. Missing or invalid timestamps never trigger a review-due state. Risk calculator use is explicitly treated as participation rather than proof of mastery. Production deployment and comprehensive multi-user database integration validation remain outstanding.
 
 ## Integration test setup
-The API integration suite is opt-in and requires a running API plus two dedicated test accounts in a disposable Supabase project. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`, then run `npm test`. Keep these credentials out of committed files and CI logs. The suite checks scenario catalogue exposure without answer keys, attempt replay/conflict behaviour, cross-learner history isolation, lesson scoring/XP idempotency, milestone idempotency, submission against multiple scenarios, and combined mastery-signal isolation (Chart Dojo plus lesson attempts). It also verifies risk-calculator use remains participation-only. The combined mastery test compares both accounts before and after writing to account A. Without all four variables, these integration tests are skipped.
+The API integration suite is opt-in and requires a running API plus two dedicated test accounts in a disposable Supabase project. Set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`, then run `npm test`. Keep these credentials out of committed files and CI logs. The suite checks scenario catalogue exposure without answer keys, attempt replay/conflict behaviour, cross-learner history isolation, lesson scoring/XP idempotency, milestone idempotency, submission against multiple scenarios, combined mastery-signal isolation (Chart Dojo plus lesson attempts), weekly plan sync isolation, account export, and self-service saved-data deletion. It also verifies risk-calculator use remains participation-only. The combined mastery test compares both accounts before and after writing to account A. Without all four variables, these integration tests are skipped.
 
 ## Validation runbook
 
@@ -53,7 +60,7 @@ npm run api:build
 
 For real database behaviour, use a **disposable Supabase project** and two dedicated test users; do not use production credentials or personal learner accounts.
 
-1. Apply migrations 001–006, then the timestamped migrations 007–011 in filename order, then run `supabase/seed/dev_spread_lesson.sql`. On the existing dev project, do not re-run the risk-budget SQL: it was applied manually and must be reconciled in the migration ledger first.
+1. Reconcile the target project's migration ledger, then apply all checked-in migrations in the exact filename order listed above to a disposable project. The risk-budget migration was previously reported as manually applied to the dev project; verify the ledger before pushing. Run `supabase/seed/dev_spread_lesson.sql` separately and only in development.
 2. Configure `server/.env` with the disposable project's URL and public/anon key, then start the API with `npm run api:dev`.
 3. Obtain fresh access tokens for test users A and B. Treat them as secrets and never commit them or print them in CI logs.
 4. In a separate shell, set `TRADEQUEST_RUN_INTEGRATION_TESTS=true`, `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`; run `npm test`.
