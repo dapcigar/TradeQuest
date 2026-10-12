@@ -36,6 +36,7 @@ Apply migrations in lexicographic filename order to a disposable development pro
 15. `supabase/migrations/20261012220000_delete_own_learning_data.sql`
 16. `supabase/migrations/20261012230000_account_weekly_practice_plan.sql`
 17. `supabase/migrations/20261012240000_paper_trade_ledger_events.sql`
+18. `supabase/migrations/20261012250000_shared_user_rate_limits.sql`
 
 The development-only seed file `supabase/seed/dev_spread_lesson.sql` is separate from the migration sequence and must not be treated as a production seed.
 
