@@ -40,3 +40,15 @@ export const decisionJournalPatchSchema = decisionJournalSchema.partial().refine
   value => Object.keys(value).length > 0,
   { message: 'At least one field is required.' },
 );
+
+
+export const paperTradePlanSchema = z.object({
+  direction: z.enum(['long', 'short']),
+  entry: z.number().finite().positive(),
+  stop: z.number().finite().positive(),
+  target: z.number().finite().positive(),
+  equity: z.number().finite().positive().max(1_000_000_000),
+  riskPercent: z.number().finite().min(0.01).max(5),
+}).strict();
+
+export const paperTradeStepSchema = z.object({ token: z.string().min(20).max(2048) }).strict();
