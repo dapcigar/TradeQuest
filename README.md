@@ -61,6 +61,7 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/20261012240000_paper_trade_ledger_events.sql`
    - `supabase/migrations/20261012250000_paper_trade_fill_ledger.sql`
    - `supabase/migrations/20261012260000_community_profiles.sql`
+   - `supabase/migrations/20261012270000_community_challenge_lifecycle.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
