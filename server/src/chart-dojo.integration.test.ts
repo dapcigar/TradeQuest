@@ -51,6 +51,48 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(bBody.attempts.some(item => item.attemptId === attemptId)).toBe(false);
   });
 
+  it('persists paper-trade sessions privately and makes candle advancement idempotent', async () => {
+    const started = await request('/v1/paper-lab/synthetic-basics/start', userAToken!, {
+      method: 'POST', body: JSON.stringify({ direction: 'long', entry: 103, stop: 98, target: 108, equity: 10000, riskPercent: 1 }),
+    });
+    expect(started.status).toBe(201);
+    const startBody = await started.json() as { sessionId: string; version: number; candle: { index: number }; candles: Array<{ index: number }> };
+    expect(startBody.version).toBe(0);
+    expect(startBody.candle.index).toBe(0);
+    expect(startBody.candles.map(candle => candle.index)).toEqual([0]);
+
+    const advance = () => request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
+      method: 'POST', body: JSON.stringify({ sessionId: startBody.sessionId, expectedVersion: 0 }),
+    });
+    const first = await advance();
+    expect(first.status).toBe(200);
+    const firstBody = await first.json() as { version: number; currentIndex: number; complete: boolean };
+    expect(firstBody.version).toBe(1);
+    expect(firstBody.currentIndex).toBe(1);
+    const replay = await advance();
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual(firstBody);
+
+    const forbidden = await request('/v1/paper-lab/sessions/' + startBody.sessionId, userBToken!);
+    expect(forbidden.status).toBe(404);
+    const aList = await request('/v1/paper-lab/sessions', userAToken!);
+    const aBody = await aList.json() as { sessions: Array<{ sessionId: string }> };
+    expect(aBody.sessions.some(item => item.sessionId === startBody.sessionId)).toBe(true);
+    const bList = await request('/v1/paper-lab/sessions', userBToken!);
+    const bBody = await bList.json() as { sessions: Array<{ sessionId: string }> };
+    expect(bBody.sessions.some(item => item.sessionId === startBody.sessionId)).toBe(false);
+
+    let state = firstBody;
+    for (let step = 0; step < 12 && !state.complete; step++) {
+      const response = await request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
+        method: 'POST', body: JSON.stringify({ sessionId: startBody.sessionId, expectedVersion: state.version }),
+      });
+      expect(response.status).toBe(200);
+      state = await response.json() as typeof state;
+    }
+    expect(state.complete).toBe(true);
+  });
+
   it('persists attempts privately and handles replay safely', async () => {
     const attemptId = crypto.randomUUID();
     const payload = { attemptId, scenarioId: 'TQ-SYN-001', choiceId: 'wait' };

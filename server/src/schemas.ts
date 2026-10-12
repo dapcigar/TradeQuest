@@ -44,11 +44,11 @@ export const decisionJournalPatchSchema = decisionJournalSchema.partial().refine
 
 export const paperTradePlanSchema = z.object({
   direction: z.enum(['long', 'short']),
-  entry: z.number().finite().positive(),
-  stop: z.number().finite().positive(),
-  target: z.number().finite().positive(),
+  entry: z.number().finite().min(0.000001).max(1_000_000_000),
+  stop: z.number().finite().min(0.000001).max(1_000_000_000),
+  target: z.number().finite().min(0.000001).max(1_000_000_000),
   equity: z.number().finite().positive().max(1_000_000_000),
   riskPercent: z.number().finite().min(0.01).max(5),
 }).strict();
 
-export const paperTradeStepSchema = z.object({ token: z.string().min(20).max(2048) }).strict();
+export const paperTradeStepSchema = z.object({ sessionId: z.string().uuid(), expectedVersion: z.number().int().nonnegative() }).strict();

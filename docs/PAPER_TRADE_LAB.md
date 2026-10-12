@@ -15,19 +15,21 @@ The Paper Trade Lab is a short, synthetic learning exercise. The learner chooses
 
 ## Persistence and replay boundary
 
-The session is temporary and stateless. No virtual balance, order, position, or outcome is written to Supabase. Because the continuation token is signed but not recorded in a server-side session store, a learner can replay an earlier valid token to fork a practice run. This is acceptable for the current isolated educational exercise, but it is **not** suitable for a leaderboard, authoritative progress record, audit trail, or persistent account ledger.
+Paper Trade Lab sessions are now stored in `paper_trade_sessions`. The API/database own plan validation, position-size calculation, candle progression, stop/target outcome, virtual equity after the session, and version checks. Learners can list and reopen their own saved sessions. Direct client writes to session rows are revoked; authenticated users have read access only to rows allowed by RLS, while database functions perform transitions under the verified learner identity.
 
-The API must continue to require an authenticated learner, verify token integrity and learner binding, set `Cache-Control: no-store`, and never include future candles in a response. The secret must remain server-only and contain at least 32 characters.
+Candle advancement accepts an expected version. A retry of the immediately preceding accepted version returns the recorded response instead of advancing twice; stale versions conflict. The response contains only candles through the current index. Session and history responses use `Cache-Control: no-store` where appropriate. The legacy signed replay endpoint remains separate and still requires a server-only `REPLAY_CURSOR_SECRET` of at least 32 characters.
 
-## Before expanding to a persistent simulator
+This is persistent **session history**, not yet a full instrument-accurate trading ledger. It does not model contract-specific tick values, margin, pending orders, partial fills, commissions, spread, currency conversion, or ordinary slippage. The assumed one-unit P/L per fictional price unit is a teaching simplification, and planned risk is not a guaranteed maximum loss. Do not use simulated P/L as a mastery score or evidence of future performance.
 
-1. Decide and document instrument specifications, tick/contract values, costs, order types, fill rules, gaps, and candle ambiguity policy.
-2. Store sessions, orders, positions, fills, and ledger events server-side in a transactionally consistent model.
-3. Make create/advance/close requests idempotent; reject stale session versions and replayed state transitions.
-4. Add user-owned row-level security policies and verify cross-account read/write denial with two disposable test accounts.
-5. Add independent fixtures for long and short trades, stop and target exits, same-candle ambiguity, adverse gaps, final-candle close, rounding, and ledger reconciliation.
-6. Run integration tests against a disposable Supabase project before applying any migration to a production project.
-7. Keep the UI explicit that simulated results are not evidence of future live performance and do not reward P/L alone.
+## Before calling the simulator release-ready
+
+1. Apply `20261012210000_paper_trade_ledger.sql` to a disposable Supabase project first; compare the migration ledger and run schema/grant/RLS checks.
+2. Run the opt-in integration suite with two dedicated test accounts and confirm the tests actually ran rather than skipped.
+3. Verify account A cannot read, change, or infer account B's sessions and that malformed, stale, concurrent, and replayed advancement requests cannot skip candles or duplicate outcomes.
+4. Add independent fixtures for long and short plans, invalid directional prices, stop and target exits, same-candle ambiguity, adverse gaps, final-candle close, decimal rounding, and P/L reconciliation.
+5. Decide and document instrument specifications and costs before supporting instrument-specific sizing or adding orders, positions, fills, and an append-only ledger-event model.
+6. Test sign-out/account switching, saved-session recovery, and error/loading states on mobile and desktop.
+7. Keep the UI explicit that results are synthetic educational simulations, not broker records, live signals, or evidence of future performance.
 
 ## Safety statement
 
