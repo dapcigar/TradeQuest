@@ -47,6 +47,8 @@ const accessibility = read('docs/ACCESSIBILITY.md');
 const contentRegister = read('docs/CONTENT_REVIEW_REGISTER.md');
 const appSource = read('src/App.tsx');
 const styles = read('src/styles.css');
+const riskSource = read('src/risk.ts');
+const riskTests = read('src/risk.test.ts');
 const workflow = read('.github/workflows/ci.yml');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -96,6 +98,8 @@ for (const [label, content, phrases] of [
   ['Accessibility navigation', appSource, ['href="#main-content"', 'id="main-content"', 'aria-label={titleMap[view]}', 'mainContentRef.current?.focus({ preventScroll: true })', 'aria-controls="primary-navigation"', 'aria-expanded={mobileNav}', "aria-current={view === item.id ? 'page' : undefined}"]],
   ['Accessibility focus styles', styles, ['a:focus-visible', 'select:focus-visible', '.skip-link:focus', 'prefers-reduced-motion:reduce']],
   ['Accessibility manual audit', accessibility, ['Keyboard only', 'Screen reader', '200% zoom', '320 CSS-pixel viewport width']],
+  ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
+  ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
 ]) {
   const lower = content.toLowerCase();

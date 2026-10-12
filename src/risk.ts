@@ -24,8 +24,16 @@ export function calculateRisk(input: RiskInput): RiskResult {
   if (entry === stop) throw new Error('Entry and stop must be different.');
   const riskBudget = equity * (riskPercent / 100);
   const distance = Math.abs(entry - stop);
-  const units = riskBudget / (distance * unitsPerPrice);
-  return { riskBudget, distance, units, estimatedLoss: units * distance * unitsPerPrice };
+  const exposurePerUnit = distance * unitsPerPrice;
+  if (![riskBudget, distance, exposurePerUnit].every(Number.isFinite) || riskBudget <= 0 || distance <= 0 || exposurePerUnit <= 0) {
+    throw new Error('These values are outside the calculator safe numeric range.');
+  }
+  const units = riskBudget / exposurePerUnit;
+  const estimatedLoss = units * exposurePerUnit;
+  if (![units, estimatedLoss].every(Number.isFinite) || units <= 0 || estimatedLoss <= 0) {
+    throw new Error('These values are outside the calculator safe numeric range.');
+  }
+  return { riskBudget, distance, units, estimatedLoss };
 }
 
 export type RewardRiskResult = { riskDistance: number; rewardDistance: number; ratio: number };
@@ -43,5 +51,9 @@ export function calculateRewardRisk(input: { entry: number; stop: number; target
   }
   const riskDistance = Math.abs(entry - stop);
   const rewardDistance = Math.abs(target - entry);
-  return { riskDistance, rewardDistance, ratio: rewardDistance / riskDistance };
+  const ratio = rewardDistance / riskDistance;
+  if (![riskDistance, rewardDistance, ratio].every(Number.isFinite) || riskDistance <= 0 || rewardDistance <= 0 || ratio <= 0) {
+    throw new Error('These values are outside the calculator safe numeric range.');
+  }
+  return { riskDistance, rewardDistance, ratio };
 }

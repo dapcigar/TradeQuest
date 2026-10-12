@@ -14,6 +14,11 @@ describe('calculateRisk', () => {
     expect(() => calculateRisk({ equity: 1000, riskPercent: 1, entry: 100, stop: 100, unitsPerPrice: 1 })).toThrow();
   });
 
+  it('rejects finite inputs whose intermediate risk arithmetic overflows or underflows', () => {
+    expect(() => calculateRisk({ equity: Number.MAX_VALUE, riskPercent: 100, entry: 3, stop: 1, unitsPerPrice: Number.MAX_VALUE })).toThrow(/safe numeric range/);
+    expect(() => calculateRisk({ equity: Number.MIN_VALUE, riskPercent: Number.MIN_VALUE, entry: 2, stop: 1, unitsPerPrice: 1 })).toThrow(/safe numeric range/);
+  });
+
   it('rejects invalid risk percentages', () => {
     expect(() => calculateRisk({ equity: 1000, riskPercent: 101, entry: 100, stop: 90, unitsPerPrice: 1 })).toThrow();
   });
@@ -28,6 +33,11 @@ describe('calculateRewardRisk', () => {
   it('supports a short example with target below entry', async () => {
     const { calculateRewardRisk } = await import('./risk');
     expect(calculateRewardRisk({ entry: 100, stop: 110, target: 80 }).ratio).toBe(2);
+  });
+
+  it('rejects reward/risk ratios that overflow despite finite prices', async () => {
+    const { calculateRewardRisk } = await import('./risk');
+    expect(() => calculateRewardRisk({ entry: 1e-300, stop: 1e-308, target: 1e308 })).toThrow(/safe numeric range/);
   });
 
   it('rejects targets on the wrong side of the entry', async () => {
