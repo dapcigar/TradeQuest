@@ -69,6 +69,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Anonymous Adaptive Practice remains browser-local; signed-in Adaptive Practice uses server-scored account attempts. Verify the UI keeps those modes distinct and never presents an anonymous local score as account-derived mastery.
 - [ ] Signed-in weekly plans and private journals sync through the account; anonymous weekly plans and demo journal records remain browser-local. Verify the UI clearly communicates this separation.
 - [ ] Persistent paper-trade sessions and append-only session transition events are implemented, but a full order/fill ledger and instrument-accurate P/L remain unfinished. Validate trigger atomicity, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
+- [ ] The generic risk calculator rejects intermediate overflow/underflow. It remains a price-distance estimate; instrument-specific increments, costs, margin, and contract-accurate P/L are unsupported until instrument specifications are approved.
 - [ ] Add an end-to-end smoke path covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export, and restore.
 - [ ] Establish a small release note and known-limitations section for each launch.
 - [ ] Re-check this list after any auth, schema, scoring, or storage change.
