@@ -283,21 +283,23 @@ app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, re
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
   const db = req.learnerDb!;
-  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult] = await Promise.all([
+  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
     db.from('progress_events').select('event_id, event_key, xp_awarded, recorded_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('recorded_at', { ascending: true }).limit(10000),
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('chart_dojo_attempts').select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('decision_journal_entries').select('id, title, scenario_id, decision, thesis, invalidation, risk_plan, reflection, lesson_learned, created_at, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
     db.from('paper_trade_sessions').select('id, scenario_id, direction, entry_price, stop_price, target_price, virtual_equity, risk_percent, risk_budget, units, current_index, status, exit_price, exit_reason, pnl, version, created_at, updated_at, closed_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
+    db.from('weekly_practice_plans').select('week_start, target, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('week_start', { ascending: true }).limit(10000),
+    db.from('weekly_practice_sessions').select('week_start, session_date, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('session_date', { ascending: true }).limit(10000),
   ]);
-  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult];
+  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
   const failed = results.find(result => result.error);
   if (failed?.error) {
     logError('Account learning data export failed.', failed.error);
     return res.status(503).json({ error: 'Account learning data could not be exported right now.' });
   }
-  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult];
+  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
   if (collections.some(result => result.count !== null && result.count > (result.data?.length ?? 0))) {
     return res.status(413).json({ error: 'This account has more records than one export can safely include. No partial export was created.' });
   }
@@ -317,6 +319,8 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
       chartDojoAttempts: dojoResult.data ?? [],
       decisionJournalEntries: journalResult.data ?? [],
       paperTradeSessions: paperResult.data ?? [],
+      weeklyPracticePlans: weeklyPlansResult.data ?? [],
+      weeklyPracticeSessions: weeklySessionsResult.data ?? [],
     },
   });
 });
