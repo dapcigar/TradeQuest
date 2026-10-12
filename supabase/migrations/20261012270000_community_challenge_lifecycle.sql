@@ -263,25 +263,35 @@ begin
   return pg_catalog.jsonb_build_object(
     'entries', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-        'entryId', e.entry_id, 'challengeId', e.challenge_id, 'title', c.title,
-        'handle', p.handle, 'displayName', p.display_name, 'reflection', e.reflection,
-        'rubricMet', e.rubric_met, 'createdAt', e.created_at
-      ) order by e.created_at asc)
-      from public.community_challenge_entries e
-      join public.community_challenges c on c.challenge_id = e.challenge_id
-      join public.community_profiles p on p.user_id = e.user_id
-      where e.is_public = true and e.moderation_status = 'pending'
+        'entryId', q.entry_id, 'challengeId', q.challenge_id, 'title', q.title,
+        'handle', q.handle, 'displayName', q.display_name, 'reflection', q.reflection,
+        'rubricMet', q.rubric_met, 'createdAt', q.created_at
+      ) order by q.created_at asc)
+      from (
+        select e.entry_id, e.challenge_id, c.title, p.handle, p.display_name,
+          e.reflection, e.rubric_met, e.created_at
+        from public.community_challenge_entries e
+        join public.community_challenges c on c.challenge_id = e.challenge_id
+        join public.community_profiles p on p.user_id = e.user_id
+        where e.is_public = true and e.moderation_status = 'pending'
+        order by e.created_at asc limit 100
+      ) q
     ), '[]'::jsonb),
     'reports', coalesce((
       select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-        'reportId', r.report_id, 'entryId', r.entry_id, 'category', r.category,
-        'details', r.details, 'createdAt', r.created_at, 'handle', p.handle,
-        'entryReflection', e.reflection
-      ) order by r.created_at asc)
-      from public.community_reports r
-      join public.community_challenge_entries e on e.entry_id = r.entry_id
-      join public.community_profiles p on p.user_id = e.user_id
-      where r.status = 'open'
+        'reportId', q.report_id, 'entryId', q.entry_id, 'category', q.category,
+        'details', q.details, 'createdAt', q.created_at, 'handle', q.handle,
+        'entryReflection', q.reflection
+      ) order by q.created_at asc)
+      from (
+        select r.report_id, r.entry_id, r.category, r.details, r.created_at,
+          p.handle, e.reflection
+        from public.community_reports r
+        join public.community_challenge_entries e on e.entry_id = r.entry_id
+        join public.community_profiles p on p.user_id = e.user_id
+        where r.status = 'open'
+        order by r.created_at asc limit 100
+      ) q
     ), '[]'::jsonb)
   );
 end;
