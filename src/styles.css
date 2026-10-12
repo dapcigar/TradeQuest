@@ -309,3 +309,11 @@
 .community-moderation-item p,.community-moderation-item blockquote{margin:8px 0;font-size:11px;line-height:1.65;color:#667386;overflow-wrap:anywhere}
 .community-moderation-item blockquote{padding-left:10px;border-left:2px solid #d9e2dc}
 @media(max-width:900px){.community-challenge-layout{grid-template-columns:minmax(0,1fr)}}
+
+/* User-defined synthetic execution assumptions */
+.paper-lab-assumptions{margin:16px 0;padding:12px;border:1px solid #dfe7e1;border-radius:10px;background:#f8faf8}
+.paper-lab-assumptions>summary{cursor:pointer;font:700 12px Manrope,sans-serif;color:#314638}
+.paper-lab-assumptions>.form-footnote{margin:9px 0;font-size:10px;line-height:1.65;color:#68786e}
+.paper-lab-assumptions input{width:100%;min-width:0}
+.paper-lab-position dl div{align-items:flex-start}
+.paper-lab-position dd{max-width:65%;text-align:right;overflow-wrap:anywhere}
