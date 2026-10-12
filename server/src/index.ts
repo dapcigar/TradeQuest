@@ -642,6 +642,39 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
   })) });
 });
 
+app.get('/v1/chart-dojo/attempts/adaptive-summary', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const positiveOutcomes: Record<string, string> = {
+    'TQ-SYN-019': 'disciplined', 'TQ-SYN-020': 'disciplined',
+    'TQ-SYN-021': 'evidence-led', 'TQ-SYN-022': 'evidence-led',
+    'TQ-SYN-023': 'risk-aware', 'TQ-SYN-024': 'risk-aware',
+  };
+  const scenarioIds = Object.keys(positiveOutcomes);
+  const result = await collectAllPages(async (from, to) => await req.learnerDb!.from('chart_dojo_attempts')
+    .select('scenario_id, outcome, submitted_at')
+    .eq('user_id', req.learnerId!)
+    .in('scenario_id', scenarioIds)
+    .order('submitted_at', { ascending: true })
+    .order('attempt_id', { ascending: true })
+    .range(from, to));
+  if (result.error) {
+    logError('Adaptive practice history could not be loaded completely.', result.error);
+    return res.status(500).json({ error: 'Complete adaptive practice history could not be loaded. Please retry shortly.' });
+  }
+  const attempts = result.data ?? [];
+  const summaries = scenarioIds.map(scenarioId => {
+    const matching = attempts.filter(attempt => attempt.scenario_id === scenarioId);
+    const positiveCount = matching.filter(attempt => attempt.outcome === positiveOutcomes[scenarioId]).length;
+    return {
+      scenarioId,
+      attemptCount: matching.length,
+      positiveCount,
+      lastSubmittedAt: matching.at(-1)?.submitted_at ?? null,
+    };
+  });
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ summaries, historyScope: 'all-retained-adaptive-attempts', historyComplete: true });
+});
+
 app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = attemptSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid attempt payload.', details: parsed.error.flatten() });
