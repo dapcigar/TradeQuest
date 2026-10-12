@@ -5,6 +5,7 @@ import { parseLearningImport, restoreLearningImport, type LearningImport } from 
 import { clearLocalLearningData } from './learningDataControls';
 import type { Session } from '@supabase/supabase-js';
 export type WeeklyPlan = { week:string; target:number; completedDates:string[] };
+export function dateKey(date:Date):string { return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'); }
 const storageKey='tradequest-weekly-practice-plan-v1';
 export function weekKey(date:Date):string { const copy=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));const day=copy.getUTCDay()||7;copy.setUTCDate(copy.getUTCDate()-day+1);return copy.toISOString().slice(0,10); }
 export function normaliseWeeklyPlan(value:unknown,currentWeek:string):WeeklyPlan {
@@ -38,7 +39,7 @@ export default function WeeklyPracticePlan({ session }: { session: Session | nul
   return ()=>{active=false;};
  },[session?.access_token,currentWeek,planReloadKey]);
  const [pendingImport,setPendingImport]=useState<LearningImport|null>(null);const [importError,setImportError]=useState('');const [importMessage,setImportMessage]=useState(''); const [clearConfirm,setClearConfirm]=useState(false); const [clearMessage,setClearMessage]=useState('');
- const today=new Date().toISOString().slice(0,10);const complete=plan.completedDates.includes(today);const progress=Math.min(100,Math.round((plan.completedDates.length/plan.target)*100));
+ const today=dateKey(new Date());const complete=plan.completedDates.includes(today);const progress=Math.min(100,Math.round((plan.completedDates.length/plan.target)*100));
  async function persist(next:WeeklyPlan){
   if(planBusy||planLoading)return;
   if(!session){
