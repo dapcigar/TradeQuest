@@ -17,14 +17,14 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Identify the exact Supabase project and branch targeted by the change; record project ref and environment (development, disposable test, or production).
 - [ ] Compare local migration files with the target project's migration ledger. Investigate every missing, duplicate, or renamed version before applying anything.
 - [ ] Review SQL changes and rollback/recovery approach. Never run speculative migration repair or mark migrations applied merely to silence a warning.
-- [ ] Apply new migrations first to a disposable project, then run schema/RLS checks and the integration suite.
+- [ ] Reconcile the connected Supabase project's migration ledger, then run schema/RLS checks and the integration suite using dedicated test accounts.
 - [ ] Do not use production or personal learner accounts for write-heavy integration tests.
 
 ### Account isolation and authoritative scoring
-- [ ] Run the opt-in integration suite against a disposable Supabase project with two dedicated test accounts; verify it actually ran rather than skipped.
+- [ ] Run the opt-in integration suite against the repository's configured Supabase/API environment with two dedicated test accounts; verify it actually ran rather than skipped.
 - [ ] Verify account A cannot read, edit, delete, or infer account B's journal, attempts, progress, adaptive practice history, or mastery.
 - [ ] Record the result of the two-account cross-account tests; a skipped integration suite is not evidence that isolation passed.
-- [ ] Run the manual GitHub Actions workflow `Disposable Supabase integration` against a disposable project using two dedicated accounts; save the successful run URL.
+- [ ] Run the manual GitHub Actions workflow `Connected Supabase integration (dedicated test accounts)` using two dedicated accounts; the suite deletes all saved learning data for Account A, so never use a real learner account. Save the successful run URL.
 - [ ] Verify database grants and RLS deny unauthorised access even when requests bypass the UI.
 - [ ] Verify retries and concurrent requests cannot duplicate XP or milestone rewards.
 - [ ] Verify invalid scenario IDs, stale versions, unknown choices, malformed inputs, and client-supplied outcome fields are rejected.

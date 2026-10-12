@@ -478,7 +478,7 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
 
     const exportA = await request('/v1/me/export', userAToken!);
     expect(exportA.status).toBe(200);
-    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; paperTradeLedgerEvents: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
+    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; paperTradeLedgerEvents: unknown[]; paperTradeFills: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
     expect(bodyA.data.progress.xp).toBe(0);
     expect(bodyA.data.progressEvents).toHaveLength(0);
     expect(bodyA.data.lessonAttempts).toHaveLength(0);
@@ -486,6 +486,7 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(bodyA.data.decisionJournalEntries).toHaveLength(0);
     expect(bodyA.data.paperTradeSessions).toHaveLength(0);
     expect(bodyA.data.paperTradeLedgerEvents).toHaveLength(0);
+    expect(bodyA.data.paperTradeFills).toHaveLength(0);
     expect(bodyA.data.weeklyPracticePlans).toHaveLength(0);
     expect(bodyA.data.weeklyPracticeSessions).toHaveLength(0);
 

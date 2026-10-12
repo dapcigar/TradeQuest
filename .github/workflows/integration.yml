@@ -1,10 +1,10 @@
-name: Disposable Supabase integration
+name: Connected Supabase integration (dedicated test accounts)
 
 on:
   workflow_dispatch:
     inputs:
-      confirm_disposable_environment:
-        description: "Confirm the configured API and both test accounts belong to an isolated disposable environment. The suite deletes Account A's saved learning data."
+      confirm_test_accounts:
+        description: "Confirm the configured API points to the intended connected Supabase environment and both bearer tokens belong to dedicated test accounts. The suite deletes all saved learning data for Account A and preserves Account B's data."
         required: true
         type: boolean
         default: false
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tradequest-disposable-integration-${{ github.ref }}
+  group: tradequest-connected-supabase-integration-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -31,12 +31,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Require explicit disposable-environment confirmation
+      - name: Require explicit dedicated-test-account confirmation
         env:
-          CONFIRM_DISPOSABLE: ${{ inputs.confirm_disposable_environment }}
+          CONFIRM_TEST_ACCOUNTS: ${{ inputs.confirm_test_accounts }}
         run: |
-          if [ "$CONFIRM_DISPOSABLE" != "true" ]; then
-            echo "::error::Confirm that this endpoint and both accounts are disposable before running destructive integration tests."
+          if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
+            echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
             exit 1
           fi
       - name: Require all dedicated test secrets
@@ -49,16 +49,25 @@ jobs:
             fi
           done
           echo "All required integration secrets are present; secret values are not printed."
-      - name: Reject production-looking integration targets
+      - name: Validate configured API URL without exposing secrets
+        shell: bash
         run: |
           node --input-type=module <<'NODE'
-          const { hostname } = new URL(process.env.TRADEQUEST_TEST_API_URL);
-          const safeHost = /(^localhost$|^127\.0\.0\.1$|(^|[.-])(test|staging|preview)([.-]|$)|-git-)/i.test(hostname);
-          if (!safeHost) {
-            console.error('::error::Refusing an API hostname that is not recognizably non-production: ' + hostname);
+          const raw = process.env.TRADEQUEST_TEST_API_URL;
+          let url;
+          try { url = new URL(raw); } catch {
+            console.error('::error::TRADEQUEST_TEST_API_URL must be a valid absolute URL.');
             process.exit(1);
           }
-          console.log('Non-production hostname guard passed: ' + hostname);
+          if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+            console.error('::error::API URL must use HTTP(S) and must not include credentials, query parameters, or fragments.');
+            process.exit(1);
+          }
+          if (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) {
+            console.error('::error::Non-local integration endpoints must use HTTPS.');
+            process.exit(1);
+          }
+          console.log('Integration API URL format validated; host and credentials are not printed.');
           NODE
       - run: npm install
       - name: Run the two-account API integration suite

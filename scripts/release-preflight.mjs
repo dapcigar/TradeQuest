@@ -52,6 +52,7 @@ const riskTests = read('src/risk.test.ts');
 const workflow = read('.github/workflows/ci.yml');
 const integrationWorkflow = read('.github/workflows/integration.yml');
 const paperFillMigration = read('supabase/migrations/20261012250000_paper_trade_fill_ledger.sql');
+const paperFillContractTests = read('server/src/paper-trade-fill-migration.test.ts');
 const packageJson = JSON.parse(read('package.json'));
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
@@ -104,7 +105,8 @@ for (const [label, content, phrases] of [
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
   ['Paper trade fill ledger', paperFillMigration, ['create table if not exists public.paper_trade_fills', 'enable row level security', 'revoke all on public.paper_trade_fills', 'unique (session_id, fill_sequence)', 'on conflict (session_id, fill_type) do nothing', 'paper_trade_fills_on_session_change']],
-  ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_disposable_environment', 'Reject production-looking integration targets', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts']],
+  ['Paper trade fill-ledger contract tests', paperFillContractTests, ['learner roles and scoped by owner RLS', 'direction-correct sides', 'closing transaction if required outcome fields are missing', 'backfills existing open and closed sessions']],
+  ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
@@ -136,5 +138,5 @@ if (failures.length) {
 } else {
   console.log('TradeQuest release preflight passed.');
   console.log('Verified ' + actualFiles.length + ' migration files are listed once, in filename order, in README and the M2 plan.');
-  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI and disposable integration wiring, and tracked secret/backup filename guard.');
+  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI and connected-Supabase test-account integration wiring, and tracked secret/backup filename guard.');
 }
