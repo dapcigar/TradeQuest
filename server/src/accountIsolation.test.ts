@@ -31,7 +31,7 @@ describe('API routes keep each learner\'s data separate', () => {
   it('exports only private account data and prevents browser/proxy caching', () => {
     const exportHandler = handlers.find(h => h.route === '/v1/me/export')!;
     expect(exportHandler.source).toContain("res.setHeader('Cache-Control', 'no-store')");
-    expect(exportHandler.source).toContain("eq('user_id', learnerId)");
+    expect(exportHandler.source).toContain("eq('user_id', req.learnerId!)");
     expect(exportHandler.source).toContain('decisionJournalEntries');
     expect(exportHandler.source).toContain('paperTradeSessions');
     expect(exportHandler.source).not.toMatch(/service[_-]?role/i);
