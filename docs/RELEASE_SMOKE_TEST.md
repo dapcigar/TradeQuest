@@ -97,12 +97,17 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 
 ## Accessibility and responsive checks
 
+- [ ] Tab from page load and activate Skip to main content; confirm focus moves to the main landmark.
+- [ ] Change views from the navigation and from an in-page card; confirm focus moves to the labelled main landmark and the new page heading is discoverable.
 - [ ] Navigate the main menu, forms, filters, and confirmation actions using only Tab, Shift+Tab, Enter, Space, and Escape where appropriate.
+- [ ] Open the mobile menu and verify aria-expanded changes, the control relationship is announced, the active page is identified, and the close action remains reachable.
 - [ ] Focus remains visible and moves sensibly when dialogs or confirmation panels open and close.
 - [ ] Inputs have accessible names; validation errors and save/import/delete outcomes are announced by assistive technology.
 - [ ] Use a screen reader to verify page headings, navigation landmarks, progress values, and status messages.
-- [ ] Check contrast, zoom/reflow, touch target size, and long text at mobile widths.
+- [ ] Check contrast, zoom/reflow at 200% and 320 CSS-pixel width, touch target size, and long text at mobile widths.
 - [ ] Enable reduced motion and confirm no essential information depends on animation.
+
+See docs/ACCESSIBILITY.md for the full manual audit checklist and evidence fields.
 
 ## Evidence and release decision
 
