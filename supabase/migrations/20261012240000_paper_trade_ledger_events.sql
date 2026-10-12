@@ -103,6 +103,7 @@ select s.user_id, s.id, s.version, 'session_closed', s.current_index,
   pg_catalog.jsonb_build_object(
     'scenarioId', s.scenario_id, 'direction', s.direction, 'entryPrice', s.entry_price,
     'stopPrice', s.stop_price, 'targetPrice', s.target_price, 'virtualEquity', s.virtual_equity,
+    'virtualEquityAfter', s.virtual_equity + coalesce(s.pnl, 0),
     'riskPercent', s.risk_percent, 'riskBudget', s.risk_budget, 'units', s.units,
     'currentIndex', s.current_index, 'status', s.status, 'exitPrice', s.exit_price,
     'exitReason', s.exit_reason, 'pnl', s.pnl, 'version', s.version
