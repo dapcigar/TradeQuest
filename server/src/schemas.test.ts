@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -160,5 +160,20 @@ describe('community challenge schemas', () => {
     expect(communityModerationActionSchema.safeParse({ action: 'hide', reason: 'Contains personal information.' }).success).toBe(true);
     expect(communityModerationActionSchema.safeParse({ action: 'publish', reason: 'Looks fine' }).success).toBe(false);
     expect(communityModerationActionSchema.safeParse({ action: 'hide', reason: 'x' }).success).toBe(false);
+  });
+});
+
+
+describe('community editorial review schema', () => {
+  it('accepts only explicit decisions with a bounded reason', () => {
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'approve', reason: 'Reviewed against the approved process rubric.' }).success).toBe(true);
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'revision-needed', reason: 'Clarify the invalidation example.' }).success).toBe(true);
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'publish', reason: 'Looks good' }).success).toBe(false);
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'retire', reason: 'x' }).success).toBe(false);
+  });
+
+  it('rejects caller-supplied reviewer identities or content publication flags', () => {
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'approve', reason: 'Reviewed content.', reviewerId: 'attacker' }).success).toBe(false);
+    expect(communityEditorialReviewSchema.safeParse({ decision: 'approve', reason: 'Reviewed content.', published: true }).success).toBe(false);
   });
 });
