@@ -75,6 +75,8 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 - [ ] While signed in as Account A, export server-stored account learning data and confirm it includes only Account A's progress, attempts, private journal entries, and saved paper sessions.
 - [ ] Confirm the account export contains no authentication tokens, passwords, service-role credentials, or Account B records, and the response uses `Cache-Control: no-store`.
 - [ ] Confirm an export that exceeds the supported size limit fails clearly rather than returning a partial file.
+- [ ] In the disposable environment, sign in as Account A, type `DELETE_MY_LEARNING_DATA`, and confirm only Account A's saved learning rows are deleted; Account A remains signed in and Account B's records remain intact.
+- [ ] Confirm server-data deletion does not clear browser-local practice data or delete the Supabase Auth identity; use the separate local-data control to clear browser records if desired.
 - [ ] Confirm the export contains no authentication tokens, passwords, server journal entries, or unrelated browser storage.
 - [ ] Restore a valid test export and verify that only included, allowlisted local categories are replaced.
 - [ ] Try an oversized or malformed export and confirm it is rejected with a clear message.
