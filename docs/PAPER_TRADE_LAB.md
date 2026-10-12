@@ -7,10 +7,10 @@ The Paper Trade Lab is a short, synthetic learning exercise. The learner chooses
 - Candle values are hard-coded fictional units, not live or licensed historical market data.
 - The API signs continuation tokens with the server-only `REPLAY_CURSOR_SECRET` and binds them to the authenticated learner.
 - The client receives the current candle and the signed continuation token, not the future candle sequence.
-- Position size is calculated as `risk budget / absolute entry-to-stop distance`, assuming one unit of account-currency P/L per fictional price unit.
-- The exercise assumes an immediate fill at the supplied entry. It does not model pending orders, partial fills, margin, or contract-specific sizing.
+- Position size is calculated from user-defined tick value, spread, per-side commission/slippage and lot increment; leverage/contract size cap the estimated margin. The default generic model retains one account-currency unit per fictional price unit.
+- The exercise assumes an immediate market-style entry; the fill ledger records effective prices after the configured half-spread and per-side slippage. It models an estimated margin requirement but not margin calls/liquidation, pending orders, or partial fills.
 - If stop and target are touched in the same candle, the stop is assumed first. For an adverse gap beyond the stop, the simulated exit uses the candle open. A target touch uses the target price.
-- Fees, spread, currency conversion, and ordinary slippage are excluded. Planned risk is not a guaranteed maximum loss.
+- Spread, commission and slippage are included only according to the user-defined model; the default model sets them to zero. Currency conversion and gap-through loss are not modelled. Planned risk is not a guaranteed maximum loss.
 - If neither stop nor target is reached by the final candle, the session closes at the final candle close as a teaching-only end-of-sequence rule.
 
 ## Persistence and replay boundary
