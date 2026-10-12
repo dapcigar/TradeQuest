@@ -23,10 +23,10 @@ The simulator records an append-only **session state-transition ledger** (`sessi
 
 ## Before calling the simulator release-ready
 
-1. Apply the paper-trade session migration and `20261012240000_paper_trade_ledger_events.sql` to a disposable Supabase project first; compare the migration ledger and run schema/grant/RLS checks.
+1. Apply the paper-trade session migration, `20261012240000_paper_trade_ledger_events.sql`, and `20261012250000_paper_trade_fill_ledger.sql` to a disposable Supabase project first; compare the migration ledger and run schema/grant/RLS checks.
 2. Run the opt-in integration suite with two dedicated test accounts and confirm the tests actually ran rather than skipped.
 3. Verify account A cannot read, change, or infer account B's sessions and that malformed, stale, concurrent, and replayed advancement requests cannot skip candles or duplicate outcomes.
-4. Add independent fixtures for long and short plans, invalid directional prices, stop and target exits, same-candle ambiguity, adverse gaps, final-candle close, decimal rounding, and P/L reconciliation.
+4. Add independent fixtures for long and short plans, entry/exit fill side, fill idempotency, invalid directional prices, stop and target exits, same-candle ambiguity, adverse gaps, final-candle close, decimal rounding, and fill/session P/L reconciliation.
 5. Decide and document instrument specifications and costs before supporting instrument-specific sizing, real order types, partial fills, or a full order/fill ledger.
 6. Test sign-out/account switching, saved-session recovery, and error/loading states on mobile and desktop.
 7. Keep the UI explicit that results are synthetic educational simulations, not broker records, live signals, or evidence of future performance.
