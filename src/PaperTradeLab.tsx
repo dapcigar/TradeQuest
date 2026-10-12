@@ -4,11 +4,12 @@ import type { Session } from '@supabase/supabase-js';
 
 type Candle = { index: number; open: number; high: number; low: number; close: number };
 type PaperResponse = {
-  scenarioId: string; label: string; candle: Candle; totalCandles: number; complete: boolean; nextToken: string | null;
+  sessionId: string; version: number; currentIndex: number; scenarioId: string; label: string; candle: Candle; candles: Candle[]; totalCandles: number; complete: boolean;
   position: { direction: 'long' | 'short'; entry: number; stop: number; target: number; units: number; riskBudget: number; virtualEquity: number };
   outcome: { exitPrice: number; reason: 'stop' | 'target' | 'ambiguous-stop-first' | 'sequence-end'; pnl: number; virtualEquityAfter: number } | null;
   policy: string;
 };
+type SavedSession = { sessionId: string; direction: 'long' | 'short'; currentIndex: number; status: 'open' | 'closed'; pnl: number | null; exitReason: string | null; createdAt: string; closedAt: string | null; version: number };
 const money = (value: number) => value.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
 
 export default function PaperTradeLab({ session }: { session: Session | null }) {
@@ -22,11 +23,44 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
   const [result, setResult] = useState<PaperResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const base = import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 
   useEffect(() => {
+    let cancelled = false;
     setCandles([]); setResult(null); setError(''); setBusy(false);
+    if (!session) { setSavedSessions([]); setLoadingSessions(false); return () => { cancelled = true; }; }
+    setLoadingSessions(true);
+    fetch(base + '/v1/paper-lab/sessions', { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' })
+      .then(async response => {
+        const body = await response.json() as { sessions?: SavedSession[]; error?: string };
+        if (!response.ok || !Array.isArray(body.sessions)) throw new Error(body.error || 'Saved sessions could not load. Apply the paper trade ledger migration.');
+        if (!cancelled) setSavedSessions(body.sessions);
+      }).catch(error => { if (!cancelled) setError(error instanceof Error ? error.message : 'Saved sessions could not load.'); })
+      .finally(() => { if (!cancelled) setLoadingSessions(false); });
+    return () => { cancelled = true; };
   }, [session?.access_token]);
+
+  async function refreshSessions() {
+    if (!session) return;
+    const response = await fetch(base + '/v1/paper-lab/sessions', { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
+    const body = await response.json() as { sessions?: SavedSession[]; error?: string };
+    if (!response.ok || !Array.isArray(body.sessions)) throw new Error(body.error || 'Saved sessions could not load.');
+    setSavedSessions(body.sessions);
+  }
+
+  async function openSavedSession(sessionId: string) {
+    if (!session) return;
+    setBusy(true); setError('');
+    try {
+      const response = await fetch(base + '/v1/paper-lab/sessions/' + sessionId, { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
+      const body = await response.json() as PaperResponse | { error?: string };
+      if (!response.ok || !('candle' in body) || !Array.isArray(body.candles)) throw new Error(('error' in body && body.error) || 'Saved session could not be opened.');
+      setResult(body); setCandles(body.candles);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Saved session could not be opened.'); }
+    finally { setBusy(false); }
+  }
 
   async function start() {
     if (!session) return;
@@ -37,8 +71,8 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
         body: JSON.stringify({ direction, equity: Number(equity), riskPercent: Number(riskPercent), entry: Number(entry), stop: Number(stop), target: Number(target) }), cache: 'no-store',
       });
       const body = await response.json() as PaperResponse | { error?: string };
-      if (!response.ok || !('candle' in body)) throw new Error(('error' in body && body.error) || 'Paper trade could not start.');
-      setResult(body); setCandles([body.candle]);
+      if (!response.ok || !('candle' in body) || !Array.isArray(body.candles)) throw new Error(('error' in body && body.error) || 'Paper trade could not start.');
+      setResult(body); setCandles(body.candles); await refreshSessions();
     } catch (e) { setError(e instanceof Error ? e.message : 'Paper trade could not start.'); }
     finally { setBusy(false); }
   }
@@ -49,11 +83,11 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
     try {
       const response = await fetch(base + '/v1/paper-lab/synthetic-basics/step', {
         method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: result.nextToken }), cache: 'no-store',
+        body: JSON.stringify({ sessionId: result.sessionId, expectedVersion: result.version }), cache: 'no-store',
       });
       const body = await response.json() as PaperResponse | { error?: string };
-      if (!response.ok || !('candle' in body)) throw new Error(('error' in body && body.error) || 'Paper trade could not continue.');
-      setCandles(previous => [...previous, body.candle]); setResult(body);
+      if (!response.ok || !('candle' in body) || !Array.isArray(body.candles)) throw new Error(('error' in body && body.error) || 'Paper trade could not continue.');
+      setCandles(body.candles); setResult(body); await refreshSessions();
     } catch (e) { setError(e instanceof Error ? e.message : 'Paper trade could not continue.'); }
     finally { setBusy(false); }
   }
@@ -75,14 +109,15 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
         <label className="field-label" htmlFor="paper-target">Target</label><input id="paper-target" type="number" min="0.01" step="0.1" value={target} onChange={e => setTarget(e.target.value)} />
         <button className="btn-primary full-button" type="button" onClick={() => void start()} disabled={busy}>{busy ? <LoaderCircle size={15} /> : <Play size={15} />} Start synthetic session</button>
         {error && <p className="feedback" role="alert">{error}</p>}
+        <div className="paper-lab-saved"><h3>Saved sessions</h3>{loadingSessions ? <p role="status">Loading saved sessions…</p> : savedSessions.length === 0 ? <p>No saved sessions yet.</p> : <ul>{savedSessions.map(item => <li key={item.sessionId}><button type="button" className="text-link" onClick={() => void openSavedSession(item.sessionId)} disabled={busy}>{item.direction.toUpperCase()} · {item.status === 'open' ? 'In progress' : (item.exitReason || 'Completed')} · {new Date(item.createdAt).toLocaleDateString('en-GB')}{item.pnl !== null ? ' · ' + money(item.pnl) : ''}</button></li>)}</ul>}</div>
         <p className="form-footnote"><CircleHelp size={14} /> This exercise assumes an immediate fill at your entry. It excludes fees, spread and ordinary slippage; adverse gaps are modelled at the candle open. Same-candle stop/target ambiguity resolves conservatively, stop first.</p>
       </section>
       <section className="panel paper-lab-chart" aria-labelledby="paper-chart-title"><div className="candle-lesson-heading"><div><div className="eyebrow">SYNTHETIC PAPER TRADE</div><h2 id="paper-chart-title">Reveal the sequence</h2><p>{result ? result.label + ' · Candle ' + (result.candle.index + 1) + ' of ' + result.totalCandles : 'Start a plan to reveal the first candle.'}</p></div><span className="candle-data-label">NO FUTURE CANDLES PRELOADED</span></div>
         {candles.length > 0 ? <svg viewBox="0 0 520 190" role="img" aria-label={'Synthetic paper trade chart showing ' + candles.length + ' revealed candles only'} style={{ width: '100%', height: 'auto', display: 'block' }}>{[35,75,115,155].map(line => <line key={line} x1="12" y1={line} x2="508" y2={line} className="chart-grid" />)}{candles.map(c => { const x = 28 + c.index * 40; const top = Math.min(y(c.open), y(c.close)); const h = Math.max(3, Math.abs(y(c.open) - y(c.close))); const up = c.close >= c.open; return <g key={c.index}><line x1={x} y1={y(c.high)} x2={x} y2={y(c.low)} className={up ? 'wick up' : 'wick down'} /><rect x={x - 7} y={top} width="14" height={h} rx="1.5" className={up ? 'candle up' : 'candle down'} /><text x={x} y="184" textAnchor="middle" className="chart-label">{c.index + 1}</text></g>; })}<text x="12" y="10" className="chart-label">FICTIONAL PRICE UNITS · REVEALED DATA ONLY</text></svg> : <p role="status">No candles revealed yet.</p>}
         {result && <div className="paper-lab-position"><h3>Plan snapshot</h3><dl><div><dt>Direction</dt><dd>{result.position.direction}</dd></div><div><dt>Estimated size*</dt><dd>{result.position.units.toLocaleString('en-GB', { maximumFractionDigits: 4 })} units</dd></div><div><dt>Risk budget*</dt><dd>{money(result.position.riskBudget)}</dd></div><div><dt>Entry / stop / target</dt><dd>{result.position.entry} / {result.position.stop} / {result.position.target}</dd></div></dl></div>}
         {result?.complete && result.outcome && <div className="paper-lab-outcome" role="status"><div className="eyebrow">SESSION RESULT · SIMULATED ONLY</div><h3>{result.outcome.reason === 'target' ? 'Target reached' : result.outcome.reason === 'ambiguous-stop-first' ? 'Stop assumed first' : result.outcome.reason === 'stop' ? 'Stop reached' : 'Sequence ended'}</h3><p>Exit price: {result.outcome.exitPrice.toLocaleString('en-GB', { maximumFractionDigits: 4 })}</p><p>Simulated P/L: <strong>{money(result.outcome.pnl)}</strong></p><p>Virtual equity after: <strong>{money(result.outcome.virtualEquityAfter)}</strong></p><small>{result.policy}</small><button className="btn-outline" type="button" onClick={() => { setCandles([]); setResult(null); setError(''); }}><RotateCcw size={15} /> New session</button></div>}
-        {result && !result.complete && <div className="candle-result"><div><strong>What does the evidence show?</strong><p>The outcome is not known in advance. Reveal only the next candle and review the plan as new information appears.</p></div><button className="btn-primary" type="button" onClick={() => void revealNext()} disabled={busy || !result.nextToken}>{busy ? <LoaderCircle size={15} /> : <Play size={15} />} Reveal next candle</button></div>}
-        <p className="form-footnote">* Simplified position sizing assumes one unit of account-currency P/L per fictional price unit. This session is temporary and not saved to your account.</p>
+        {result && !result.complete && <div className="candle-result"><div><strong>What does the evidence show?</strong><p>The outcome is not known in advance. Reveal only the next candle and review the plan as new information appears.</p></div><button className="btn-primary" type="button" onClick={() => void revealNext()} disabled={busy || result.complete}>{busy ? <LoaderCircle size={15} /> : <Play size={15} />} Reveal next candle</button></div>}
+        <p className="form-footnote">* Simplified position sizing assumes one unit of account-currency P/L per fictional price unit. Saved sessions belong to your learner account; they are not broker records or real trades.</p>
       </section>
     </div>
   </div>;
