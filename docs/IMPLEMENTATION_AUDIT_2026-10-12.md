@@ -33,7 +33,7 @@ For each of these PRs, GitHub Actions passed npm run test, npm run build, npm ru
 
 ### P0 — Must be evidenced before production
 
-1. **Disposable Supabase integration validation.** Reconcile the target project's migration ledger, apply the checked-in migrations in order to a disposable project, and run the opt-in two-account API integration suite with dedicated test accounts. The latest paper-trade fill migration (20261012250000_paper_trade_fill_ledger.sql) needs live database validation, including entry/exit trigger atomicity, backfill, RLS isolation, export inclusion, deletion cascade, P/L reconciliation, and idempotent retry behaviour.
+1. **Connected Supabase integration validation.** Use the repository's configured Supabase/API environment with two dedicated test accounts and run the opt-in two-account suite. It deletes all learning data for Account A and must never use a real learner account. The latest paper-trade fill migration (20261012250000_paper_trade_fill_ledger.sql) still needs live database validation, including entry/exit trigger atomicity, backfill, RLS isolation, export inclusion, deletion cascade, P/L reconciliation, and idempotent retry behaviour. Static migration contract tests now protect key grants, RLS, trigger, backfill, and uniqueness invariants; these do not replace runtime database checks.
 2. **Two-account security evidence.** Verify User A cannot read, export, alter, or delete User B's progress, attempts, journal entries, weekly plan, paper sessions, transition ledger, or fill ledger, and vice versa. Unit tests and CI do not prove live RLS isolation.
 3. **Backup/restore rehearsal.** Follow the production runbook against a disposable environment and record actual restore evidence, rollback steps, and recovery ownership.
 4. **Deployment evidence.** Vercel has been returning api-deployments-free-per-day because the project exceeded the free-tier daily deployment limit. This is an external deployment constraint, not a passing deployment. Recheck deployment after the quota window resets or after the deployment limit is resolved.
@@ -59,7 +59,7 @@ Until those decisions are made, keep simulation labels synthetic, do not introdu
 
 ## Recommended next sequence
 
-1. Run the latest migrations and two-account integration suite against a disposable Supabase project; fix every observed schema, RLS, trigger, and export/deletion issue.
+1. Confirm the checked-in migrations are applied to the connected Supabase project, then run the two-account integration suite using dedicated test accounts; fix every observed schema, RLS, trigger, and export/deletion issue.
 2. Execute and record the release smoke checklist and backup/restore rehearsal.
 3. Resolve the Vercel deployment quota and verify the deployed commit and API smoke command.
 4. Agree the supported instrument/cost model before implementing instrument-accurate orders or P/L.
