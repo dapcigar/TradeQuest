@@ -11,15 +11,15 @@ const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 const allMigrations = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
   .map(file => read('../../supabase/migrations', file)).join('\n');
 
-const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries', 'paper_trade_sessions'];
+const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries', 'paper_trade_sessions', 'weekly_practice_plans', 'weekly_practice_sessions'];
 
 // Route handlers, split on the app.get/app.post declarations.
-const handlers = indexSource.split(/\n(?=app\.(?:get|post)\()/).filter(chunk => chunk.startsWith('app.'))
-  .map(chunk => ({ route: chunk.match(/^app\.(?:get|post)\('([^']+)'/)![1], source: chunk }));
+const handlers = indexSource.split(/\n(?=app\.(?:get|post|put|patch|delete)\()/).filter(chunk => chunk.startsWith('app.'))
+  .map(chunk => ({ route: chunk.match(/^app\.(?:get|post|put|patch|delete)\('([^']+)'/)![1], source: chunk }));
 
 describe('API routes keep each learner\'s data separate', () => {
   it('finds the learner routes', () => {
-    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export', '/v1/me/delete-learning-data']));
+    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export', '/v1/me/delete-learning-data', '/v1/weekly-plan', '/v1/weekly-plan/session']));
   });
 
   it('requires a verified learner on every /v1 route', () => {
@@ -34,6 +34,8 @@ describe('API routes keep each learner\'s data separate', () => {
     expect(exportHandler.source).toContain("eq('user_id', req.learnerId!)");
     expect(exportHandler.source).toContain('decisionJournalEntries');
     expect(exportHandler.source).toContain('paperTradeSessions');
+    expect(exportHandler.source).toContain('weeklyPracticePlans');
+    expect(exportHandler.source).toContain('weeklyPracticeSessions');
     expect(exportHandler.source).not.toMatch(/service[_-]?role/i);
     expect(exportHandler.source).not.toContain('access_token:');
     expect(exportHandler.source).toContain('No partial export was created');
@@ -118,6 +120,33 @@ describe('database policies keep attempts private and answer keys server-only', 
     expect(grants.length).toBeGreaterThan(0);
     for (const grant of grants) expect(grant[1]).not.toMatch(/answer_key/);
     expect(allMigrations).not.toMatch(/grant select on public\.chart_dojo_scenarios to (anon|authenticated)/i);
+  });
+});
+
+describe('account-backed weekly practice plan', () => {
+  it('uses authenticated RPCs and non-cacheable responses for every weekly plan route', () => {
+    for (const route of ['/v1/weekly-plan', '/v1/weekly-plan/session']) {
+      const matches = handlers.filter(handler => handler.route === route);
+      expect(matches.length, route).toBeGreaterThan(0);
+      for (const handler of matches) {
+        expect(handler.source, route).toContain('requireLearner');
+        expect(handler.source, route).toContain("setHeader('Cache-Control', 'no-store')");
+      }
+    }
+    expect(handlers.find(handler => handler.route === '/v1/weekly-plan')!.source).toContain("rpc('get_weekly_practice_plan'");
+    expect(handlers.find(handler => handler.route === '/v1/weekly-plan/session')!.source).toContain("rpc('set_weekly_practice_session'");
+  });
+
+  it('enables RLS and prevents direct client writes to weekly plan tables', () => {
+    expect(allMigrations).toMatch(/alter table public\.weekly_practice_plans enable row level security/i);
+    expect(allMigrations).toMatch(/alter table public\.weekly_practice_sessions enable row level security/i);
+    expect(allMigrations).toMatch(/create policy "Learners read own weekly practice plans" on public\.weekly_practice_plans\s+for select to authenticated using \(auth\.uid\(\) = user_id\)/i);
+    expect(allMigrations).toMatch(/revoke all on public\.weekly_practice_plans from anon, authenticated/i);
+    expect(allMigrations).toMatch(/revoke all on public\.weekly_practice_sessions from anon, authenticated/i);
+    expect(allMigrations).toMatch(/grant execute on function public\.set_weekly_practice_target\(date,integer\) to authenticated/i);
+    expect(allMigrations).toMatch(/grant execute on function public\.set_weekly_practice_session\(date,date,boolean\) to authenticated/i);
+    expect(allMigrations).toContain('delete from public.weekly_practice_sessions where user_id = v_user_id');
+    expect(allMigrations).toContain('delete from public.weekly_practice_plans where user_id = v_user_id');
   });
 });
 
