@@ -21,6 +21,7 @@ grant insert (user_id, handle, display_name, bio, is_public)
   on public.community_profiles to authenticated;
 grant update (user_id, handle, display_name, bio, is_public)
   on public.community_profiles to authenticated;
+grant delete on public.community_profiles to authenticated;
 
 drop policy if exists "Learners read own or public community profiles" on public.community_profiles;
 create policy "Learners read own or public community profiles" on public.community_profiles
@@ -31,6 +32,9 @@ create policy "Learners create own community profile" on public.community_profil
 drop policy if exists "Learners update own community profile" on public.community_profiles;
 create policy "Learners update own community profile" on public.community_profiles
   for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Learners delete own community profile" on public.community_profiles;
+create policy "Learners delete own community profile" on public.community_profiles
+  for delete to authenticated using (auth.uid() = user_id);
 
 create or replace function public.set_community_profile_updated_at() returns trigger
 language plpgsql set search_path = '' as $$
