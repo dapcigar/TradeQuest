@@ -19,6 +19,6 @@ describe('backtesting evidence literacy', () => {
     const content = backtestingQuestions.map(question => question.prompt + ' ' + question.explanation + ' ' + question.options.map(option => option.label).join(' ')).join(' ').toLowerCase();
     expect(content).toContain('overfitting');
     expect(content).toContain('out-of-sample');
-    expect(content).toContain('does not guarantee future results');
+    expect(content).toContain('cannot guarantee future results');
   });
 });
