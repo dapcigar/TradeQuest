@@ -49,6 +49,8 @@ const appSource = read('src/App.tsx');
 const styles = read('src/styles.css');
 const riskSource = read('src/risk.ts');
 const riskTests = read('src/risk.test.ts');
+const apiSource = read('server/src/index.ts');
+const rateLimitMigration = read('supabase/migrations/20261012250000_shared_user_rate_limits.sql');
 const workflow = read('.github/workflows/ci.yml');
 const integrationWorkflow = read('.github/workflows/integration.yml');
 const packageJson = JSON.parse(read('package.json'));
@@ -101,6 +103,8 @@ for (const [label, content, phrases] of [
   ['Accessibility manual audit', accessibility, ['Keyboard only', 'Screen reader', '200% zoom', '320 CSS-pixel viewport width']],
   ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
+  ['Shared account rate limits', apiSource, ["rpc('consume_user_rate_limit'", 'enforceSharedRateLimit', "res.status(429)", "res.setHeader('Retry-After'"]],
+  ['Shared rate-limit migration', rateLimitMigration, ['enable row level security', 'revoke all on public.api_rate_limit_windows', 'create or replace function public.consume_user_rate_limit', 'grant execute on function public.consume_user_rate_limit(text) to authenticated']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
   ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_disposable_environment', 'Reject production-looking integration targets', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts']],
 ]) {
@@ -134,5 +138,5 @@ if (failures.length) {
 } else {
   console.log('TradeQuest release preflight passed.');
   console.log('Verified ' + actualFiles.length + ' migration files are listed once, in filename order, in README and the M2 plan.');
-  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI and disposable integration wiring, and tracked secret/backup filename guard.');
+  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, shared account rate limits, CI and disposable integration wiring, and tracked secret/backup filename guard.');
 }
