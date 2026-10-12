@@ -278,7 +278,7 @@ function App() {
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
     overview: 'Mission control', learn: 'Your learning path', practice: 'Chart dojo',
-    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance', trend: 'Trend structure',
+    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance', trend: 'Trend structure', breakout: 'Breakouts & false breakouts',
   };
 
   function awardXPOnce(actionId: string, amount: number) {
