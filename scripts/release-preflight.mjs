@@ -86,6 +86,7 @@ const curriculumModules = [
   ['Adaptive practice', 'src/AdaptivePractice.tsx', 'src/adaptivePractice.test.ts'],
   ['Synthetic replay', 'src/ReplayLab.tsx', 'src/replayCheckpoint.test.ts'],
   ['Synthetic paper trade', 'src/PaperTradeLab.tsx', 'server/src/chart-dojo.integration.test.ts'],
+  ['Community challenge rubrics', 'supabase/migrations/20261012270000_community_challenge_lifecycle.sql', 'server/src/community-challenge-migration.test.ts'],
 ];
 
 for (const [label, sourcePath, testPath] of curriculumModules) {
