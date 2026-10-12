@@ -49,6 +49,17 @@ jobs:
             fi
           done
           echo "All required integration secrets are present; secret values are not printed."
+      - name: Reject production-looking integration targets
+        run: |
+          node --input-type=module <<'NODE'
+          const { hostname } = new URL(process.env.TRADEQUEST_TEST_API_URL);
+          const safeHost = /(^localhost$|^127\\.0\\.0\\.1$|(^|[.-])(test|staging|preview)([.-]|$)|-git-)/i.test(hostname);
+          if (!safeHost) {
+            console.error('::error::Refusing an API hostname that is not recognizably non-production: ' + hostname);
+            process.exit(1);
+          }
+          console.log('Non-production hostname guard passed: ' + hostname);
+          NODE
       - run: npm install
       - name: Run the two-account API integration suite
         run: npm run test -- server/src/chart-dojo.integration.test.ts
