@@ -39,21 +39,22 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 ## Supabase setup (development project only)
 
 1. Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins.
-2. Apply migrations 001–006 in numeric order:
+2. Review and apply SQL migrations in lexicographic filename order to a development project:
    - `supabase/migrations/202610110001_m2_learner_progress.sql`
    - `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
    - `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
    - `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
    - `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
    - `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
+   - `supabase/migrations/202610110011_risk_budget_reasoning.sql`
    - `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
    - `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
    - `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
    - `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
-   - `supabase/migrations/202610110011_risk_budget_reasoning.sql`
+   - `supabase/migrations/20261011200000_decision_journal.sql`
    - `supabase/migrations/20261012201500_adaptive_practice_server_scenarios.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
-4. Start the API and Vite frontend, then test with two dedicated test accounts.
+4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
 Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project. See the M2 implementation plan for the opt-in integration test setup.
 
