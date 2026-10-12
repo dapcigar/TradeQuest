@@ -282,3 +282,30 @@
 .community-empty p{max-width:280px;margin:0;font-size:11px;line-height:1.7;color:#718078}
 .community-data-note{margin-top:14px}
 @media(max-width:900px){.community-layout{grid-template-columns:minmax(0,1fr)}}
+
+/* Community challenge entries and moderation */
+.community-challenges-section{margin-top:26px;padding-top:24px;border-top:1px solid #e8ece8}
+.community-challenge-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:18px;align-items:start}
+.community-challenge-editor h3{margin:12px 0 6px;font:700 17px Manrope,sans-serif;color:#263549}
+.community-challenge-intro{margin:0 0 10px;font-size:11px;line-height:1.7;color:#6c7888}
+.community-challenge-rubric{margin-top:12px;padding:12px;border:1px solid #e2e9e3;border-radius:8px;background:#f7faf7}
+.community-challenge-rubric strong{font-size:11px;color:#334b3d}
+.community-challenge-rubric p{margin:6px 0 0;font-size:10px;line-height:1.65;color:#667568}
+.community-challenge-side{min-width:0}
+.community-entry-list{display:grid;gap:10px}
+.community-entry-card{padding:14px;min-width:0}
+.community-entry-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.community-entry-card h4{margin:11px 0 6px;font:700 13px Manrope,sans-serif;color:#263549}
+.community-entry-card>p{margin:0 0 10px;font-size:11px;line-height:1.7;color:#5e6c7e;white-space:pre-wrap;overflow-wrap:anywhere}
+.community-entry-status{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0;font-size:10px;color:#6b7b70}
+.community-entry-status small{color:#8993a0}
+.community-entry-card>.btn-outline{display:inline-flex;align-items:center;gap:6px;margin-top:2px}
+.community-public-feed{margin-top:24px}
+.community-public-feed .community-section-heading h3,.community-moderation .community-section-heading h3{margin:0;font:700 16px Manrope,sans-serif;color:#263549}
+.community-report-form{margin-top:12px;padding-top:12px;border-top:1px solid #e8ece8}
+.community-moderation{margin-top:24px}
+.community-moderation-item{padding:14px 0;border-top:1px solid #e8ece8}
+.community-moderation-item strong{font-size:12px;color:#2d3d4f}
+.community-moderation-item p,.community-moderation-item blockquote{margin:8px 0;font-size:11px;line-height:1.65;color:#667386;overflow-wrap:anywhere}
+.community-moderation-item blockquote{padding-left:10px;border-left:2px solid #d9e2dc}
+@media(max-width:900px){.community-challenge-layout{grid-template-columns:minmax(0,1fr)}}
