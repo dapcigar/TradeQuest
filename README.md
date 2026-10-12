@@ -19,6 +19,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - First server-scored lesson: spread basics.
 - Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of synthetic scenarios (three originals plus six unseen variants, see `docs/TRANSFER_PRACTICE.md`); answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice, server-scored spread-basics quiz attempts, and risk-calculator participation. It recommends the least-practised Chart Dojo skill, uses positive-decision rates only as a tie-breaker, and labels small samples as low-confidence. Risk-calculator use is tracked as participation, not mastery.
+- The Paper Trade Lab runs a server-calculated, learner-bound synthetic scenario. It reveals one candle per request, calculates hypothetical size/P&L on the API, and uses a conservative stop-first rule for same-candle stop/target ambiguity. Sessions are temporary and are not a persistent trade ledger; see `docs/PAPER_TRADE_LAB.md`.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
 
@@ -60,4 +61,4 @@ npm run build
 npm run api:build
 ```
 
-See `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
+See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
