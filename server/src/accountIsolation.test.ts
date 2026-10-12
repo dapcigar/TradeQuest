@@ -11,7 +11,7 @@ const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 const allMigrations = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
   .map(file => read('../../supabase/migrations', file)).join('\n');
 
-const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries'];
+const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries', 'paper_trade_sessions'];
 
 // Route handlers, split on the app.get/app.post declarations.
 const handlers = indexSource.split(/\n(?=app\.(?:get|post)\()/).filter(chunk => chunk.startsWith('app.'))
@@ -136,6 +136,21 @@ describe('mastery summaries are computed only from the rows passed in', () => {
     const b = buildMastery([{ scenario_id: 'TQ-SYN-002', outcome: 'risk-exceeded', submitted_at: at(1) }]);
     expect(a.skills.find(s => s.skillId === 'risk-management')!.successRate).toBe(100);
     expect(b.skills.find(s => s.skillId === 'risk-management')!.successRate).toBe(0);
+  });
+});
+
+describe('paper trade session database privacy', () => {
+  it('enables RLS and permits learners to read only their own sessions', () => {
+    expect(allMigrations).toMatch(/alter table public\\.paper_trade_sessions enable row level security/i);
+    expect(allMigrations).toMatch(/create policy "Learners read own paper trade sessions" on public\\.paper_trade_sessions\\s+for select to authenticated using \\(auth\\.uid\\(\\) = user_id\\)/i);
+    expect(allMigrations).not.toMatch(/grant (?:insert|update|delete|all) on public\\.paper_trade_sessions to authenticated/i);
+  });
+
+  it('exposes only authenticated server-side session transition functions', () => {
+    expect(allMigrations).toMatch(/create or replace function public\\.start_paper_trade_session[\\s\\S]*?security definer set search_path = ''/i);
+    expect(allMigrations).toMatch(/create or replace function public\\.advance_paper_trade_session[\\s\\S]*?security definer set search_path = ''/i);
+    expect(allMigrations).toMatch(/grant execute on function public\\.advance_paper_trade_session\\(uuid,integer\\) to authenticated/i);
+    expect(allMigrations).toMatch(/if v_hit_stop and v_hit_target then[\\s\\S]*?ambiguous-stop-first/i);
   });
 });
 
