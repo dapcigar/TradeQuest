@@ -104,3 +104,9 @@ export const communityModerationActionSchema = z.object({
   action: z.enum(['approve', 'hide', 'remove']),
   reason: z.string().trim().min(3).max(500),
 }).strict();
+
+
+export const communityEditorialReviewSchema = z.object({
+  decision: z.enum(['approve', 'revision-needed', 'retire']),
+  reason: z.string().trim().min(3).max(500),
+}).strict();
