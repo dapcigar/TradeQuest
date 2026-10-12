@@ -119,6 +119,13 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(fillsBody.fills[1].reason).toBeTruthy();
     const privateFills = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/fills', userBToken!);
     expect(privateFills.status).toBe(404);
+    const fillExport = await request('/v1/me/export', userAToken!);
+    expect(fillExport.status).toBe(200);
+    expect(fillExport.headers.get('cache-control')).toContain('no-store');
+    const fillExportBody = await fillExport.json() as { data: { paperTradeFills: Array<{ sessionId: string; type: string; user_id?: string }> } };
+    expect(fillExportBody.data.paperTradeFills.some(fill => fill.sessionId === startBody.sessionId && fill.type === 'entry')).toBe(true);
+    expect(fillExportBody.data.paperTradeFills.some(fill => fill.sessionId === startBody.sessionId && fill.type === 'exit')).toBe(true);
+    expect(fillExportBody.data.paperTradeFills.every(fill => fill.user_id === undefined)).toBe(true);
   });
 
   it('syncs weekly practice plans only to the owning learner', async () => {
