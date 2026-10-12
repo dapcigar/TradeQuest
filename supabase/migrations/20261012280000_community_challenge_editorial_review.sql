@@ -117,6 +117,20 @@ begin
     reviewed_at = pg_catalog.now(),
     review_reason = pg_catalog.btrim(p_reason)
   where challenge_id = p_challenge_id;
+  if p_decision <> 'approve' then
+    update public.community_challenge_entries set
+      is_public = false,
+      moderation_status = case when moderation_status = 'pending' then 'approved' else moderation_status end
+    where challenge_id = p_challenge_id and is_public = true;
+    update public.community_reports set
+      status = 'resolved',
+      resolved_by = v_user_id,
+      resolved_at = pg_catalog.now(),
+      resolution_reason = 'Challenge unpublished during editorial review: ' || pg_catalog.btrim(p_reason)
+    where status = 'open' and entry_id in (
+      select entry_id from public.community_challenge_entries where challenge_id = p_challenge_id
+    );
+  end if;
   insert into public.community_challenge_reviews(
     challenge_id, reviewer_user_id, decision, previous_status, new_status,
     previous_published, new_published, content_version, reason
