@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
@@ -25,7 +25,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', env.WEB_ORIGIN);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Headers', 'authorization,content-type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -179,6 +179,55 @@ app.get('/v1/paper-lab/sessions/:id', requireLearner, async (req: AuthedRequest,
 });
 
 // Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
+app.get('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('get_my_community_profile');
+  if (error) {
+    logError('Community profile could not be loaded.', error);
+    return res.status(503).json({ error: 'Community profile is temporarily unavailable. Check that the community profile migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ profile: data ?? null });
+});
+
+app.post('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = communityProfileSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid community profile.', details: parsed.error.flatten() });
+  const d = parsed.data;
+  const { data, error } = await req.learnerDb!.rpc('save_my_community_profile', {
+    p_handle: d.handle, p_display_name: d.displayName, p_bio: d.bio, p_is_public: d.isPublic,
+  });
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'That community handle is already in use. Choose another one.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Invalid community profile.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community profile could not be saved.', error);
+    return res.status(503).json({ error: 'Community profile could not be saved. Check that the community profile migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ profile: data });
+});
+
+app.delete('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { error } = await req.learnerDb!.rpc('delete_my_community_profile');
+  if (error) {
+    logError('Community profile could not be deleted.', error);
+    return res.status(503).json({ error: 'Community profile could not be deleted. Check that the community profile migration is applied.' });
+  }
+  return res.sendStatus(204);
+});
+
+app.get('/v1/community/profiles', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('community_profiles')
+    .select('handle, display_name, bio, updated_at')
+    .eq('is_public', true).order('updated_at', { ascending: false }).limit(50);
+  if (error) {
+    logError('Public community profiles could not be loaded.', error);
+    return res.status(503).json({ error: 'Community profiles are temporarily unavailable. Check that the community profile migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ profiles: (data ?? []).map(item => ({ handle: item.handle, displayName: item.display_name, bio: item.bio, updatedAt: item.updated_at })) });
+});
+
 app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('chart_dojo_scenarios')
     .select('scenario_id, version, title, prompt, chart_data, choices')

@@ -20,11 +20,12 @@ import AssetClassLiteracy from './AssetClassLiteracy';
 import TradePlanLiteracy from './TradePlanLiteracy';
 import ReplayLab from './ReplayLab';
 import PaperTradeLab from './PaperTradeLab';
+import CommunityProfile from './CommunityProfile';
 import {
   Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
   LockKeyhole, Menu, Play, ShieldCheck, Sparkles, Target, Trophy,
-  Wallet, X, Zap,
+  Wallet, X, Zap, Users,
 } from 'lucide-react';
 import { calculateRewardRisk, calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
@@ -38,7 +39,7 @@ import { useModalFocus } from './useModalFocus';
 import { describeEvidence, describeTransfer, type ApplicationBucket, type EvidenceBucket } from './masteryDisplay';
 import type { Session } from '@supabase/supabase-js';
 
-type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure' | 'trend' | 'breakout' | 'risk-reward' | 'leverage' | 'position-sizing' | 'drawdown' | 'psychology' | 'execution' | 'conditions' | 'backtesting' | 'assets' | 'trade-plan' | 'replay' | 'paper';
+type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure' | 'trend' | 'breakout' | 'risk-reward' | 'leverage' | 'position-sizing' | 'drawdown' | 'psychology' | 'execution' | 'conditions' | 'backtesting' | 'assets' | 'trade-plan' | 'replay' | 'paper' | 'community';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
 type MasterySummary = {
   skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string; distinctScenarios: number; scenariosAvailable: number; recall: EvidenceBucket; application: ApplicationBucket; lastPractisedAt: string | null; reviewStatus: string; firstAttemptPositive: boolean | null; delayedReviewAttempts: number; retentionStatus: string }>;
@@ -313,6 +314,7 @@ function App() {
     { id: 'adaptive', label: 'Adaptive practice', icon: Sparkles },
     { id: 'weekly', label: 'Weekly practice plan', icon: CalendarDays, section: 'BUILD A ROUTINE' }, 
     { id: 'challenges', label: 'Solo challenges', icon: Trophy, section: 'PRACTICE CHALLENGES' },
+    { id: 'community', label: 'Community profile', icon: Users, section: 'COMMUNITY' },
     { id: 'progress', label: 'Skill tree', icon: Award },
   ];
 
@@ -322,7 +324,7 @@ function App() {
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
     overview: 'Mission control', learn: 'Your learning path', practice: 'Chart dojo',
-    risk: 'Risk simulator', paper: 'Paper trade lab', challenges: 'Solo challenges', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance', trend: 'Trend structure', breakout: 'Breakouts & false breakouts', 'risk-reward': 'Risk and reward', leverage: 'Leverage and margin', 'position-sizing': 'Position sizing', drawdown: 'Drawdown and losing streaks', psychology: 'Trading psychology', execution: 'Order types and execution', conditions: 'Liquidity, volatility and sessions', backtesting: 'Backtesting and evidence quality', assets: 'Understanding asset classes', 'trade-plan': 'Trade planning and no-trade decisions', replay: 'Synthetic replay lab',
+    risk: 'Risk simulator', paper: 'Paper trade lab', challenges: 'Solo challenges', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance', trend: 'Trend structure', breakout: 'Breakouts & false breakouts', 'risk-reward': 'Risk and reward', leverage: 'Leverage and margin', 'position-sizing': 'Position sizing', drawdown: 'Drawdown and losing streaks', psychology: 'Trading psychology', execution: 'Order types and execution', conditions: 'Liquidity, volatility and sessions', backtesting: 'Backtesting and evidence quality', assets: 'Understanding asset classes', 'trade-plan': 'Trade planning and no-trade decisions', replay: 'Synthetic replay lab', community: 'Community profile',
   };
 
   function awardXPOnce(actionId: string, amount: number) {
@@ -573,6 +575,7 @@ function App() {
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} onRetryQuiz={() => { setQuizChoice(''); setQuizSubmitted(false); setQuizResult(null); setQuizError(''); }} accountMode={Boolean(session)} />}
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'journal' && <JournalView session={session} scenarioId={activeScenarioId} />}
+          {view === 'community' && <CommunityProfile session={session} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}
           {view === 'adaptive' && <AdaptivePractice session={session} />}
           {view === 'weekly' && <WeeklyPracticePlan session={session} />}
           {view === 'review' && <ReviewQueue signedIn={Boolean(session)} mastery={session ? mastery : null} message={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}

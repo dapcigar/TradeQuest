@@ -449,6 +449,56 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(afterDeleteBody.entries.some(entry => entry.id === entryId)).toBe(false);
   });
 
+  it('keeps community profiles private by default and publishes only opted-in profile fields', async () => {
+    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+    const handleA = 'qa_' + suffix;
+    const handleB = 'qb_' + suffix;
+    try {
+      const saveA = await request('/v1/community/profile', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ handle: handleA, displayName: 'QA Profile A', bio: 'Opt-in public test profile', isPublic: true }),
+      });
+      expect(saveA.status).toBe(200);
+      const savedA = await saveA.json() as { profile: Record<string, unknown> };
+      expect(savedA.profile).toMatchObject({ handle: handleA, displayName: 'QA Profile A', bio: 'Opt-in public test profile', isPublic: true });
+      expect(savedA.profile.user_id).toBeUndefined();
+      expect(savedA.profile.email).toBeUndefined();
+
+      const saveB = await request('/v1/community/profile', userBToken!, {
+        method: 'POST',
+        body: JSON.stringify({ handle: handleB, displayName: 'QA Private B', bio: 'Must not appear in directory', isPublic: false }),
+      });
+      expect(saveB.status).toBe(200);
+
+      const publicA = await request('/v1/community/profiles', userAToken!);
+      const publicB = await request('/v1/community/profiles', userBToken!);
+      expect(publicA.status).toBe(200);
+      expect(publicB.status).toBe(200);
+      const directoryA = await publicA.json() as { profiles: Array<Record<string, unknown>> };
+      const directoryB = await publicB.json() as { profiles: Array<Record<string, unknown>> };
+      expect(directoryA.profiles.some(item => item.handle === handleA && item.displayName === 'QA Profile A')).toBe(true);
+      expect(directoryB.profiles.some(item => item.handle === handleA)).toBe(true);
+      expect(directoryB.profiles.some(item => item.handle === handleB)).toBe(false);
+      expect(JSON.stringify(directoryB)).not.toContain('Must not appear in directory');
+      expect(JSON.stringify(directoryB)).not.toContain('user_id');
+      expect(JSON.stringify(directoryB)).not.toContain('email');
+
+      const makePrivate = await request('/v1/community/profile', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ handle: handleA, displayName: 'QA Profile A', bio: 'Opt-in public test profile', isPublic: false }),
+      });
+      expect(makePrivate.status).toBe(200);
+      const refreshed = await request('/v1/community/profiles', userBToken!);
+      const refreshedBody = await refreshed.json() as { profiles: Array<{ handle: string }> };
+      expect(refreshedBody.profiles.some(item => item.handle === handleA)).toBe(false);
+    } finally {
+      await Promise.all([
+        request('/v1/community/profile', userAToken!, { method: 'DELETE' }),
+        request('/v1/community/profile', userBToken!, { method: 'DELETE' }),
+      ]);
+    }
+  });
+
   it('deletes only the current learner\'s saved learning data and keeps the account usable', async () => {
     const titleA = 'Delete data fixture A ' + crypto.randomUUID();
     const titleB = 'Delete data fixture B ' + crypto.randomUUID();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -108,5 +108,28 @@ describe('weekly practice plan schemas', () => {
     expect(weeklyPracticePlanQuerySchema.safeParse({ weekStart: '2026-02-30' }).success).toBe(false);
     expect(weeklyPracticeTargetSchema.safeParse({ weekStart: '2026-10-12', target: 4 }).success).toBe(false);
     expect(weeklyPracticeTargetSchema.safeParse({ weekStart: '2026-10-12', target: 3, userId: 'other' }).success).toBe(false);
+  });
+});
+
+
+describe('communityProfileSchema', () => {
+  const valid = { handle: 'learner_01', displayName: 'Curious Learner', bio: 'Learning the process.', isPublic: false };
+
+  it('accepts a private profile with a constrained public identity', () => {
+    expect(communityProfileSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('rejects uppercase, short, long, or unsafe handles and oversized profile fields', () => {
+    expect(communityProfileSchema.safeParse({ ...valid, handle: 'UpperCase' }).success).toBe(false);
+    expect(communityProfileSchema.safeParse({ ...valid, handle: 'ab' }).success).toBe(false);
+    expect(communityProfileSchema.safeParse({ ...valid, handle: 'learner.name' }).success).toBe(false);
+    expect(communityProfileSchema.safeParse({ ...valid, displayName: 'x' }).success).toBe(false);
+    expect(communityProfileSchema.safeParse({ ...valid, bio: 'x'.repeat(281) }).success).toBe(false);
+  });
+
+  it('rejects caller-supplied ownership fields and requires explicit visibility', () => {
+    expect(communityProfileSchema.safeParse({ ...valid, userId: 'attacker' }).success).toBe(false);
+    const { isPublic: _visibility, ...withoutVisibility } = valid;
+    expect(communityProfileSchema.safeParse(withoutVisibility).success).toBe(false);
   });
 });

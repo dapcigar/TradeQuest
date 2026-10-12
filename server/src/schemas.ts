@@ -79,3 +79,10 @@ export const weeklyPracticeSessionSchema = z.object({
   sessionDate: isoDateSchema,
   completed: z.boolean(),
 }).strict();
+
+export const communityProfileSchema = z.object({
+  handle: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{2,19}$/, 'Use 3–20 lowercase letters, numbers, underscores, or hyphens.'),
+  displayName: z.string().trim().min(2).max(40),
+  bio: z.string().trim().max(280).default(''),
+  isPublic: z.boolean(),
+}).strict();
