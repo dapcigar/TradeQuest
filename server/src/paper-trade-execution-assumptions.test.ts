@@ -26,6 +26,11 @@ describe('paper-trade execution assumptions migration contract', () => {
     expect(migration).toMatch(/v_margin_required > p_virtual_equity or v_estimated_stop_loss > v_risk_budget/i);
   });
 
+  it('refreshes legacy cached responses on replay without advancing a session', () => {
+    expect(migration).toMatch(/v_session\.last_response #>> '\{position,instrumentSpec\}' is null/i);
+    expect(migration).toMatch(/update public\.paper_trade_sessions set last_response = v_response where id = p_session_id/i);
+  });
+
   it('uses effective fill prices for P/L and records the same prices in the fill ledger', () => {
     expect(migration).toMatch(/v_entry_fill_price := v_session\.entry_price \+ v_direction_factor \* v_execution_cost_ticks \* v_session\.tick_size/i);
     expect(migration).toMatch(/v_exit_fill_price := v_exit_price - v_direction_factor \* v_execution_cost_ticks \* v_session\.tick_size/i);
