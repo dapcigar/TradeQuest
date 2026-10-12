@@ -19,6 +19,18 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 - Record the backup timestamp, project reference, migration ledger version, operator, artifact location, and retention/expiry date.
 - If a complete backup and restore path cannot be established, stop before a destructive or difficult-to-reverse migration.
 
+## Disposable two-account integration workflow
+
+The manual GitHub Actions workflow **Disposable Supabase integration** runs the opt-in API suite without allowing the normal pull-request test job to silently count a skipped suite as a pass.
+
+Before running it:
+
+- Deploy the API against a disposable Supabase project with all migrations applied and required synthetic scenarios seeded.
+- Create two dedicated test accounts. The suite deletes Account A's saved learning data at the end, so neither account may contain real learner data.
+- Configure these repository Actions secrets: `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`. Never paste token values into workflow inputs or logs.
+- Run Actions → **Disposable Supabase integration** and explicitly confirm the disposable environment. A missing confirmation or secret causes the workflow to fail before running tests.
+- Save the successful workflow run URL in the release evidence record. A skipped suite or missing credentials is not a successful isolation test.
+
 ## 3. Restore rehearsal
 
 1. Restore the backup into a disposable Supabase project or other approved isolated target. Do not overwrite production to test recovery.
