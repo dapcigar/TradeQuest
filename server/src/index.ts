@@ -39,6 +39,32 @@ function logError(message: string, err: unknown) {
 
 type AuthedRequest =Request & { learnerId?: string; learnerDb?: SupabaseClient };
 
+type SharedRateLimitBucket = 'learning_write' | 'paper_trade_start' | 'paper_trade_step' | 'journal_write' | 'weekly_plan_write' | 'account_export' | 'delete_learning_data';
+const SHARED_RATE_LIMIT_RETRY_SECONDS: Record<SharedRateLimitBucket, number> = {
+  learning_write: 60,
+  paper_trade_start: 60,
+  paper_trade_step: 60,
+  journal_write: 60,
+  weekly_plan_write: 60,
+  account_export: 3600,
+  delete_learning_data: 3600,
+};
+
+async function enforceSharedRateLimit(req: AuthedRequest, res: Response, bucket: SharedRateLimitBucket): Promise<boolean> {
+  const { data, error } = await req.learnerDb!.rpc('consume_user_rate_limit', { p_bucket: bucket });
+  if (error) {
+    logError('Shared rate-limit check failed.', error);
+    res.status(503).json({ error: 'This action is temporarily unavailable. Please retry shortly.' });
+    return false;
+  }
+  if (data !== true) {
+    res.setHeader('Retry-After', String(SHARED_RATE_LIMIT_RETRY_SECONDS[bucket]));
+    res.status(429).json({ error: 'Rate limit reached. Please wait before trying again.' });
+    return false;
+  }
+  return true;
+}
+
 async function requireLearner(req: AuthedRequest, res: Response, next: NextFunction) {
   const token = getBearerToken(req.header('authorization'));
   if (!token) return res.status(401).json({ error: 'Authentication required.' });
@@ -90,6 +116,7 @@ app.get('/v1/replay/synthetic-basics', requireLearner, (req: AuthedRequest, res:
 
 // Persistent server-owned paper trade sessions. Database RPCs own sizing, fills, outcomes and version checks.
 app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'paper_trade_start'))) return;
   const parsed = paperTradePlanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade plan.' });
   const d = parsed.data;
@@ -108,6 +135,7 @@ app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, async (req: Aut
 });
 
 app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'paper_trade_step'))) return;
   const parsed = paperTradeStepSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade continuation.' });
   const { data, error } = await req.learnerDb!.rpc('advance_paper_trade_session', {
@@ -193,6 +221,7 @@ app.get('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res: 
 });
 
 app.post('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'journal_write'))) return;
   const parsed = decisionJournalSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid journal entry.' });
   const d = parsed.data;
@@ -205,6 +234,7 @@ app.post('/v1/decision-journal', requireLearner, async (req: AuthedRequest, res:
 });
 
 app.patch('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'journal_write'))) return;
   const parsed = decisionJournalPatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid journal update.' });
   const d = parsed.data;
@@ -226,6 +256,7 @@ app.patch('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest,
 });
 
 app.delete('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'journal_write'))) return;
   const { data, error } = await req.learnerDb!.from('decision_journal_entries').delete()
     .eq('id', req.params.id).eq('user_id', req.learnerId!).select('id').maybeSingle();
   if (error) { logError('Decision journal entry could not be deleted.', error); return res.status(400).json({ error: 'Journal entry could not be deleted.' }); }
@@ -235,6 +266,7 @@ app.delete('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest
 
 // Destructive self-service action: clears saved learning records, not the auth identity.
 app.post('/v1/me/delete-learning-data', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'delete_learning_data'))) return;
   const parsed = deleteLearningDataSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Confirm deletion of saved learning data to continue.' });
   const { data, error } = await req.learnerDb!.rpc('delete_own_learning_data');
@@ -263,6 +295,7 @@ app.get('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Respo
 });
 
 app.put('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'weekly_plan_write'))) return;
   const parsed = weeklyPracticeTargetSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Choose a supported weekly target and valid week.' });
   const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_target', {
@@ -279,6 +312,7 @@ app.put('/v1/weekly-plan', requireLearner, async (req: AuthedRequest, res: Respo
 });
 
 app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'weekly_plan_write'))) return;
   const parsed = weeklyPracticeSessionSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'A valid week, session date, and completion state are required.' });
   const { data, error } = await req.learnerDb!.rpc('set_weekly_practice_session', {
@@ -297,6 +331,7 @@ app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, re
 // Export only the signed-in learner's application data. This endpoint deliberately
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'account_export'))) return;
   const db = req.learnerDb!;
   const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
@@ -359,6 +394,7 @@ app.get('/v1/me/progress', requireLearner, async (req: AuthedRequest, res: Respo
 });
 
 app.post('/v1/progress-events', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'learning_write'))) return;
   const parsed = progressEventSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid progress event.' });
   const { data, error } = await req.learnerDb!.rpc('record_progress_event', {
@@ -400,6 +436,7 @@ app.get('/v1/me/mastery', requireLearner, async (req: AuthedRequest, res: Respon
 });
 
 app.post('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'learning_write'))) return;
   const parsed = chartDojoAttemptSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid Chart Dojo attempt.' });
   const { data, error } = await req.learnerDb!.rpc('submit_chart_dojo_attempt', {
@@ -436,6 +473,7 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
 });
 
 app.post('/v1/lesson-attempts', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!(await enforceSharedRateLimit(req, res, 'learning_write'))) return;
   const parsed = attemptSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid attempt payload.', details: parsed.error.flatten() });
   const { data, error } = await req.learnerDb!.rpc('submit_lesson_attempt', {
