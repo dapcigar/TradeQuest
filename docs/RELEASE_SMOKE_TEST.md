@@ -2,7 +2,7 @@
 
 Use this checklist after a deployment or a change to authentication, learner progress, Chart Dojo, journal storage, or browser-local data handling.
 
-This is a **manual release check**, not proof of production readiness. Run it against a disposable/test environment with two dedicated test accounts. Do not use personal learner records or production credentials for write-heavy checks. Record the deployment URL, commit SHA, environment, tester, date, and pass/fail evidence. Never paste passwords, access tokens, journal text, or secrets into the evidence.
+This is a **manual release check**, not proof of production readiness. Run it against the repository's configured Supabase/API environment with two dedicated test accounts. Do not use personal learner records or production learner accounts for write-heavy checks. The integration suite deletes all saved learning data for Account A and verifies Account B's data remains intact. Record the deployment URL, commit SHA, environment, tester, date, and pass/fail evidence. Never paste passwords, access tokens, journal text, or secrets into the evidence.
 
 ## Automated read-only API smoke check
 
@@ -18,7 +18,7 @@ This check is intentionally narrow: it does not prove database migration status,
 
 ## Before starting
 
-- [ ] Confirm the target URL and environment are the intended test environment.
+- [ ] Confirm the configured API URL targets the intended Supabase-backed environment and both bearer tokens belong to dedicated test accounts.
 - [ ] Confirm the deployed commit matches the commit under review.
 - [ ] Confirm migrations and seed data are applied only to the disposable/test Supabase project, following [the production-readiness gates](./PRODUCTION_READINESS.md).
 - [ ] Confirm two dedicated test accounts exist (Account A and Account B).
