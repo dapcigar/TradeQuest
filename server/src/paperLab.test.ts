@@ -14,11 +14,19 @@ describe('synthetic paper trade lab', () => {
     expect(result.nextToken).toBeTruthy();
   });
   it('reveals one candle per step and closes at the target when first reached', () => {
-    let result = startPaperTrade({ plan: { ...longPlan, stop: 95, target: 105 }, secret, learnerId: 'learner-a' });
-    result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
+    let result = startPaperTrade({ plan: { ...longPlan, stop: 95, target: 107 }, secret, learnerId: 'learner-a' });
+    const firstToken = result.nextToken!;
+    result = advancePaperTrade({ token: firstToken, secret, learnerId: 'learner-a' });
     expect(result.candle.index).toBe(1);
+    expect(result.complete).toBe(false);
     result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
     expect(result.candle.index).toBe(2);
+    expect(result.complete).toBe(false);
+    result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
+    expect(result.candle.index).toBe(3);
+    expect(result.complete).toBe(false);
+    result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
+    expect(result.candle.index).toBe(4);
     expect(result.complete).toBe(true);
     expect(result.outcome?.reason).toBe('target');
   });
@@ -33,7 +41,6 @@ describe('synthetic paper trade lab', () => {
   });
   it('uses the conservative stop-first rule when stop and target share a candle', () => {
     let result = startPaperTrade({ plan: { ...longPlan, stop: 102, target: 105 }, secret, learnerId: 'learner-a' });
-    result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
     result = advancePaperTrade({ token: result.nextToken!, secret, learnerId: 'learner-a' });
     expect(result.complete).toBe(true);
     expect(result.outcome?.reason).toBe('ambiguous-stop-first');
