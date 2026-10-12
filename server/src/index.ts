@@ -134,6 +134,21 @@ app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res
   return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
 });
 
+app.get('/v1/paper-lab/sessions/:id/ledger', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const sessionId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
+  const { data, error } = await req.learnerDb!.from('paper_trade_ledger_events')
+    .select('event_id, event_sequence, event_type, session_version, candle_index, payload, created_at')
+    .eq('user_id', req.learnerId!).eq('session_id', sessionId).order('event_sequence', { ascending: true }).limit(1000);
+  if (error) {
+    logError('Paper trade ledger could not be loaded.', error);
+    return res.status(503).json({ error: 'Paper trade ledger is temporarily unavailable. Check that the ledger events migration is applied.' });
+  }
+  if (!data || data.length === 0) return res.status(404).json({ error: 'Paper trade session not found.' });
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ events: data.map(item => ({ eventId: item.event_id, sequence: item.event_sequence, eventType: item.event_type, version: item.session_version, candleIndex: item.candle_index, payload: item.payload, createdAt: item.created_at })) });
+});
+
 app.get('/v1/paper-lab/sessions/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
   const sessionId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
   if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
@@ -283,23 +298,24 @@ app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, re
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
   const db = req.learnerDb!;
-  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
+  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
     db.from('progress_events').select('event_id, event_key, xp_awarded, recorded_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('recorded_at', { ascending: true }).limit(10000),
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('chart_dojo_attempts').select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('decision_journal_entries').select('id, title, scenario_id, decision, thesis, invalidation, risk_plan, reflection, lesson_learned, created_at, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
     db.from('paper_trade_sessions').select('id, scenario_id, direction, entry_price, stop_price, target_price, virtual_equity, risk_percent, risk_budget, units, current_index, status, exit_price, exit_reason, pnl, version, created_at, updated_at, closed_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
+    db.from('paper_trade_ledger_events').select('event_id, session_id, session_version, event_type, candle_index, payload, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('event_sequence', { ascending: true }).limit(10000),
     db.from('weekly_practice_plans').select('week_start, target, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('week_start', { ascending: true }).limit(10000),
     db.from('weekly_practice_sessions').select('week_start, session_date, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('session_date', { ascending: true }).limit(10000),
   ]);
-  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
+  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, weeklyPlansResult, weeklySessionsResult];
   const failed = results.find(result => result.error);
   if (failed?.error) {
     logError('Account learning data export failed.', failed.error);
     return res.status(503).json({ error: 'Account learning data could not be exported right now.' });
   }
-  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult, weeklyPlansResult, weeklySessionsResult];
+  const collections = [eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, weeklyPlansResult, weeklySessionsResult];
   if (collections.some(result => result.count !== null && result.count > (result.data?.length ?? 0))) {
     return res.status(413).json({ error: 'This account has more records than one export can safely include. No partial export was created.' });
   }
@@ -319,6 +335,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
       chartDojoAttempts: dojoResult.data ?? [],
       decisionJournalEntries: journalResult.data ?? [],
       paperTradeSessions: paperResult.data ?? [],
+      paperTradeLedgerEvents: paperLedgerResult.data ?? [],
       weeklyPracticePlans: weeklyPlansResult.data ?? [],
       weeklyPracticeSessions: weeklySessionsResult.data ?? [],
     },
