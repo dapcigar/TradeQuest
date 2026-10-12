@@ -12,6 +12,7 @@
     "api:dev": "tsx watch server/src/index.ts",
     "api:build": "tsc -p server/tsconfig.json",
     "api:start": "node server/dist/index.js",
+    "api:smoke": "node scripts/api-smoke.mjs",
     "release:preflight": "node scripts/release-preflight.mjs"
   },
   "dependencies": {
