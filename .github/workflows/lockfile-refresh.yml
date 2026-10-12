@@ -1,0 +1,81 @@
+name: Refresh and audit npm lockfile
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_lockfile_refresh:
+        description: "Confirm that this workflow may resolve compatible npm advisories and commit package-lock.json to a ci/lockfile-refresh/* branch."
+        required: true
+        type: boolean
+        default: false
+  push:
+    branches:
+      - "ci/lockfile-refresh/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tradequest-lockfile-refresh-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require explicit lockfile refresh confirmation
+        env:
+          CONFIRM_LOCKFILE_REFRESH: ${{ inputs.confirm_lockfile_refresh }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$CONFIRM_LOCKFILE_REFRESH" != "true" ]; then
+              echo "::error::Confirm that the workflow may resolve compatible npm advisories and commit the lockfile."
+              exit 1
+            fi
+          elif [[ "$GITHUB_REF_NAME" != ci/lockfile-refresh/* ]]; then
+            echo "::error::Only ci/lockfile-refresh/* branches may trigger lockfile generation automatically."
+            exit 1
+          fi
+      - name: Generate lockfile and resolve compatible advisories
+        run: |
+          npm install --package-lock-only
+          npm install
+          npm audit fix || true
+      - name: Verify tests and production builds
+        run: |
+          npm run test
+          npm run build
+          npm run api:build
+          npm run release:preflight
+      - name: Report remaining npm advisories
+        run: |
+          npm audit --json > /tmp/tradequest-npm-audit.json || true
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('/tmp/tradequest-npm-audit.json', 'utf8'));
+          const counts = report.metadata?.vulnerabilities ?? {};
+          console.log('npm audit summary:', JSON.stringify(counts));
+          for (const [name, vulnerability] of Object.entries(report.vulnerabilities ?? {})) {
+            console.log(`${String(vulnerability.severity).toUpperCase()} ${name}; direct=${vulnerability.isDirect}; range=${vulnerability.range}; fix=${JSON.stringify(vulnerability.fixAvailable)}`);
+            for (const advisory of vulnerability.via ?? []) {
+              if (typeof advisory === 'object') console.log(`  - ${advisory.title} (${advisory.url})`);
+            }
+          }
+          if (report.error) console.log('npm audit reported an error:', report.error.code ?? 'unknown');
+          NODE
+      - name: Commit generated lockfile to the current refresh branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "No lockfile changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: refresh npm lockfile"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
