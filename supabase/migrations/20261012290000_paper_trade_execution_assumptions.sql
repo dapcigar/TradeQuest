@@ -16,8 +16,12 @@ alter table public.paper_trade_sessions
   add column if not exists exit_fill_price numeric check (exit_fill_price is null or (exit_fill_price > 0 and exit_fill_price <= 1000000000));
 
 update public.paper_trade_sessions
-set exit_fill_price = exit_price
-where status = 'closed' and exit_fill_price is null and exit_price is not null;
+set estimated_stop_loss = units * (
+      (pg_catalog.abs(entry_price - stop_price) / tick_size + spread_ticks + 2 * slippage_ticks) * tick_value
+      + 2 * commission_per_unit
+    ),
+    margin_required = entry_price * contract_size * units / leverage,
+    exit_fill_price = case when status = 'closed' then coalesce(exit_fill_price, exit_price) else exit_fill_price end;
 
 create or replace function public.paper_trade_session_payload(p_session_id uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -112,6 +116,10 @@ begin
      or (p_direction='long' and not (p_stop < p_entry and p_target > p_entry))
      or (p_direction='short' and not (p_stop > p_entry and p_target < p_entry)) then
     raise exception 'Invalid price direction for paper trade plan' using errcode = '22023';
+  end if;
+  if pg_catalog.least(p_entry, p_stop, p_target) <= (p_spread_ticks / 2 + p_slippage_ticks) * p_tick_size
+     or pg_catalog.greatest(p_entry, p_stop, p_target) + (p_spread_ticks / 2 + p_slippage_ticks) * p_tick_size > 1000000000 then
+    raise exception 'Execution assumptions imply an invalid fill price' using errcode = '22023';
   end if;
 
   v_risk_budget := p_virtual_equity * p_risk_percent / 100;
