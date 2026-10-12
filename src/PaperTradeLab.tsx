@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 type Candle = { index: number; open: number; high: number; low: number; close: number };
 type PaperResponse = {
   sessionId: string; version: number; currentIndex: number; scenarioId: string; label: string; candle: Candle; candles: Candle[]; totalCandles: number; complete: boolean;
-  position: { direction: 'long' | 'short'; entry: number; stop: number; target: number; units: number; riskBudget: number; estimatedStopLoss: number; marginRequired: number; virtualEquity: number; instrumentSpec: { label: string; tickSize: number; tickValue: number; contractSize: number; lotStep: number; spreadTicks: number; commissionPerUnit: number; slippageTicks: number; leverage: number } };
+  position: { direction: 'long' | 'short'; entry: number; stop: number; target: number; units: number; riskBudget: number; riskPercent: number; estimatedStopLoss: number; marginRequired: number; virtualEquity: number; instrumentSpec: { label: string; tickSize: number; tickValue: number; contractSize: number; lotStep: number; spreadTicks: number; commissionPerUnit: number; slippageTicks: number; leverage: number } };
   outcome: { exitPrice: number; triggerPrice: number; reason: 'stop' | 'target' | 'ambiguous-stop-first' | 'sequence-end'; pnl: number; virtualEquityAfter: number } | null;
   policy: string;
 };
@@ -105,7 +105,15 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
       const response = await fetch(base + '/v1/paper-lab/sessions/' + sessionId, { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
       const body = await response.json() as PaperResponse | { error?: string };
       if (!response.ok || !('candle' in body) || !Array.isArray(body.candles)) throw new Error(('error' in body && body.error) || 'Saved session could not be opened.');
-      setResult(body); setCandles(body.candles); await refreshLedger(sessionId); await refreshFills(sessionId);
+      setResult(body); setCandles(body.candles);
+      setDirection(body.position.direction); setEntry(String(body.position.entry)); setStop(String(body.position.stop)); setTarget(String(body.position.target));
+      setEquity(String(body.position.virtualEquity)); setRiskPercent(String(body.position.riskPercent));
+      setInstrumentLabel(body.position.instrumentSpec.label); setTickSize(String(body.position.instrumentSpec.tickSize));
+      setTickValue(String(body.position.instrumentSpec.tickValue)); setContractSize(String(body.position.instrumentSpec.contractSize));
+      setLotStep(String(body.position.instrumentSpec.lotStep)); setSpreadTicks(String(body.position.instrumentSpec.spreadTicks));
+      setCommissionPerUnit(String(body.position.instrumentSpec.commissionPerUnit)); setSlippageTicks(String(body.position.instrumentSpec.slippageTicks));
+      setLeverage(String(body.position.instrumentSpec.leverage));
+      await refreshLedger(sessionId); await refreshFills(sessionId);
     } catch (error) { setError(error instanceof Error ? error.message : 'Saved session could not be opened.'); }
     finally { setBusy(false); }
   }
