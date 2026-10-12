@@ -61,17 +61,29 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(startBody.candle.index).toBe(0);
     expect(startBody.candles.map(candle => candle.index)).toEqual([0]);
 
+    const initialLedger = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/ledger', userAToken!);
+    expect(initialLedger.status).toBe(200);
+    expect(initialLedger.headers.get('cache-control')).toContain('no-store');
+    const initialLedgerBody = await initialLedger.json() as { events: Array<{ eventType: string; version: number; user_id?: string }> };
+    expect(initialLedgerBody.events.map(event => event.eventType)).toEqual(['session_started']);
+    expect(initialLedgerBody.events[0].user_id).toBeUndefined();
+    const forbiddenLedger = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/ledger', userBToken!);
+    expect(forbiddenLedger.status).toBe(404);
+
     const advance = () => request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
       method: 'POST', body: JSON.stringify({ sessionId: startBody.sessionId, expectedVersion: 0 }),
     });
     const first = await advance();
     expect(first.status).toBe(200);
-    const firstBody = await first.json() as { version: number; currentIndex: number; complete: boolean };
+    const firstBody = await first.json() as { version: number; currentIndex: number; complete: boolean; [key: string]: unknown };
     expect(firstBody.version).toBe(1);
     expect(firstBody.currentIndex).toBe(1);
     const replay = await advance();
     expect(replay.status).toBe(200);
     expect(await replay.json()).toEqual(firstBody);
+    const replayLedger = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/ledger', userAToken!);
+    const replayLedgerBody = await replayLedger.json() as { events: Array<{ eventType: string }> };
+    expect(replayLedgerBody.events.map(event => event.eventType)).toEqual(['session_started', 'candle_revealed']);
 
     const forbidden = await request('/v1/paper-lab/sessions/' + startBody.sessionId, userBToken!);
     expect(forbidden.status).toBe(404);
@@ -91,6 +103,10 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
       state = await response.json() as typeof state;
     }
     expect(state.complete).toBe(true);
+    const finalLedger = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/ledger', userAToken!);
+    expect(finalLedger.status).toBe(200);
+    const finalLedgerBody = await finalLedger.json() as { events: Array<{ eventType: string; payload: { virtualEquityAfter?: number | null } }> };
+    expect(finalLedgerBody.events.some(event => event.eventType === 'session_closed' && typeof event.payload.virtualEquityAfter === 'number')).toBe(true);
   });
 
   it('syncs weekly practice plans only to the owning learner', async () => {
@@ -410,13 +426,14 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
 
     const exportA = await request('/v1/me/export', userAToken!);
     expect(exportA.status).toBe(200);
-    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
+    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; paperTradeLedgerEvents: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
     expect(bodyA.data.progress.xp).toBe(0);
     expect(bodyA.data.progressEvents).toHaveLength(0);
     expect(bodyA.data.lessonAttempts).toHaveLength(0);
     expect(bodyA.data.chartDojoAttempts).toHaveLength(0);
     expect(bodyA.data.decisionJournalEntries).toHaveLength(0);
     expect(bodyA.data.paperTradeSessions).toHaveLength(0);
+    expect(bodyA.data.paperTradeLedgerEvents).toHaveLength(0);
     expect(bodyA.data.weeklyPracticePlans).toHaveLength(0);
     expect(bodyA.data.weeklyPracticeSessions).toHaveLength(0);
 
