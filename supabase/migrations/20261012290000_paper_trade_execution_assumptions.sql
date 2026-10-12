@@ -46,7 +46,7 @@ begin
     'candles',v_candles,'complete',(v_session.status = 'closed'),
     'position',pg_catalog.jsonb_build_object(
       'direction',v_session.direction,'entry',v_session.entry_price,'stop',v_session.stop_price,'target',v_session.target_price,
-      'units',v_session.units,'riskBudget',v_session.risk_budget,'estimatedStopLoss',v_session.estimated_stop_loss,
+      'units',v_session.units,'riskBudget',v_session.risk_budget,'riskPercent',v_session.risk_percent,'estimatedStopLoss',v_session.estimated_stop_loss,
       'marginRequired',v_session.margin_required,'virtualEquity',v_session.virtual_equity,
       'instrumentSpec',pg_catalog.jsonb_build_object(
         'label',v_session.instrument_label,'tickSize',v_session.tick_size,'tickValue',v_session.tick_value,
