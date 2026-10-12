@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { normaliseWeeklyPlan, weekKey } from './WeeklyPracticePlan';
+import { dateKey, normaliseWeeklyPlan, weekKey } from './WeeklyPracticePlan';
 
 describe('weekly practice plan', () => {
+  it('formats the learner\'s local calendar date without a UTC day shift', () => {
+    expect(dateKey(new Date(2026, 9, 12, 0, 15))).toBe('2026-10-12');
+  });
+
   it('uses Monday as the week key, including Sundays', () => {
     expect(weekKey(new Date('2026-10-11T12:00:00Z'))).toBe('2026-10-05');
     expect(weekKey(new Date('2026-10-12T12:00:00Z'))).toBe('2026-10-12');
