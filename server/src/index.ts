@@ -94,9 +94,12 @@ app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, async (req: Aut
   const parsed = paperTradePlanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade plan.' });
   const d = parsed.data;
-  const { data, error } = await req.learnerDb!.rpc('start_paper_trade_session', {
+  const { data, error } = await req.learnerDb!.rpc('start_paper_trade_session_with_specs', {
     p_direction: d.direction, p_entry: d.entry, p_stop: d.stop, p_target: d.target,
     p_virtual_equity: d.equity, p_risk_percent: d.riskPercent,
+    p_instrument_label: d.instrumentLabel, p_tick_size: d.tickSize, p_tick_value: d.tickValue,
+    p_contract_size: d.contractSize, p_lot_step: d.lotStep, p_spread_ticks: d.spreadTicks,
+    p_commission_per_unit: d.commissionPerUnit, p_slippage_ticks: d.slippageTicks, p_leverage: d.leverage,
   });
   if (error) {
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
@@ -128,11 +131,11 @@ app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, async (req: Auth
 
 app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('paper_trade_sessions')
-    .select('id, scenario_id, direction, current_index, status, pnl, exit_reason, created_at, closed_at, version')
+    .select('id, scenario_id, direction, instrument_label, estimated_stop_loss, margin_required, current_index, status, pnl, exit_reason, created_at, closed_at, version')
     .eq('user_id', req.learnerId!).order('created_at', { ascending: false }).limit(20);
   if (error) { logError('Paper trade history could not be loaded.', error); return res.status(503).json({ error: 'Paper trade history is temporarily unavailable.' }); }
   res.setHeader('Cache-Control', 'no-store');
-  return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
+  return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, instrumentLabel: item.instrument_label, estimatedStopLoss: item.estimated_stop_loss, marginRequired: item.margin_required, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
 });
 
 app.get('/v1/paper-lab/sessions/:id/fills', requireLearner, async (req: AuthedRequest, res: Response) => {
@@ -539,7 +542,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('chart_dojo_attempts').select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
     db.from('decision_journal_entries').select('id, title, scenario_id, decision, thesis, invalidation, risk_plan, reflection, lesson_learned, created_at, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
-    db.from('paper_trade_sessions').select('id, scenario_id, direction, entry_price, stop_price, target_price, virtual_equity, risk_percent, risk_budget, units, current_index, status, exit_price, exit_reason, pnl, version, created_at, updated_at, closed_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
+    db.from('paper_trade_sessions').select('id, scenario_id, direction, entry_price, stop_price, target_price, virtual_equity, risk_percent, risk_budget, units, instrument_label, tick_size, tick_value, contract_size, lot_step, spread_ticks, commission_per_unit, slippage_ticks, leverage, estimated_stop_loss, margin_required, current_index, status, exit_price, exit_fill_price, exit_reason, pnl, version, created_at, updated_at, closed_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('created_at', { ascending: true }).limit(10000),
     db.from('paper_trade_ledger_events').select('event_id, event_sequence, session_id, session_version, event_type, candle_index, payload, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('event_sequence', { ascending: true }).limit(10000),
     db.from('paper_trade_fills').select('fill_id, session_id, fill_sequence, fill_type, side, fill_price, units, realized_pnl, fill_reason, filled_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('filled_at', { ascending: true }).limit(10000),
     db.from('weekly_practice_plans').select('week_start, target, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('week_start', { ascending: true }).limit(10000),

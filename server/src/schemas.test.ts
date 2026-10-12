@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, paperTradePlanSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -175,5 +175,33 @@ describe('community editorial review schema', () => {
   it('rejects caller-supplied reviewer identities or content publication flags', () => {
     expect(communityEditorialReviewSchema.safeParse({ decision: 'approve', reason: 'Reviewed content.', reviewerId: 'attacker' }).success).toBe(false);
     expect(communityEditorialReviewSchema.safeParse({ decision: 'approve', reason: 'Reviewed content.', published: true }).success).toBe(false);
+  });
+});
+
+
+describe('paperTradePlanSchema execution assumptions', () => {
+  const base = { direction: 'long', entry: 103, stop: 98, target: 108, equity: 10000, riskPercent: 1 };
+
+  it('defaults to an explicitly generic fictional price-unit model', () => {
+    expect(paperTradePlanSchema.parse(base)).toMatchObject({
+      instrumentLabel: 'Generic price-unit model', tickSize: 1, tickValue: 1, contractSize: 1,
+      lotStep: 0.01, spreadTicks: 0, commissionPerUnit: 0, slippageTicks: 0, leverage: 1,
+    });
+  });
+
+  it('accepts bounded user-defined tick, cost, lot and margin assumptions', () => {
+    expect(paperTradePlanSchema.parse({
+      ...base, instrumentLabel: 'Training model', tickSize: 0.5, tickValue: 2,
+      contractSize: 10, lotStep: 0.1, spreadTicks: 1, commissionPerUnit: 0.5,
+      slippageTicks: 0.25, leverage: 10,
+    }).tickSize).toBe(0.5);
+  });
+
+  it('rejects invalid costs, lot steps, leverage, and unknown fields', () => {
+    expect(paperTradePlanSchema.safeParse({ ...base, spreadTicks: -1 }).success).toBe(false);
+    expect(paperTradePlanSchema.safeParse({ ...base, tickSize: 0 }).success).toBe(false);
+    expect(paperTradePlanSchema.safeParse({ ...base, lotStep: 0 }).success).toBe(false);
+    expect(paperTradePlanSchema.safeParse({ ...base, leverage: 1001 }).success).toBe(false);
+    expect(paperTradePlanSchema.safeParse({ ...base, realBroker: true }).success).toBe(false);
   });
 });

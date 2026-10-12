@@ -161,6 +161,56 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(privateShortFills.status).toBe(404);
   });
 
+  it('sizes positions by user-defined tick, lot, spread, commission, slippage, and margin assumptions', async () => {
+    const started = await request('/v1/paper-lab/synthetic-basics/start', userAToken!, {
+      method: 'POST',
+      body: JSON.stringify({
+        direction: 'long', entry: 103, stop: 98, target: 105, equity: 10000, riskPercent: 1,
+        instrumentLabel: 'Integration cost model', tickSize: 0.5, tickValue: 2,
+        contractSize: 10, lotStep: 0.1, spreadTicks: 1,
+        commissionPerUnit: 0.5, slippageTicks: 0.25, leverage: 10,
+      }),
+    });
+    expect(started.status).toBe(201);
+    const startBody = await started.json() as {
+      sessionId: string; version: number; complete: boolean;
+      position: { units: number; riskBudget: number; estimatedStopLoss: number; marginRequired: number; instrumentSpec: { label: string; tickSize: number; spreadTicks: number } };
+    };
+    expect(startBody.position).toMatchObject({
+      units: 4.1, riskBudget: 100, estimatedStopLoss: 98.4, marginRequired: 422.3,
+      instrumentSpec: { label: 'Integration cost model', tickSize: 0.5, spreadTicks: 1 },
+    });
+
+    const stepped = await request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
+      method: 'POST', body: JSON.stringify({ sessionId: startBody.sessionId, expectedVersion: startBody.version }),
+    });
+    expect(stepped.status).toBe(200);
+    const finalBody = await stepped.json() as { complete: boolean; outcome: { exitPrice: number; triggerPrice: number; pnl: number; reason: string } };
+    expect(finalBody.complete).toBe(true);
+    expect(finalBody.outcome).toMatchObject({ exitPrice: 104.625, triggerPrice: 105, pnl: 16.4, reason: 'target' });
+
+    const fillsResponse = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/fills', userAToken!);
+    expect(fillsResponse.status).toBe(200);
+    const fillsBody = await fillsResponse.json() as { fills: Array<{ type: string; price: number | string; units: number | string; realizedPnl: number | string | null }> };
+    expect(fillsBody.fills.map(fill => fill.type)).toEqual(['entry', 'exit']);
+    expect(Number(fillsBody.fills[0].price)).toBeCloseTo(103.375);
+    expect(Number(fillsBody.fills[1].price)).toBeCloseTo(104.625);
+    expect(Number(fillsBody.fills[0].units)).toBeCloseTo(4.1);
+    expect(Number(fillsBody.fills[1].realizedPnl)).toBeCloseTo(finalBody.outcome.pnl);
+
+    const exportResponse = await request('/v1/me/export', userAToken!);
+    expect(exportResponse.status).toBe(200);
+    const exportBody = await exportResponse.json() as { data: { paperTradeSessions: Array<{ id: string; instrument_label: string; tick_size: number | string; tick_value: number | string; spread_ticks: number | string; estimated_stop_loss: number | string; margin_required: number | string }> } };
+    const exported = exportBody.data.paperTradeSessions.find(item => item.id === startBody.sessionId);
+    expect(exported).toBeTruthy();
+    expect(exported).toMatchObject({ instrument_label: 'Integration cost model' });
+    expect(Number(exported?.tick_size)).toBeCloseTo(0.5);
+    expect(Number(exported?.tick_value)).toBeCloseTo(2);
+    expect(Number(exported?.spread_ticks)).toBeCloseTo(1);
+    expect(Number(exported?.estimated_stop_loss)).toBeCloseTo(98.4);
+    expect(Number(exported?.margin_required)).toBeCloseTo(422.3);
+  });
+
   it('syncs weekly practice plans only to the owning learner', async () => {
     const monday = new Date();
     const day = monday.getUTCDay() || 7;
