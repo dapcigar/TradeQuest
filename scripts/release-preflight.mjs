@@ -43,6 +43,9 @@ const plan = read('docs/M2_IMPLEMENTATION_PLAN.md');
 const smoke = read('docs/RELEASE_SMOKE_TEST.md');
 const readiness = read('docs/PRODUCTION_READINESS.md');
 const runbook = read('docs/PRODUCTION_RUNBOOK.md');
+const accessibility = read('docs/ACCESSIBILITY.md');
+const appSource = read('src/App.tsx');
+const styles = read('src/styles.css');
 const workflow = read('.github/workflows/ci.yml');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -53,6 +56,9 @@ for (const [label, content, phrases] of [
   ['Release smoke test', smoke, ['Paper Trade Lab persistence and isolation', 'session event ledger', 'DELETE_MY_LEARNING_DATA', 'Security headers and abuse controls', 'weekly target']],
   ['Production readiness', readiness, ['not a global quota', 'restore', 'screen-reader', 'cross-account tests']],
   ['Production runbook', runbook, ['Backup before schema changes', 'Restore rehearsal', 'Deployment and rollback', 'Release evidence record']],
+  ['Accessibility navigation', appSource, ['href="#main-content"', 'id="main-content"', 'aria-controls="primary-navigation"', 'aria-expanded={mobileNav}', "aria-current={view === item.id ? 'page' : undefined}"]],
+  ['Accessibility focus styles', styles, ['a:focus-visible', 'select:focus-visible', '.skip-link:focus', 'prefers-reduced-motion:reduce']],
+  ['Accessibility manual audit', accessibility, ['Keyboard only', 'Screen reader', '200% zoom', '320 CSS-pixel viewport width']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
