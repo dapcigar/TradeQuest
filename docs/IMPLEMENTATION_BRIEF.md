@@ -41,7 +41,7 @@ The product must feel crafted, calm, immersive and useful—not like an AI-gener
 - Candle ambiguity policy: if stop and target occur within the same candle, use a documented conservative rule or finer data; never choose the favourable outcome silently.
 
 ### Community
-- Curated learning challenges with visible rules and data provenance.
+- Curated learning challenges with visible rules and data provenance. The current solo challenge slice links curated challenges to synthetic scenarios and displays the latest process-rubric result; community challenge publication/entries remain incomplete.
 - Score reasoning and risk process, not just P&L.
 - Opt-in profiles, reporting, moderation audit trail.
 - No open direct messaging in MVP. Never publish private balances, journals, or learning records.
