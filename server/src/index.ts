@@ -5,6 +5,7 @@ import { getBearerToken } from './auth.js';
 import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, progressEventSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
+import { getReplayStep } from './replay.js';
 
 // Recall vs application is derived from attempt order, so read generously.
 const MASTERY_ATTEMPT_LIMIT = 500;
@@ -64,6 +65,23 @@ async function requireLearner(req: AuthedRequest, res: Response, next: NextFunct
 }
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'tradequest-api' }));
+ 
+// Server-owned synthetic replay: each request reveals exactly one candle.
+// The signed continuation token is learner-bound; arbitrary numeric cursors are never accepted.
+app.get('/v1/replay/synthetic-basics', requireLearner, (req: AuthedRequest, res: Response) => {
+  const secret = process.env.REPLAY_CURSOR_SECRET ?? '';
+  try {
+    const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+    const step = getReplayStep({ token, secret, learnerId: req.learnerId! });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(step);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Replay could not be loaded.';
+    if (message.includes('not configured securely')) return res.status(503).json({ error: 'Replay is temporarily unavailable.' });
+    return res.status(400).json({ error: 'Replay cursor is invalid. Restart the replay.' });
+  }
+});
+
 
 // Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
 app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, res: Response) => {
