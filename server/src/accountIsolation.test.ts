@@ -19,13 +19,24 @@ const handlers = indexSource.split(/\n(?=app\.(?:get|post)\()/).filter(chunk => 
 
 describe('API routes keep each learner\'s data separate', () => {
   it('finds the learner routes', () => {
-    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress']));
+    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export']));
   });
 
   it('requires a verified learner on every /v1 route', () => {
     for (const handler of handlers.filter(h => h.route.startsWith('/v1/'))) {
       expect(handler.source, handler.route).toContain('requireLearner');
     }
+  });
+
+  it('exports only private account data and prevents browser/proxy caching', () => {
+    const exportHandler = handlers.find(h => h.route === '/v1/me/export')!;
+    expect(exportHandler.source).toContain("res.setHeader('Cache-Control', 'no-store')");
+    expect(exportHandler.source).toContain("eq('user_id', learnerId)");
+    expect(exportHandler.source).toContain('decisionJournalEntries');
+    expect(exportHandler.source).toContain('paperTradeSessions');
+    expect(exportHandler.source).not.toMatch(/service[_-]?role/i);
+    expect(exportHandler.source).not.toContain('access_token:');
+    expect(exportHandler.source).toContain('No partial export was created');
   });
 
   it('filters every read of a learner-owned table by the verified learner id', () => {
