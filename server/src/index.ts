@@ -439,7 +439,7 @@ app.get('/v1/chart-dojo/attempts', requireLearner, async (req: AuthedRequest, re
     .select('attempt_id, scenario_id, scenario_version, choice_id, outcome, feedback, submitted_at')
     .eq('user_id', req.learnerId!)
     .order('submitted_at', { ascending: false })
-    .limit(50);
+    .limit(MASTERY_ATTEMPT_LIMIT);
   if (error) { logError('Chart Dojo history could not be loaded.', error); return res.status(500).json({ error: 'Chart Dojo history could not be loaded.' }); }
   return res.json({ attempts: (data ?? []).map((item) => ({
     attemptId: item.attempt_id,
