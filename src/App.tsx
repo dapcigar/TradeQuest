@@ -133,7 +133,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const authDialogRef = useModalFocus<HTMLElement>(authOpen, () => setAuthOpen(false));
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'recovery' | 'reset'>('signin');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
@@ -169,7 +169,8 @@ function App() {
     if (!supabase) return;
     let active = true;
     supabase.auth.getSession().then(({ data }) => { if (active) setSession(data.session); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') { setAuthMode('reset'); setAuthOpen(true); setAuthPassword(''); setAuthMessage('Choose a new password for your account.'); }
       setSession(nextSession);
       setAccountProgress(null);
       setQuizResult(null);
@@ -448,6 +449,16 @@ function App() {
         if (error) throw error;
         if (!data.session) setAuthMessage('Account created. Check your email to confirm the address, then sign in.');
         else { setSession(data.session); setAuthOpen(false); setAuthPassword(''); }
+      } else if (authMode === 'recovery') {
+        const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin });
+        if (error) throw error;
+        setAuthPassword('');
+        setAuthMessage('If an account exists for that address, a password reset link has been sent. Check your email.');
+      } else if (authMode === 'reset') {
+        const { error } = await supabase.auth.updateUser({ password: authPassword });
+        if (error) throw error;
+        setAuthOpen(false); setAuthPassword(''); setAuthMode('signin');
+        setAuthMessage('Password updated. You can continue using your account.');
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
         if (error) throw error;
@@ -555,7 +566,7 @@ function App() {
           {view === 'challenges' && <ChallengesView onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
           {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} mastery={session ? mastery : null} masteryMessage={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
         </div>
-        {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setAuthOpen(false); }}><section ref={authDialogRef} tabIndex={-1} className="lesson-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div className="modal-top"><span className="modal-kicker"><LockKeyhole size={15} /> FREE LEARNER ACCOUNT</span><button className="icon-button" onClick={() => setAuthOpen(false)} aria-label="Close sign in"><X size={19} /></button></div><div className="modal-content"><div className="eyebrow small-eyebrow">{authMode === 'signin' ? 'WELCOME BACK' : 'START YOUR JOURNEY'}</div><h2 id="auth-title">{authMode === 'signin' ? 'Sign in to TradeQuest.' : 'Create your learner account.'}</h2><p>Account progress is separate from browser demo progress. Supabase Auth handles your password.</p>{!supabaseConfigured ? <p className="feedback" role="alert">Authentication is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your local environment.</p> : <form className="auth-form" onSubmit={handleAuthSubmit}><label className="field-label" htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} /><label className="field-label" htmlFor="auth-password">Password</label><input id="auth-password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={authPassword} onChange={e => setAuthPassword(e.target.value)} /><button className="btn-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'} <ArrowRight size={15} /></button></form>}{authMessage && <p className="feedback" role="status">{authMessage}</p>}<button className="text-link auth-switch" onClick={() => { setAuthMode(mode => mode === 'signin' ? 'signup' : 'signin'); setAuthMessage(''); }}>{authMode === 'signin' ? 'New to TradeQuest? Create an account' : 'Already registered? Sign in'}</button></div></section></div>}
+        {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setAuthOpen(false); }}><section ref={authDialogRef} tabIndex={-1} className="lesson-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div className="modal-top"><span className="modal-kicker"><LockKeyhole size={15} /> FREE LEARNER ACCOUNT</span><button className="icon-button" onClick={() => setAuthOpen(false)} aria-label="Close sign in"><X size={19} /></button></div><div className="modal-content"><div className="eyebrow small-eyebrow">{authMode === 'signin' ? 'WELCOME BACK' : authMode === 'signup' ? 'START YOUR JOURNEY' : authMode === 'recovery' ? 'ACCOUNT RECOVERY' : 'SET NEW PASSWORD'}</div><h2 id="auth-title">{authMode === 'signin' ? 'Sign in to TradeQuest.' : authMode === 'signup' ? 'Create your learner account.' : authMode === 'recovery' ? 'Reset your password.' : 'Choose a new password.'}</h2><p>{authMode === 'recovery' ? 'Enter the email address for your account and we will send a secure reset link if it exists.' : authMode === 'reset' ? 'Use a new password with at least 8 characters.' : 'Account progress is separate from browser demo progress. Supabase Auth handles your password.'}</p>{!supabaseConfigured ? <p className="feedback" role="alert">Authentication is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your local environment.</p> : <form className="auth-form" onSubmit={handleAuthSubmit}>{authMode !== 'reset' && <><label className="field-label" htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></>}{authMode !== 'recovery' && <><label className="field-label" htmlFor="auth-password">{authMode === 'reset' ? 'New password' : 'Password'}</label><input id="auth-password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></>}<button className="btn-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : authMode === 'signup' ? 'Create account' : authMode === 'recovery' ? 'Send reset link' : 'Update password'} <ArrowRight size={15} /></button></form>}{authMessage && <p className="feedback" role="status">{authMessage}</p>}{authMode === 'signin' && <button className="text-link auth-switch" onClick={() => { setAuthMode('recovery'); setAuthMessage(''); setAuthPassword(''); }}>Forgot your password?</button>}{authMode !== 'reset' && <button className="text-link auth-switch" onClick={() => { setAuthMode(mode => mode === 'signin' || mode === 'recovery' ? 'signup' : 'signin'); setAuthMessage(''); setAuthPassword(''); }}>{authMode === 'signin' ? 'New to TradeQuest? Create an account' : 'Back to sign in'}</button>}</div></section></div>}
       <footer className="site-footer"><span>TRADEQUEST <span className="footer-sep">/</span> LEARN THE PROCESS, NOT THE HYPE.</span><span>Educational simulation · No live market data · Not financial advice</span></footer>
       </main>
 
