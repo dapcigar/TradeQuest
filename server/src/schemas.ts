@@ -57,3 +57,25 @@ export const paperTradeStepSchema = z.object({ sessionId: z.string().uuid(), exp
 export const deleteLearningDataSchema = z.object({
   confirmation: z.literal('DELETE_MY_LEARNING_DATA'),
 }).strict();
+
+
+const isoDateSchema = z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine(value => {
+  const date = new Date(value + 'T00:00:00.000Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+});
+const mondayDateSchema = isoDateSchema.refine(value => new Date(value + 'T00:00:00.000Z').getUTCDay() === 1);
+
+export const weeklyPracticePlanQuerySchema = z.object({
+  weekStart: mondayDateSchema,
+}).strict();
+
+export const weeklyPracticeTargetSchema = z.object({
+  weekStart: mondayDateSchema,
+  target: z.union([z.literal(3), z.literal(5), z.literal(7)]),
+}).strict();
+
+export const weeklyPracticeSessionSchema = z.object({
+  weekStart: mondayDateSchema,
+  sessionDate: isoDateSchema,
+  completed: z.boolean(),
+}).strict();
