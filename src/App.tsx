@@ -30,6 +30,8 @@ import { calculateRewardRisk, calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
 import { resolveDashboardProgress } from './dashboardProgress';
 import { soloChallenges, summariseChallengeAttempts, type ChallengeAttempt } from './soloChallenges';
+
+const ACCOUNT_ATTEMPT_HISTORY_LIMIT = 500;
 import { assessSpreadAnswer } from './learning';
 import { supabase, supabaseConfigured } from './supabase';
 import { useModalFocus } from './useModalFocus';
@@ -362,7 +364,7 @@ function App() {
         if (!response.ok || !body.result) throw new Error(body.error || 'Chart Dojo answer could not be saved.');
         setDojoResult(body.result);
         setAccountProgress(p => p ? { ...p, xp: p.xp + body.result!.xpAwarded, events: p.events.includes('chart-dojo-scenario-01') ? p.events : [...p.events, 'chart-dojo-scenario-01'] } : p);
-        setDojoHistory(history => [{ attemptId: body.result!.attemptId, scenarioId: body.result!.scenarioId ?? scenarioId, scenarioVersion: body.result!.scenarioVersion, choiceId: body.result!.choiceId, outcome: body.result!.outcome, feedback: body.result!.feedback, submittedAt: new Date().toISOString() }, ...history].slice(0, 50));
+        setDojoHistory(history => [{ attemptId: body.result!.attemptId, scenarioId: body.result!.scenarioId ?? scenarioId, scenarioVersion: body.result!.scenarioVersion, choiceId: body.result!.choiceId, outcome: body.result!.outcome, feedback: body.result!.feedback, submittedAt: new Date().toISOString() }, ...history].slice(0, ACCOUNT_ATTEMPT_HISTORY_LIMIT));
       } else {
         const scenario = demoDojoScenarios.find(item => item.scenarioId === scenarioId);
         const answer = scenarioId === 'TQ-SYN-001'
