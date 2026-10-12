@@ -52,3 +52,8 @@ export const paperTradePlanSchema = z.object({
 }).strict();
 
 export const paperTradeStepSchema = z.object({ sessionId: z.string().uuid(), expectedVersion: z.number().int().nonnegative() }).strict();
+
+
+export const deleteLearningDataSchema = z.object({
+  confirmation: z.literal('DELETE_MY_LEARNING_DATA'),
+}).strict();
