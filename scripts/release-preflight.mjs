@@ -121,8 +121,8 @@ for (const [label, content, phrases] of [
   ['Community challenge lifecycle migration', communityChallengeMigration, ['create table if not exists public.community_challenges', 'create table if not exists public.community_challenge_entries', 'create table if not exists public.community_reports', 'create table if not exists public.community_moderation_actions', 'submit_community_challenge_entry', 'moderate_community_challenge_entry', 'community_moderation_actions', 'delete_own_learning_data']],
   ['Community challenge migration contract tests', communityChallengeContractTests, ['server-scored attempts', 'public entries hidden until approval', 'audit trail']],
   ['Community challenge UI safety controls', communityChallengesUi, ['PROCESS · NOT P/L', 'queued for moderator review', 'Report entry', 'Moderator queue', 'Your original practice attempt will remain']],
-  ['Community moderation runbook', communityModerationDocs, ['REPLACE_WITH_VERIFIED_AUTH_USER_UUID', 'does not assign a moderator automatically', 'no direct messages', 'trusted moderator is provisioned']]
-  ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
+  ['Community moderation runbook', communityModerationDocs, ['REPLACE_WITH_VERIFIED_AUTH_USER_UUID', 'does not assign a moderator automatically', 'no direct messages', 'trusted moderator is provisioned']],
+  ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
