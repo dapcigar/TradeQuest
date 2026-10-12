@@ -136,7 +136,7 @@ export default function AdaptivePractice({ session }: { session: Session | null 
       setAttempts(local); setAccountSummary([]); setVariant(chooseNext(local)); setServerVariants({}); setServerError(''); setLoading(false);
       return () => { cancelled = true; };
     }
-    setLoading(true); setServerError(''); setAttempts([]); setServerVariants({});
+    setLoading(true); setServerError(''); setAttempts([]); setAccountSummary([]); setServerVariants({});
     const base = import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
     const headers = { Authorization: 'Bearer ' + session.access_token };
     Promise.all([
