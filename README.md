@@ -70,4 +70,4 @@ npm run build
 npm run api:build
 ```
 
-See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
+See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/SECURITY_ARCHITECTURE.md` for trust boundaries and security controls, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.

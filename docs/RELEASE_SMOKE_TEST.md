@@ -83,6 +83,14 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 - [ ] Use the two-step clear flow and confirm only the weekly plan, adaptive practice history, and demo journal keys are removed.
 - [ ] Confirm account-saved journal entries, authentication data, and unrelated browser storage remain untouched.
 
+## Security headers and abuse controls
+
+- [ ] Inspect the deployed frontend root response for the expected Content Security Policy, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and Permissions-Policy.
+- [ ] Inspect the deployed API health response and a malformed JSON response for defensive API headers; confirm HSTS appears only on the production HTTPS deployment.
+- [ ] Confirm the CSP allows only the documented frontend dependencies and API/Supabase origins; do not add wildcard script sources.
+- [ ] Verify the authenticated per-instance rate limit returns 429 and Retry-After when exceeded in a test environment.
+- [ ] Separately verify a shared provider firewall/rate limit is configured if the app is exposed to external learners; the in-memory API limiter is not a global quota.
+
 ## Accessibility and responsive checks
 
 - [ ] Navigate the main menu, forms, filters, and confirmation actions using only Tab, Shift+Tab, Enter, Space, and Escape where appropriate.

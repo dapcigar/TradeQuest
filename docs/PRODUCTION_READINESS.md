@@ -29,7 +29,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Confirm answer keys and scoring authority are not exposed in browser bundles, API responses, or logs.
 
 ### Secrets and authentication
-- [ ] Confirm no service-role key, access token, password, or connection string is committed or sent to the browser.
+- [ ] Confirm no service-role key, access token, password, or connection string is committed or sent to the browser. Review docs/SECURITY_ARCHITECTURE.md when changing trust boundaries, headers, origins, or rate limits.
 - [ ] Confirm auth confirmation/recovery flows and redirect allowlists contain only expected origins.
 - [ ] Check session expiry, sign-out, and unauthorised API responses.
 - [ ] Use separate secrets per environment; never copy production credentials into tests or chat.
@@ -37,7 +37,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 ## P1 — Required before inviting external learners
 
 ### Reliability and abuse controls
-- [ ] Set conservative rate limits for authentication-adjacent and write endpoints; test the expected response when limits are exceeded.
+- [ ] The API returns defensive response headers and the frontend has a CSP, but verify both on the deployed origins. The in-memory limiter is 60 authenticated requests per learner per minute per serverless instance, not a global quota; configure and test a shared provider firewall/rate limit before external launch.
 - [ ] Configure basic error monitoring and health checks without logging tokens, journal contents, or other sensitive learner data.
 - [ ] Document a backup/export method, restore procedure, recovery owner, and last successful restore test.
 - [ ] Verify deployment rollback and database compatibility for the previous application version.
