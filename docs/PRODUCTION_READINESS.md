@@ -7,7 +7,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Synthetic scenarios are visibly labelled; no live market feed is enabled.
 - [ ] No broker connection, copy trading, real-money order path, or personalised financial advice.
 - [ ] Anonymous Adaptive Practice, Weekly Practice Plan, and demo Decision Journal use browser-local storage. Signed-in Adaptive Practice, Weekly Practice Plan, and private Decision Journal use server-saved account data after their migrations are applied. Browser-local records remain separate and can be lost when browser data is cleared. Export important local data before changing devices.
-- [ ] Paper Trade Lab sessions and append-only session transition events are persisted privately in Supabase by the paper-trade migrations; verify both are applied only after disposable-project tests. The simulator is not a full order/fill ledger or instrument-accurate execution engine. The separate legacy replay endpoint remains stateless. See `PAPER_TRADE_LAB.md`.
+- [ ] Paper Trade Lab sessions, append-only state transitions, and simulated entry/exit fills are persisted privately in Supabase by the paper-trade migrations; verify all are applied only after disposable-project tests. Reconcile fill records against session outcome/P&L, and verify account isolation and idempotency. The simulator remains non-instrument-specific and is not a broker or contract-accurate execution engine. The separate legacy replay endpoint remains stateless. See `PAPER_TRADE_LAB.md`.
 - [ ] Server-scored lessons and Chart Dojo remain authoritative on the API/database; never trust client-submitted score, answer key, XP, or pass state.
 - [ ] Community/leaderboards, licensed historical data, and complete server-authoritative chart simulation remain out of scope until separately reviewed.
 
@@ -69,7 +69,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Anonymous Adaptive Practice remains browser-local; signed-in Adaptive Practice uses server-scored account attempts. Verify the UI keeps those modes distinct and never presents an anonymous local score as account-derived mastery.
 - [ ] Signed-in weekly plans and private journals sync through the account; anonymous weekly plans and demo journal records remain browser-local. Verify the UI clearly communicates this separation.
-- [ ] Persistent paper-trade sessions and append-only session transition events are implemented, but a full order/fill ledger and instrument-accurate P/L remain unfinished. Validate trigger atomicity, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
+- [ ] Persistent paper-trade sessions, append-only session transitions, and simulated entry/exit fills are implemented, but pending orders, partial fills, instrument-specific costs, and instrument-accurate P/L remain unfinished. Validate trigger atomicity, fill/outcome reconciliation, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
 - [ ] The generic risk calculator rejects intermediate overflow/underflow. It remains a price-distance estimate; instrument-specific increments, costs, margin, and contract-accurate P/L are unsupported until instrument specifications are approved.
 - [ ] Add an end-to-end smoke path covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export, and restore.
 - [ ] Establish a small release note and known-limitations section for each launch.
