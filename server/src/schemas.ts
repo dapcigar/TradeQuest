@@ -51,4 +51,4 @@ export const paperTradePlanSchema = z.object({
   riskPercent: z.number().finite().min(0.01).max(5),
 }).strict();
 
-export const paperTradeStepSchema = z.object({ token: z.string().min(20).max(2048) }).strict();
+export const paperTradeStepSchema = z.object({ sessionId: z.string().uuid(), expectedVersion: z.number().int().nonnegative() }).strict();
