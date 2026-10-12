@@ -2,6 +2,12 @@ name: Supabase integration tests
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_test_accounts:
+        description: "Confirm both tokens belong to dedicated test accounts. This suite deletes all saved learning data for Account A."
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +21,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Require explicit dedicated-test-account confirmation
+        env:
+          CONFIRM_TEST_ACCOUNTS: ${{ inputs.confirm_test_accounts }}
+        run: |
+          if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
+            echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
+            exit 1
+          fi
       - name: Verify required repository secrets
         env:
           API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
@@ -24,6 +38,32 @@ jobs:
           test -n "$API_URL" || (echo "::error::Missing TRADEQUEST_TEST_API_URL secret"; exit 1)
           test -n "$USER_A_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_A_TOKEN secret"; exit 1)
           test -n "$USER_B_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_B_TOKEN secret"; exit 1)
+      - name: Validate both dedicated accounts against deployed API
+        env:
+          TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
+          TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+          TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const base = new URL(process.env.TRADEQUEST_TEST_API_URL);
+          const accounts = [
+            ['Account A', process.env.TRADEQUEST_TEST_USER_A_TOKEN],
+            ['Account B', process.env.TRADEQUEST_TEST_USER_B_TOKEN],
+          ];
+          let failed = false;
+          for (const [label, token] of accounts) {
+            const response = await fetch(new URL('/v1/me/progress', base), {
+              headers: { Authorization: 'Bearer ' + token },
+              cache: 'no-store',
+            });
+            if (!response.ok) {
+              console.error(`::error::${label} token/API preflight failed with HTTP ${response.status}. Refresh the dedicated test token or deploy the current API. No integration writes have been started.`);
+              failed = true;
+            }
+          }
+          if (failed) process.exit(1);
+          console.log('Both dedicated accounts authenticated against the configured API. Tokens and response bodies were not logged.');
+          NODE
       - name: Install dependencies
         run: npm install
       - name: Run API integration suite against disposable Supabase environment
@@ -32,4 +72,4 @@ jobs:
           TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
           TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
           TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
-        run: npm run test -- --reporter=verbose
+        run: npm run test -- server/src/chart-dojo.integration.test.ts --reporter=verbose
