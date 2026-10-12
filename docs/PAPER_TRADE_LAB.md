@@ -2,7 +2,7 @@
 
 ## Current behaviour
 
-The Paper Trade Lab is a short, synthetic learning exercise. The learner chooses a long or short direction, fictional entry/stop/target prices, virtual equity, and a risk percentage. The API calculates the virtual position size and reveals only one candle per request.
+The Paper Trade Lab is a short, synthetic learning exercise. The learner chooses a long or short direction, fictional entry/stop/target prices, virtual equity, risk percentage, and a user-defined execution model. The API calculates lot-step-aware position size and estimated margin/stop loss, then reveals only one candle per request.
 
 - Candle values are hard-coded fictional units, not live or licensed historical market data.
 - The API signs continuation tokens with the server-only `REPLAY_CURSOR_SECRET` and binds them to the authenticated learner.
@@ -27,7 +27,7 @@ The simulator records an append-only **session state-transition ledger** (`sessi
 2. Run the opt-in integration suite with two dedicated test accounts and confirm the tests actually ran rather than skipped.
 3. Verify account A cannot read, change, or infer account B's sessions and that malformed, stale, concurrent, and replayed advancement requests cannot skip candles or duplicate outcomes.
 4. Add independent fixtures for long and short plans, entry/exit fill side, fill idempotency, invalid directional prices, stop and target exits, same-candle ambiguity, adverse gaps, final-candle close, decimal rounding, and fill/session P/L reconciliation.
-5. Decide and document instrument specifications and costs before supporting instrument-specific sizing, real order types, partial fills, or a full order/fill ledger.
+5. User-defined tick/cost/lot/margin assumptions are supported for education, but they are not verified instrument specifications. Agree and source official instrument presets before describing a profile as instrument-accurate or adding pending orders, partial fills, liquidation, or broker-like execution.
 6. Test sign-out/account switching, saved-session recovery, and error/loading states on mobile and desktop.
 7. Keep the UI explicit that results are synthetic educational simulations, not broker records, live signals, or evidence of future performance.
 
