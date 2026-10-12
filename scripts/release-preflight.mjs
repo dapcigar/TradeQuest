@@ -145,7 +145,7 @@ for (const [label, content, phrases] of [
   ['Paper-trade execution assumptions migration', paperExecutionMigration, ['tick_size numeric not null default 1', 'estimated_stop_loss', 'margin_required', 'start_paper_trade_session_with_specs', 'v_exit_fill_price', 'exclude adverse gap-through']],
   ['Paper-trade execution assumptions tests', paperExecutionContractTests, ['bounded user-defined execution assumptions', 'lot step and limits risk and margin', 'effective fill prices']],
   ['Paper-trade execution UI/API contract', paperTradeUi + masteryApi, ['Execution assumptions', 'estimatedStopLoss', 'marginRequired', 'start_paper_trade_session_with_specs']],
-  ['Paper-trade custom-cost integration coverage', apiIntegrationTests, ['sizes positions by user-defined tick', 'estimatedStopLoss: 98.4', 'marginRequired: 422.3', '104.625']]
+  ['Paper-trade custom-cost integration coverage', apiIntegrationTests, ['sizes positions by user-defined tick', 'estimatedStopLoss: 98.4', 'marginRequired: 422.3', '104.625']],
   ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
