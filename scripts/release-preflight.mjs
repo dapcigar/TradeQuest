@@ -50,6 +50,7 @@ const styles = read('src/styles.css');
 const riskSource = read('src/risk.ts');
 const riskTests = read('src/risk.test.ts');
 const workflow = read('.github/workflows/ci.yml');
+const integrationWorkflow = read('.github/workflows/integration.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
@@ -101,6 +102,7 @@ for (const [label, content, phrases] of [
   ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
+  ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_disposable_environment', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
@@ -132,5 +134,5 @@ if (failures.length) {
 } else {
   console.log('TradeQuest release preflight passed.');
   console.log('Verified ' + actualFiles.length + ' migration files are listed once, in filename order, in README and the M2 plan.');
-  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI wiring, and tracked secret/backup filename guard.');
+  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI and disposable integration wiring, and tracked secret/backup filename guard.');
 }
