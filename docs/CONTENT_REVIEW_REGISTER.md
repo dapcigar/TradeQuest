@@ -24,7 +24,7 @@ This register tracks source-controlled learning content. TradeQuest does not cur
 | Glossary | `src/glossary.ts` | `src/glossary.test.ts` | Pending |
 | Adaptive practice selection | `src/AdaptivePractice.tsx` | `src/adaptivePractice.test.ts` | Pending |
 | Synthetic replay | `src/ReplayLab.tsx` | `src/replayCheckpoint.test.ts` and release smoke test | Pending |
-| Synthetic paper-trade simulation | `src/PaperTradeLab.tsx` | server integration test and release smoke test | Pending |
+| Synthetic paper-trade simulation | `src/PaperTradeLab.tsx` | `server/src/chart-dojo.integration.test.ts` and release smoke test | Pending |
 
 ## Editorial checklist
 
