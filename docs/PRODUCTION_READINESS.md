@@ -7,7 +7,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Synthetic scenarios are visibly labelled; no live market feed is enabled.
 - [ ] No broker connection, copy trading, real-money order path, or personalised financial advice.
 - [ ] Anonymous Adaptive Practice, Weekly Practice Plan, and anonymous Decision Journal use browser-local storage. They are not account-synced and can be lost when browser data is cleared. Signed-in Adaptive Practice uses server-scored Chart Dojo attempts, but the new scenario migration must be applied before those variants are available. Export important local data before changing devices.
-- [ ] Paper Trade Lab sessions are temporary signed simulations, not a persistent or tamper-evident trade ledger. Replaying an earlier valid token can fork a practice run; this does not alter a saved account balance because none is persisted. See `PAPER_TRADE_LAB.md`.
+- [ ] Paper Trade Lab sessions and outcomes are persisted privately in Supabase by `20261012210000_paper_trade_ledger.sql`; verify that migration is applied only after disposable-project tests. The simulator remains a simplified session history, not a tamper-evident event ledger or instrument-accurate execution engine. The separate legacy replay endpoint is stateless. See `PAPER_TRADE_LAB.md`.
 - [ ] Server-scored lessons and Chart Dojo remain authoritative on the API/database; never trust client-submitted score, answer key, XP, or pass state.
 - [ ] Community/leaderboards, licensed historical data, and complete server-authoritative chart simulation remain out of scope until separately reviewed.
 
@@ -66,7 +66,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Decide whether browser-local Adaptive Practice history should remain local or be replaced by account-backed, server-scored attempts. Do not present the current local score as server-derived mastery.
 - [ ] Decide whether the weekly plan and demo journal should sync across devices; communicate current limits until implemented.
-- [ ] Decide whether paper-trade sessions need a persistent server-authoritative ledger. If yes, implement transactional session/order storage, idempotency keys, RLS isolation, and two-account integration tests before treating it as a full simulator.
+- [ ] Persistent paper-trade sessions are implemented, but a full append-only order/fill/ledger-event model and instrument-accurate P/L remain unfinished. Validate transactional transitions, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
 - [ ] Add an end-to-end smoke path covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export, and restore.
 - [ ] Establish a small release note and known-limitations section for each launch.
 - [ ] Re-check this list after any auth, schema, scoring, or storage change.
