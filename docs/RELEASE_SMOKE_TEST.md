@@ -70,6 +70,9 @@ This check is intentionally narrow: it does not prove database migration status,
 - [ ] Inspect the session event ledger: it records session start, each accepted candle transition, and session closure in sequence; retrying a step does not duplicate events.
 - [ ] Inspect the simulated fill ledger: exactly one entry fill is recorded at the assumed entry price, and exactly one exit fill is recorded at closure with the opposite side, exit price, reason, and reconciled simulated P/L.
 - [ ] Confirm fill rows are read-only to learners, private to the owning account, included in that account's export, and removed only when the owning session is deleted.
+- [ ] Start a synthetic session with a non-default user-defined tick size/value, lot increment, spread, per-side commission/slippage, and leverage. Verify the server-computed units respect the lot step and margin cap, and the estimated stop loss stays within the risk budget.
+- [ ] At closure, reconcile the effective entry/exit fill prices and realised P/L with the configured cost model; verify account export includes the execution assumptions and that the UI labels them as user-defined rather than verified instrument specifications.
+- [ ] Confirm the stop-loss estimate warns that adverse gap-through can exceed the planned budget, and that same-candle stop/target ambiguity still resolves stop-first.
 - [ ] Verify community profiles are private by default; publish one with a dedicated test account and confirm only handle, display name, and bio appear in the directory, then opt out and confirm it disappears.
 - [ ] Submit a private community reflection linked to a saved Chart Dojo attempt and reconcile the outcome/rubric result against the server-scored attempt; confirm the learner cannot supply a score.
 - [ ] Submit a public reflection with an opted-in profile and confirm it remains hidden while pending, appears only after moderator approval, and disappears when the profile is made private.
