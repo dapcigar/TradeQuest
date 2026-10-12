@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {getReplayStep} from './replay';
+import {getReplayStep} from './replay.js';
 const secret='test-only-secret-that-is-at-least-32-chars';
 describe('synthetic replay cursor',()=>{
  it('reveals only one candle at a time and advances with a signed token',()=>{
