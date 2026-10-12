@@ -71,6 +71,6 @@ For every release, record:
 
 ## Current known boundaries
 
-- The API's in-memory limiter is per serverless instance, not a global quota. A shared provider-level rate limit must be configured and verified before external launch.
+- The API has shared database-backed per-account limits for high-risk actions, but the in-memory limiter remains per serverless instance and neither is an IP/edge firewall. Apply and test `20261012250000_shared_user_rate_limits.sql`, then configure and verify provider-level protection before external launch.
 - Paper Trade Lab is a synthetic educational simulator. Its append-only event history is not a full order/fill broker ledger, and instrument-specific costs, margin, and contract-accurate P/L are not implemented.
 - Browser-local demo records are separate from server-saved account records. Account learning-data deletion does not delete the Supabase Auth identity or browser-local records.
