@@ -124,6 +124,37 @@ describe('database policies keep attempts private and answer keys server-only', 
   });
 });
 
+describe('shared per-account rate limits', () => {
+  it('guards sensitive mutations with fixed server-owned buckets and fail-closed responses', () => {
+    const routeBuckets: Array<[string, string]> = [
+      ['/v1/paper-lab/synthetic-basics/start', 'paper_trade_start'],
+      ['/v1/paper-lab/synthetic-basics/step', 'paper_trade_step'],
+      ['/v1/decision-journal', 'journal_write'],
+      ['/v1/decision-journal/:id', 'journal_write'],
+      ['/v1/me/delete-learning-data', 'delete_learning_data'],
+      ['/v1/weekly-plan', 'weekly_plan_write'],
+      ['/v1/weekly-plan/session', 'weekly_plan_write'],
+      ['/v1/me/export', 'account_export'],
+      ['/v1/progress-events', 'learning_write'],
+      ['/v1/chart-dojo/attempts', 'learning_write'],
+      ['/v1/lesson-attempts', 'learning_write'],
+    ];
+    for (const [route, bucket] of routeBuckets) {
+      const handler = handlers.find(item => item.route === route)!;
+      expect(handler.source).toContain("enforceSharedRateLimit(req, res, '" + bucket + "')");
+    }
+    expect(indexSource).toContain("rpc('consume_user_rate_limit', { p_bucket: bucket })");
+    expect(indexSource).toContain("res.status(503).json({ error: 'This action is temporarily unavailable. Please retry shortly.' })");
+    expect(indexSource).toContain("res.status(429).json({ error: 'Rate limit reached. Please wait before trying again.' })");
+    expect(allMigrations).toMatch(/alter table public\.api_rate_limit_windows enable row level security/i);
+    expect(allMigrations).toMatch(/revoke all on public\.api_rate_limit_windows from public, anon, authenticated/i);
+    expect(allMigrations).toMatch(/create or replace function public\.consume_user_rate_limit\(p_bucket text\) returns boolean/i);
+    expect(allMigrations).toMatch(/grant execute on function public\.consume_user_rate_limit\(text\) to authenticated/i);
+    expect(allMigrations).toContain("when 'account_export' then v_window_seconds := 3600; v_limit := 10;");
+    expect(allMigrations).toContain("when 'delete_learning_data' then v_window_seconds := 3600; v_limit := 10;");
+  });
+});
+
 describe('paper trade event ledger', () => {
   it('scopes ledger reads to the verified learner and keeps events non-writable to clients', () => {
     const handler = handlers.find(item => item.route === '/v1/paper-lab/sessions/:id/ledger')!;
