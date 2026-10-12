@@ -16,7 +16,19 @@ The API sends defensive headers on all responses, including a deny-by-default CS
 
 ## Rate limits and operational constraints
 
-The API's in-memory fixed-window limiter allows up to 60 authenticated requests per learner per 60-second window per serverless instance. It is a burst guard, **not a global quota**: requests distributed across instances can exceed the effective limit. The provider firewall/shared rate-limit configuration must be reviewed and tested before inviting external learners. Do not describe the in-memory limiter as global protection.
+The API's in-memory fixed-window limiter allows up to 60 authenticated requests per learner per 60-second window per serverless instance. It remains a burst guard, not a global quota. The shared database limiter in `20261012250000_shared_user_rate_limits.sql` enforces fixed per-account windows across API instances for these server-owned buckets:
+
+| Bucket | Limit |
+|---|---:|
+| Learning writes | 60/minute |
+| Paper-trade session starts | 20/minute |
+| Paper-trade steps | 120/minute |
+| Journal writes | 30/minute |
+| Weekly-plan writes | 30/minute |
+| Account exports | 10/hour |
+| Learning-data deletion requests | 10/hour |
+
+The limiter derives the account from `auth.uid()`, exposes only a fixed bucket name to callers, and stores counters in a table with RLS enabled and no direct client table grants. It is per-account, not per-IP, and its migration must be applied and tested against a disposable project. The provider firewall/shared IP rate-limit configuration must still be reviewed and tested before inviting external learners; invalid or unauthenticated traffic can reach Auth before a learner-level bucket is available.
 
 Vercel deployment rate limits and Supabase free-tier capacity are external operational constraints. A successful build does not mean the latest commit is deployed, migrations are applied, or backups can be restored.
 
