@@ -25,10 +25,30 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     const body = await response.json() as {
       scenarios: Array<{ scenarioId: string; version: string; title: string; choices: unknown[]; answer_key?: unknown; answerKey?: unknown }>;
     };
-    expect(body.scenarios.map(s => s.scenarioId)).toEqual(
-      ['TQ-SYN-001', 'TQ-SYN-002', 'TQ-SYN-003', 'TQ-SYN-004', 'TQ-SYN-005', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-008', 'TQ-SYN-009']);
+    expect(body.scenarios.map(s => s.scenarioId)).toEqual([
+      'TQ-SYN-001', 'TQ-SYN-002', 'TQ-SYN-003', 'TQ-SYN-004', 'TQ-SYN-005', 'TQ-SYN-006', 'TQ-SYN-007', 'TQ-SYN-008', 'TQ-SYN-009', 'TQ-SYN-010', 'TQ-SYN-011', 'TQ-SYN-012', 'TQ-SYN-013', 'TQ-SYN-014', 'TQ-SYN-015', 'TQ-SYN-016', 'TQ-SYN-017', 'TQ-SYN-018', 'TQ-SYN-019', 'TQ-SYN-020', 'TQ-SYN-021', 'TQ-SYN-022', 'TQ-SYN-023', 'TQ-SYN-024',
+    ]);
     expect(body.scenarios.every(s => s.version === '1' && s.choices.length >= 2)).toBe(true);
     expect(body.scenarios.every(s => s.answer_key === undefined && s.answerKey === undefined)).toBe(true);
+  });
+
+  it('scores an Adaptive Practice variant on the server and keeps the attempt private', async () => {
+    const attemptId = crypto.randomUUID();
+    const submit = await request('/v1/chart-dojo/attempts', userAToken!, {
+      method: 'POST', body: JSON.stringify({ attemptId, scenarioId: 'TQ-SYN-019', choiceId: 'plan-risk' }),
+    });
+    expect(submit.status).toBe(200);
+    const result = await submit.json() as { result: { outcome: string; feedback: string; attemptId: string } };
+    expect(result.result.outcome).toBe('disciplined');
+    expect(result.result.feedback).toContain('invalidation condition');
+    expect(result.result.attemptId).toBe(attemptId);
+
+    const aHistory = await request('/v1/chart-dojo/attempts', userAToken!);
+    const aBody = await aHistory.json() as { attempts: Array<{ attemptId: string; scenarioId: string }> };
+    expect(aBody.attempts.some(item => item.attemptId === attemptId && item.scenarioId === 'TQ-SYN-019')).toBe(true);
+    const bHistory = await request('/v1/chart-dojo/attempts', userBToken!);
+    const bBody = await bHistory.json() as { attempts: Array<{ attemptId: string }> };
+    expect(bBody.attempts.some(item => item.attemptId === attemptId)).toBe(false);
   });
 
   it('persists attempts privately and handles replay safely', async () => {
