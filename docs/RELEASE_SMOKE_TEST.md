@@ -49,7 +49,18 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 - [ ] Verify API-level access controls, not just whether the UI hides another learner's data.
 - [ ] Confirm journal entries do not appear in public pages, glossary results, or leaderboards.
 
-### 5. Review queue and adaptive practice
+### 5. Paper Trade Lab persistence and isolation
+
+- [ ] Apply the paper-trade migration only in the disposable/test Supabase project and verify its version is recorded.
+- [ ] As Account A, start a clearly labelled synthetic session and confirm the initial response contains only the first revealed candle.
+- [ ] Advance one candle and retry the same expected version; confirm the retry returns the same response and does not advance twice.
+- [ ] Refresh/reopen the saved session and confirm the revealed candle history and final outcome persist.
+- [ ] As Account B, attempt to open Account A's session by ID and confirm it is not found; confirm Account A's sessions do not appear in B's history.
+- [ ] Submit invalid directional prices and malformed session IDs; confirm the API rejects them without creating a session.
+- [ ] Complete a session and inspect stop/target handling, same-candle stop-first ambiguity, adverse-gap handling, final-candle close, and the displayed P/L assumptions.
+- [ ] Confirm the UI says synthetic/fictional and does not imply broker execution, live data, or predictive performance.
+
+### 6. Review queue and adaptive practice
 
 - [ ] Open the review queue as an authenticated learner and confirm its recommendation is based on returned saved practice evidence.
 - [ ] Check that a learner with little or no practice is not described as having proven mastery.
@@ -57,7 +68,7 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 - [ ] Refresh the page and confirm the expected local history persists in the same browser.
 - [ ] Confirm Account A's private server records are not shown in Account B's session.
 
-### 6. Weekly plan, export, restore, and deletion
+### 7. Weekly plan, export, restore, and deletion
 
 - [ ] Select each supported weekly target (3, 5, and 7 sessions); record a session and undo it.
 - [ ] Export browser-local learning data and inspect the file for the expected allowlisted categories only.
