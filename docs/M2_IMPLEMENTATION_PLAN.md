@@ -57,6 +57,7 @@ Run the ordinary checks from the repository root:
 npm run test
 npm run build
 npm run api:build
+npm run release:preflight
 ```
 
 For real database behaviour, use a **disposable Supabase project** and two dedicated test users; do not use production credentials or personal learner accounts.
