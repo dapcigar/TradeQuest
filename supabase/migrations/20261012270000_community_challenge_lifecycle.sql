@@ -356,6 +356,121 @@ begin
 end;
 $$;
 
+-- Turning profile visibility off also withdraws previously public entries so they
+-- cannot silently reappear if the learner later re-enables the profile.
+create or replace function public.save_my_community_profile(
+  p_handle text,
+  p_display_name text,
+  p_bio text,
+  p_is_public boolean
+) returns jsonb
+language plpgsql security definer set search_path = '' as $
+declare
+  v_user_id uuid := auth.uid();
+  v_profile public.community_profiles%rowtype;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+  if p_handle is null or p_handle !~ '^[a-z0-9][a-z0-9_-]{2,19}
+-- are deleted with the learner's other server-stored learning data.
+create or replace function public.delete_own_learning_data() returns jsonb
+language plpgsql security definer set search_path = '' as $
+declare
+  v_user_id uuid := auth.uid();
+  v_deleted integer;
+  v_counts jsonb := '{}'::jsonb;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '42501'; end if;
+
+  delete from public.community_challenge_entries where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityChallengeEntries', v_deleted);
+
+  delete from public.community_reports where reporter_user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityReports', v_deleted);
+
+  delete from public.community_profiles where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('communityProfiles', v_deleted);
+
+  delete from public.paper_trade_sessions where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('paperTradeSessions', v_deleted);
+
+  delete from public.decision_journal_entries where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('decisionJournalEntries', v_deleted);
+
+  delete from public.chart_dojo_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('chartDojoAttempts', v_deleted);
+
+  delete from public.lesson_attempts where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('lessonAttempts', v_deleted);
+
+  delete from public.progress_events where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('progressEvents', v_deleted);
+
+  delete from public.learner_progress where user_id = v_user_id;
+  get diagnostics v_deleted = row_count;
+  v_counts := v_counts || pg_catalog.jsonb_build_object('learnerProgress', v_deleted);
+
+  return pg_catalog.jsonb_build_object('deleted', v_counts);
+end;
+$;
+revoke all on function public.delete_own_learning_data() from public, anon, authenticated;
+grant execute on function public.delete_own_learning_data() to authenticated;
+
+revoke all on function public.is_community_moderator() from public, anon;
+revoke all on function public.list_community_challenges() from public, anon;
+revoke all on function public.list_my_community_reports() from public, anon;
+revoke all on function public.list_my_community_challenge_entries() from public, anon;
+revoke all on function public.list_public_community_challenge_entries(integer) from public, anon;
+revoke all on function public.submit_community_challenge_entry(text, uuid, text, boolean) from public, anon;
+revoke all on function public.delete_my_community_challenge_entry(uuid) from public, anon;
+revoke all on function public.report_community_challenge_entry(uuid, text, text) from public, anon;
+revoke all on function public.list_community_moderation_queue() from public, anon;
+revoke all on function public.moderate_community_challenge_entry(uuid, text, text) from public, anon;
+grant execute on function public.is_community_moderator() to authenticated;
+grant execute on function public.list_community_challenges() to authenticated;
+grant execute on function public.list_my_community_reports() to authenticated;
+grant execute on function public.list_my_community_challenge_entries() to authenticated;
+grant execute on function public.list_public_community_challenge_entries(integer) to authenticated;
+grant execute on function public.submit_community_challenge_entry(text, uuid, text, boolean) to authenticated;
+grant execute on function public.delete_my_community_challenge_entry(uuid) to authenticated;
+grant execute on function public.report_community_challenge_entry(uuid, text, text) to authenticated;
+grant execute on function public.list_community_moderation_queue() to authenticated;
+grant execute on function public.moderate_community_challenge_entry(uuid, text, text) to authenticated;
+
+     or p_display_name is null or pg_catalog.char_length(pg_catalog.btrim(p_display_name)) not between 2 and 40
+     or p_bio is null or pg_catalog.char_length(pg_catalog.btrim(p_bio)) > 280
+     or p_is_public is null then
+    raise exception 'Invalid community profile' using errcode = '22023';
+  end if;
+  insert into public.community_profiles(user_id, handle, display_name, bio, is_public)
+  values (v_user_id, p_handle, pg_catalog.btrim(p_display_name), pg_catalog.btrim(p_bio), p_is_public)
+  on conflict (user_id) do update set
+    handle = excluded.handle,
+    display_name = excluded.display_name,
+    bio = excluded.bio,
+    is_public = excluded.is_public
+  returning * into v_profile;
+  if not p_is_public then
+    update public.community_challenge_entries set is_public = false
+      where user_id = v_user_id and is_public = true;
+  end if;
+  return pg_catalog.jsonb_build_object(
+    'handle', v_profile.handle,
+    'displayName', v_profile.display_name,
+    'bio', v_profile.bio,
+    'isPublic', v_profile.is_public,
+    'updatedAt', v_profile.updated_at
+  );
+end;
+$;
+
 -- Extend the account data deletion RPC so community contributions, reports and profile
 -- are deleted with the learner's other server-stored learning data.
 create or replace function public.delete_own_learning_data() returns jsonb
