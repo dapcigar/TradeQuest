@@ -170,6 +170,7 @@ export default function CommunityChallenges({ session }: { session: Session | nu
     {loading ? <div className="panel" role="status">Loading challenges…</div> : <>
       <div className="community-challenge-layout">
         <section className="panel community-challenge-editor">
+          {challenges.length === 0 ? <div className="community-empty"><LockKeyhole size={23}/><h3>Challenges awaiting publication</h3><p>Curated challenges appear after editorial approval. Existing learning and private journal features remain available.</p></div> : <>
           <span className="tag tag-mint">PROCESS · NOT P/L</span>
           <h3>Submit a learning reflection</h3>
           <p className="community-challenge-intro">Choose a saved attempt for the challenge scenario and explain your reasoning. TradeQuest derives the rubric result from the original server-scored attempt; you cannot submit or edit your own score.</p>
@@ -193,6 +194,7 @@ export default function CommunityChallenges({ session }: { session: Session | nu
             </label>
             <div className="community-actions"><button className="btn-primary" type="submit" disabled={busy || !selectedAttempt || !selectedChallenge || reflection.trim().length < 10}><Send size={15}/>{busy ? 'Submitting…' : 'Save reflection'}</button></div>
           </form>
+          </>}
         </section>
         <section className="community-challenge-side">
           <div className="community-section-heading"><div className="community-icon"><ShieldCheck size={20}/></div><div><h3>Your entries</h3><p>Private by default; public entries wait for moderation.</p></div></div>
