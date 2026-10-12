@@ -2,7 +2,7 @@
 
 ## Implemented in the interface
 
-- A keyboard-reachable “Skip to main content” link and a focusable main landmark.
+- A keyboard-reachable “Skip to main content” link, a focusable main landmark, and focus transfer to the labelled main landmark when the learner changes views.
 - Named primary navigation, an accessible mobile menu state with aria-expanded and aria-controls, and current-page semantics on the active navigation item.
 - Visible keyboard focus indicators for buttons, links, inputs, selects, and textareas.
 - Reduced-motion styling via prefers-reduced-motion.
