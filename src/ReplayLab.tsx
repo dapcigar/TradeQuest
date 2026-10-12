@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, CircleHelp, LoaderCircle, Play, RotateCcw, ShieldCheck } from 'lucide-react';
+import { CircleHelp, LoaderCircle, Play, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
 type Candle={index:number;open:number;high:number;low:number;close:number};
