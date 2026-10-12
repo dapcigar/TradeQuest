@@ -145,7 +145,7 @@ export default function AdaptivePractice({ session }: { session: Session | null 
     ]).then(async ([scenarioResponse, summaryResponse]) => {
       if (!scenarioResponse.ok || !summaryResponse.ok) throw new Error('Account-backed adaptive practice could not load. Confirm the API and adaptive scenario migration are available.');
       const scenarioBody = await scenarioResponse.json() as { scenarios?: ServerScenario[] };
-      const summaryBody = await summaryResponse.json() as { summaries?: AdaptiveAttemptSummary[]; error?: string };
+      const summaryBody = await summaryResponse.json() as { summaries?: AdaptiveAttemptSummary[]; historyComplete?: boolean; error?: string };
       const mapped: Record<string, Variant> = {};
       for (const scenario of scenarioBody.scenarios ?? []) {
         const localId = localVariantIds[scenario.scenarioId];
@@ -154,7 +154,7 @@ export default function AdaptivePractice({ session }: { session: Session | null 
       }
       if (Object.keys(mapped).length !== Object.keys(serverScenarioIds).length) throw new Error('Adaptive scenarios are missing. Apply the adaptive-practice scenario migration, then retry.');
       const summaries = Array.isArray(summaryBody.summaries) ? summaryBody.summaries : [];
-      if (summaries.length !== Object.keys(serverScenarioIds).length) throw new Error('Complete adaptive practice evidence is missing. Retry loading the practice set.');
+      if (summaryBody.historyComplete !== true || summaries.length !== Object.keys(serverScenarioIds).length) throw new Error('Complete adaptive practice evidence is missing. Retry loading the practice set.');
       if (cancelled) return;
       setServerVariants(mapped); setAttempts([]); setAccountSummary(summaries); setVariant(mapped[nextAdaptiveVariantFromSummary(summaries).id]);
     }).catch(error => {
