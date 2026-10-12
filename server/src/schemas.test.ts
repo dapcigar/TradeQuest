@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -131,5 +131,34 @@ describe('communityProfileSchema', () => {
     expect(communityProfileSchema.safeParse({ ...valid, userId: 'attacker' }).success).toBe(false);
     const { isPublic: _visibility, ...withoutVisibility } = valid;
     expect(communityProfileSchema.safeParse(withoutVisibility).success).toBe(false);
+  });
+});
+
+
+describe('community challenge schemas', () => {
+  const validEntry = {
+    challengeId: 'QUEST-001',
+    attemptId: '0e7a6c7c-95c6-4d47-9e92-9c3ddf5c0a1e',
+    reflection: 'I waited for evidence and defined what would invalidate the idea.',
+    isPublic: false,
+  };
+
+  it('accepts bounded process reflections and explicit visibility', () => {
+    expect(communityChallengeEntrySchema.safeParse(validEntry).success).toBe(true);
+  });
+
+  it('rejects malformed challenge IDs, invalid attempt IDs, short reflections, and caller-supplied scores', () => {
+    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, challengeId: 'NOT-A-QUEST' }).success).toBe(false);
+    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, attemptId: 'bad' }).success).toBe(false);
+    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, reflection: 'Too short' }).success).toBe(false);
+    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, rubricMet: true, outcome: 'evidence-led' }).success).toBe(false);
+  });
+
+  it('allowlists report categories and moderator actions with bounded reasons', () => {
+    expect(communityReportSchema.safeParse({ category: 'unsafe-advice', details: '' }).success).toBe(true);
+    expect(communityReportSchema.safeParse({ category: 'unwanted', details: '' }).success).toBe(false);
+    expect(communityModerationActionSchema.safeParse({ action: 'hide', reason: 'Contains personal information.' }).success).toBe(true);
+    expect(communityModerationActionSchema.safeParse({ action: 'publish', reason: 'Looks fine' }).success).toBe(false);
+    expect(communityModerationActionSchema.safeParse({ action: 'hide', reason: 'x' }).success).toBe(false);
   });
 });

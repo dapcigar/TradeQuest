@@ -21,6 +21,7 @@ import TradePlanLiteracy from './TradePlanLiteracy';
 import ReplayLab from './ReplayLab';
 import PaperTradeLab from './PaperTradeLab';
 import CommunityProfile from './CommunityProfile';
+import CommunityChallenges from './CommunityChallenges';
 import {
   Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
@@ -575,7 +576,7 @@ function App() {
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} onRetryQuiz={() => { setQuizChoice(''); setQuizSubmitted(false); setQuizResult(null); setQuizError(''); }} accountMode={Boolean(session)} />}
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'journal' && <JournalView session={session} scenarioId={activeScenarioId} />}
-          {view === 'community' && <CommunityProfile session={session} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}
+          {view === 'community' && <><CommunityProfile session={session} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} /><CommunityChallenges session={session} /></>}
           {view === 'adaptive' && <AdaptivePractice session={session} />}
           {view === 'weekly' && <WeeklyPracticePlan session={session} />}
           {view === 'review' && <ReviewQueue signedIn={Boolean(session)} mastery={session ? mastery : null} message={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}

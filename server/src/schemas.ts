@@ -86,3 +86,21 @@ export const communityProfileSchema = z.object({
   bio: z.string().trim().max(280).default(''),
   isPublic: z.boolean(),
 }).strict();
+
+
+export const communityChallengeEntrySchema = z.object({
+  challengeId: z.string().regex(/^QUEST-[0-9]{3}$/),
+  attemptId: z.string().uuid(),
+  reflection: z.string().trim().min(10).max(1000),
+  isPublic: z.boolean(),
+}).strict();
+
+export const communityReportSchema = z.object({
+  category: z.enum(['spam', 'harassment', 'personal-information', 'unsafe-advice', 'copyright', 'other']),
+  details: z.string().trim().max(1000).default(''),
+}).strict();
+
+export const communityModerationActionSchema = z.object({
+  action: z.enum(['approve', 'hide', 'remove']),
+  reason: z.string().trim().min(3).max(500),
+}).strict();

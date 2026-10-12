@@ -57,6 +57,10 @@ const communityProfileMigration = read('supabase/migrations/20261012260000_commu
 const communityProfileContractTests = read('server/src/community-profile-migration.test.ts');
 const communityProfileUi = read('src/CommunityProfile.tsx');
 const communityProfileApi = read('server/src/index.ts');
+const communityChallengeMigration = read('supabase/migrations/20261012270000_community_challenge_lifecycle.sql');
+const communityChallengeContractTests = read('server/src/community-challenge-migration.test.ts');
+const communityChallengesUi = read('src/CommunityChallenges.tsx');
+const communityModerationDocs = read('docs/COMMUNITY_MODERATION.md');
 const packageJson = JSON.parse(read('package.json'));
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
@@ -82,6 +86,7 @@ const curriculumModules = [
   ['Adaptive practice', 'src/AdaptivePractice.tsx', 'src/adaptivePractice.test.ts'],
   ['Synthetic replay', 'src/ReplayLab.tsx', 'src/replayCheckpoint.test.ts'],
   ['Synthetic paper trade', 'src/PaperTradeLab.tsx', 'server/src/chart-dojo.integration.test.ts'],
+  ['Community challenge rubrics', 'supabase/migrations/20261012270000_community_challenge_lifecycle.sql', 'server/src/community-challenge-migration.test.ts'],
 ];
 
 for (const [label, sourcePath, testPath] of curriculumModules) {
@@ -114,7 +119,11 @@ for (const [label, content, phrases] of [
   ['Community profile migration contract tests', communityProfileContractTests, ['defaults profiles to private', 'owner-scoped RLS', 'limits public identity fields']],
   ['Community profile UI privacy disclosures', communityProfileUi, ['Profiles are opt-in', 'Your learning progress, decision journal, account details, virtual balances and trading history are never included', 'Only your handle, display name and bio are shown', 'No public progress scores, balances, journals, contact details']],
   ['Community profile API routes', communityProfileApi, ["app.get('/v1/community/profile'", "app.post('/v1/community/profile'", "app.delete('/v1/community/profile'", "app.get('/v1/community/profiles'", 'communityProfileSchema.safeParse']],
-  ['Disposable integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
+  ['Community challenge lifecycle migration', communityChallengeMigration, ['create table if not exists public.community_challenges', 'create table if not exists public.community_challenge_entries', 'create table if not exists public.community_reports', 'create table if not exists public.community_moderation_actions', 'submit_community_challenge_entry', 'moderate_community_challenge_entry', 'community_moderation_actions', 'delete_own_learning_data']],
+  ['Community challenge migration contract tests', communityChallengeContractTests, ['server-scored attempts', 'public entries hidden until approval', 'audit trail']],
+  ['Community challenge UI safety controls', communityChallengesUi, ['PROCESS · NOT P/L', 'queued for moderator review', 'Report entry', 'Moderator queue', 'Your original practice attempt will remain']],
+  ['Community moderation runbook', communityModerationDocs, ['REPLACE_WITH_VERIFIED_AUTH_USER_UUID', 'assign a moderator automatically', 'no direct messages', 'trusted moderator is provisioned']],
+  ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));

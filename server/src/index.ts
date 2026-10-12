@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
@@ -228,6 +228,134 @@ app.get('/v1/community/profiles', requireLearner, async (req: AuthedRequest, res
   return res.json({ profiles: (data ?? []).map(item => ({ handle: item.handle, displayName: item.display_name, bio: item.bio, updatedAt: item.updated_at })) });
 });
 
+app.get('/v1/community/challenges', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_community_challenges');
+  if (error) {
+    logError('Community challenges could not be loaded.', error);
+    return res.status(503).json({ error: 'Community challenges are temporarily unavailable. Check that the community challenge migration is applied.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ challenges: Array.isArray(data) ? data : [] });
+});
+
+app.get('/v1/community/challenges/entries/mine', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_my_community_challenge_entries');
+  if (error) {
+    logError('Your community challenge entries could not be loaded.', error);
+    return res.status(503).json({ error: 'Your challenge entries are temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ entries: Array.isArray(data) ? data : [] });
+});
+
+app.get('/v1/community/challenges/entries', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_public_community_challenge_entries', { p_limit: 50 });
+  if (error) {
+    logError('Public community challenge entries could not be loaded.', error);
+    return res.status(503).json({ error: 'Public challenge entries are temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ entries: Array.isArray(data) ? data : [] });
+});
+
+app.post('/v1/community/challenges/entries', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = communityChallengeEntrySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid community challenge entry.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('submit_community_challenge_entry', {
+    p_challenge_id: parsed.data.challengeId,
+    p_attempt_id: parsed.data.attemptId,
+    p_reflection: parsed.data.reflection,
+    p_is_public: parsed.data.isPublic,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'A saved attempt for this challenge was not found.' });
+    if (error.code === '22023') return res.status(400).json({ error: error.message.includes('public community profile') ? 'Create and publish your community profile before submitting a public entry.' : 'Invalid community challenge entry.' });
+    if (error.code === '23505') return res.status(409).json({ error: 'This saved attempt has already been submitted with different entry content.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community challenge entry could not be submitted.', error);
+    return res.status(503).json({ error: 'Community challenge entry could not be submitted.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(data?.idempotentReplay ? 200 : 201).json({ entry: data });
+});
+
+app.delete('/v1/community/challenges/entries/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const entryId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof entryId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entryId)) {
+    return res.status(400).json({ error: 'Invalid community entry id.' });
+  }
+  const { error } = await req.learnerDb!.rpc('delete_my_community_challenge_entry', { p_entry_id: entryId });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community challenge entry could not be deleted.', error);
+    return res.status(503).json({ error: 'Community challenge entry could not be deleted.' });
+  }
+  return res.sendStatus(204);
+});
+
+app.post('/v1/community/challenges/entries/:id/report', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const entryId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof entryId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entryId)) {
+    return res.status(400).json({ error: 'Invalid community entry id.' });
+  }
+  const parsed = communityReportSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid community report.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('report_community_challenge_entry', {
+    p_entry_id: entryId, p_category: parsed.data.category, p_details: parsed.data.details,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'Public community entry not found.' });
+    if (error.code === '23505') return res.status(409).json({ error: 'You have already reported this entry.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Invalid community report.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community report could not be submitted.', error);
+    return res.status(503).json({ error: 'Community report could not be submitted.' });
+  }
+  return res.status(201).json({ report: data });
+});
+
+app.get('/v1/community/moderation/me', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('is_community_moderator');
+  if (error) {
+    logError('Community moderation role could not be checked.', error);
+    return res.status(503).json({ error: 'Community moderation role is temporarily unavailable.' });
+  }
+  return res.json({ isModerator: data === true });
+});
+
+app.get('/v1/community/moderation/queue', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_community_moderation_queue');
+  if (error) {
+    if (error.code === '42501' && /Moderator access required/i.test(error.message)) return res.status(403).json({ error: 'Moderator access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community moderation queue could not be loaded.', error);
+    return res.status(503).json({ error: 'Community moderation queue is temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ queue: data });
+});
+
+app.post('/v1/community/moderation/entries/:id/action', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const entryId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof entryId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entryId)) {
+    return res.status(400).json({ error: 'Invalid community entry id.' });
+  }
+  const parsed = communityModerationActionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid moderation action.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('moderate_community_challenge_entry', {
+    p_entry_id: entryId, p_action: parsed.data.action, p_reason: parsed.data.reason,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'Community entry not found.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Invalid moderation action.' });
+    if (error.code === '42501' && /Moderator access required/i.test(error.message)) return res.status(403).json({ error: 'Moderator access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community moderation action could not be recorded.', error);
+    return res.status(503).json({ error: 'Community moderation action could not be recorded.' });
+  }
+  return res.json({ action: data });
+});
+
 app.get('/v1/chart-dojo/scenarios', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('chart_dojo_scenarios')
     .select('scenario_id, version, title, prompt, chart_data, choices')
@@ -362,7 +490,7 @@ app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, re
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
   const db = req.learnerDb!;
-  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult] = await Promise.all([
+  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
     db.from('progress_events').select('event_id, event_key, xp_awarded, recorded_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('recorded_at', { ascending: true }).limit(10000),
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
@@ -373,8 +501,11 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     db.from('paper_trade_fills').select('fill_id, session_id, fill_sequence, fill_type, side, fill_price, units, realized_pnl, fill_reason, filled_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('filled_at', { ascending: true }).limit(10000),
     db.from('weekly_practice_plans').select('week_start, target, updated_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('week_start', { ascending: true }).limit(10000),
     db.from('weekly_practice_sessions').select('week_start, session_date, created_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('session_date', { ascending: true }).limit(10000),
+    db.rpc('get_my_community_profile'),
+    db.rpc('list_my_community_challenge_entries'),
+    db.rpc('list_my_community_reports'),
   ]);
-  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult];
+  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult];
   const failed = results.find(result => result.error);
   if (failed?.error) {
     logError('Account learning data export failed.', failed.error);
@@ -392,7 +523,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     product: 'TradeQuest',
     formatVersion: 1,
     exportedAt,
-    scope: 'Server-stored learning data for the signed-in account only. Authentication credentials, access tokens, and browser-local records are not included.',
+    scope: 'Server-stored learning data and community profile/contribution records for the signed-in account only. Authentication credentials, access tokens, private data belonging to other learners, and browser-local records are not included.',
     data: {
       progress: progressResult.data ?? { xp: 0, lessons_completed: [], updated_at: null },
       progressEvents: eventsResult.data ?? [],
@@ -404,6 +535,9 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
       paperTradeFills: (paperFillsResult.data ?? []).map(item => ({ fillId: item.fill_id, sessionId: item.session_id, sequence: item.fill_sequence, type: item.fill_type, side: item.side, price: item.fill_price, units: item.units, realizedPnl: item.realized_pnl, reason: item.fill_reason, filledAt: item.filled_at })),
       weeklyPracticePlans: weeklyPlansResult.data ?? [],
       weeklyPracticeSessions: weeklySessionsResult.data ?? [],
+      communityProfile: communityProfileResult.data ?? null,
+      communityChallengeEntries: Array.isArray(communityEntriesResult.data) ? communityEntriesResult.data : [],
+      communityReports: Array.isArray(communityReportsResult.data) ? communityReportsResult.data : [],
     },
   });
 });
