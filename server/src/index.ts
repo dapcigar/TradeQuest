@@ -180,36 +180,35 @@ app.get('/v1/paper-lab/sessions/:id', requireLearner, async (req: AuthedRequest,
 
 // Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
 app.get('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
-  const { data, error } = await req.learnerDb!.from('community_profiles')
-    .select('handle, display_name, bio, is_public, updated_at')
-    .eq('user_id', req.learnerId!).maybeSingle();
+  const { data, error } = await req.learnerDb!.rpc('get_my_community_profile');
   if (error) {
     logError('Community profile could not be loaded.', error);
     return res.status(503).json({ error: 'Community profile is temporarily unavailable. Check that the community profile migration is applied.' });
   }
   res.setHeader('Cache-Control', 'no-store');
-  return res.json({ profile: data ? { handle: data.handle, displayName: data.display_name, bio: data.bio, isPublic: data.is_public, updatedAt: data.updated_at } : null });
+  return res.json({ profile: data ?? null });
 });
 
 app.post('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = communityProfileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid community profile.', details: parsed.error.flatten() });
   const d = parsed.data;
-  const { data, error } = await req.learnerDb!.from('community_profiles').upsert({
-    user_id: req.learnerId!, handle: d.handle, display_name: d.displayName, bio: d.bio, is_public: d.isPublic,
-  }, { onConflict: 'user_id' }).select('handle, display_name, bio, is_public, updated_at').single();
+  const { data, error } = await req.learnerDb!.rpc('save_my_community_profile', {
+    p_handle: d.handle, p_display_name: d.displayName, p_bio: d.bio, p_is_public: d.isPublic,
+  });
   if (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'That community handle is already in use. Choose another one.' });
-    if (error.code === '42501') return res.status(403).json({ error: 'Community profile access was denied.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Invalid community profile.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     logError('Community profile could not be saved.', error);
     return res.status(503).json({ error: 'Community profile could not be saved. Check that the community profile migration is applied.' });
   }
   res.setHeader('Cache-Control', 'no-store');
-  return res.json({ profile: { handle: data.handle, displayName: data.display_name, bio: data.bio, isPublic: data.is_public, updatedAt: data.updated_at } });
+  return res.json({ profile: data });
 });
 
 app.delete('/v1/community/profile', requireLearner, async (req: AuthedRequest, res: Response) => {
-  const { error } = await req.learnerDb!.from('community_profiles').delete().eq('user_id', req.learnerId!);
+  const { error } = await req.learnerDb!.rpc('delete_my_community_profile');
   if (error) {
     logError('Community profile could not be deleted.', error);
     return res.status(503).json({ error: 'Community profile could not be deleted. Check that the community profile migration is applied.' });
