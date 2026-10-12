@@ -49,6 +49,15 @@ export const paperTradePlanSchema = z.object({
   target: z.number().finite().min(0.000001).max(1_000_000_000),
   equity: z.number().finite().positive().max(1_000_000_000),
   riskPercent: z.number().finite().min(0.01).max(5),
+  instrumentLabel: z.string().trim().min(2).max(40).default('Generic price-unit model'),
+  tickSize: z.number().finite().min(0.000001).max(1_000_000).default(1),
+  tickValue: z.number().finite().min(0.000001).max(1_000_000).default(1),
+  contractSize: z.number().finite().min(0.000001).max(1_000_000).default(1),
+  lotStep: z.number().finite().min(0.000001).max(1_000_000).default(0.01),
+  spreadTicks: z.number().finite().min(0).max(1000).default(0),
+  commissionPerUnit: z.number().finite().min(0).max(1_000_000).default(0),
+  slippageTicks: z.number().finite().min(0).max(1000).default(0),
+  leverage: z.number().finite().min(1).max(1000).default(1),
 }).strict();
 
 export const paperTradeStepSchema = z.object({ sessionId: z.string().uuid(), expectedVersion: z.number().int().nonnegative() }).strict();
