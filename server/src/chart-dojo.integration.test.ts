@@ -93,6 +93,48 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(state.complete).toBe(true);
   });
 
+  it('syncs weekly practice plans only to the owning learner', async () => {
+    const monday = new Date();
+    const day = monday.getUTCDay() || 7;
+    monday.setUTCDate(monday.getUTCDate() - day + 1);
+    const weekStart = monday.toISOString().slice(0, 10);
+    const sessionDate = weekStart;
+    const readPlan = async (token: string) => {
+      const response = await request('/v1/weekly-plan?weekStart=' + weekStart, token);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toContain('no-store');
+      return (await response.json()) as { plan: { week: string; target: number; completedDates: string[] } };
+    };
+
+    const invalidWeek = await request('/v1/weekly-plan?weekStart=2026-10-13', userAToken!);
+    expect(invalidWeek.status).toBe(400);
+
+    const saveA = await request('/v1/weekly-plan', userAToken!, {
+      method: 'PUT', body: JSON.stringify({ weekStart, target: 5 }),
+    });
+    expect(saveA.status).toBe(200);
+    const sessionA = await request('/v1/weekly-plan/session', userAToken!, {
+      method: 'PUT', body: JSON.stringify({ weekStart, sessionDate, completed: true }),
+    });
+    expect(sessionA.status).toBe(200);
+    const planA = await readPlan(userAToken!);
+    expect(planA.plan.target).toBe(5);
+    expect(planA.plan.completedDates).toContain(sessionDate);
+
+    const saveB = await request('/v1/weekly-plan', userBToken!, {
+      method: 'PUT', body: JSON.stringify({ weekStart, target: 3 }),
+    });
+    expect(saveB.status).toBe(200);
+    const clearB = await request('/v1/weekly-plan/session', userBToken!, {
+      method: 'PUT', body: JSON.stringify({ weekStart, sessionDate, completed: false }),
+    });
+    expect(clearB.status).toBe(200);
+    const planB = await readPlan(userBToken!);
+    expect(planB.plan.target).toBe(3);
+    expect(planB.plan.completedDates).not.toContain(sessionDate);
+    expect((await readPlan(userAToken!)).plan.target).toBe(5);
+  });
+
   it('exports only the signed-in learner\'s server-stored data', async () => {
     const title = 'Account export isolation ' + crypto.randomUUID();
     const created = await request('/v1/decision-journal', userAToken!, {
@@ -363,16 +405,20 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(deletion.status).toBe(200);
     const deletionBody = await deletion.json() as { deleted: Record<string, number> };
     expect(deletionBody.deleted.decisionJournalEntries).toBeGreaterThan(0);
+    expect(deletionBody.deleted.weeklyPracticePlans).toBeGreaterThan(0);
+    expect(deletionBody.deleted.weeklyPracticeSessions).toBeGreaterThan(0);
 
     const exportA = await request('/v1/me/export', userAToken!);
     expect(exportA.status).toBe(200);
-    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[] } };
+    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
     expect(bodyA.data.progress.xp).toBe(0);
     expect(bodyA.data.progressEvents).toHaveLength(0);
     expect(bodyA.data.lessonAttempts).toHaveLength(0);
     expect(bodyA.data.chartDojoAttempts).toHaveLength(0);
     expect(bodyA.data.decisionJournalEntries).toHaveLength(0);
     expect(bodyA.data.paperTradeSessions).toHaveLength(0);
+    expect(bodyA.data.weeklyPracticePlans).toHaveLength(0);
+    expect(bodyA.data.weeklyPracticeSessions).toHaveLength(0);
 
     const exportB = await request('/v1/me/export', userBToken!);
     expect(exportB.status).toBe(200);
