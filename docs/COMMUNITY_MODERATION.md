@@ -4,6 +4,8 @@
 
 - Curated challenges use synthetic Chart Dojo scenarios only.
 - The current challenge catalogue reuses the two existing solo-challenge scenarios and process rubrics. New or changed challenge definitions must be added through a reviewed migration and receive human editorial sign-off; there is no learner-facing challenge authoring or publication control.
+- Challenge definitions carry a source reference, content version, editorial status, reviewer, review timestamp, and rationale. Existing solo challenges are marked `legacy-published` and appear in the admin editorial queue; new challenge rows default to unpublished `draft` status.
+- Only a community admin can approve and publish, request revisions, or retire a challenge. Every decision is recorded in `community_challenge_reviews`. `revision-needed` unpublishes the item; after changing source-controlled content, increment `content_version` in a migration and re-review before publication.
 - A challenge entry must reference a saved attempt owned by the submitting learner. The database derives its outcome and process-rubric result from that server-scored attempt; clients cannot submit a score or P/L.
 - Private reflections are visible only to their author. Public submissions require the learner's profile to be explicitly public and are hidden until a moderator approves them.
 - Public entries are shown only while the author's profile is opted in, the entry is marked public, and moderation status is `approved`.
@@ -11,6 +13,13 @@
 - Moderation actions (`approve`, `hide`, `remove`) require a reason and are written to `community_moderation_actions`. Report status is resolved or dismissed as part of the same database function.
 - Disabling profile visibility withdraws previously public entries. Deleting the profile also withdraws public entries. Turning visibility back on does not republish entries automatically.
 - There are no direct messages, profit-based rankings, public account balances, journal exposure, or user-editable rubric scores.
+
+## Editorial review workflow
+
+1. Open **Editorial review queue** while signed in with a provisioned `admin` role.
+2. Compare the source reference, content version, scenario, description, and process rubric with the source-controlled challenge definition.
+3. Choose **Approve & publish**, **Request revision**, or **Retire challenge** and enter a concise reason. Only approved/legacy-published items are available to learners; retired/draft items cannot receive new submissions or appear in the public feed.
+4. For revisions, update the source-controlled migration, increment the content version, and review the changed definition again. Do not edit the database content ad hoc without a migration.
 
 ## Provision the first moderator
 
@@ -43,7 +52,7 @@ where user_id = 'REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid;
 
 ## Release checks
 
-- Apply `20261012270000_community_challenge_lifecycle.sql` after the community profile migration.
+- Apply `20261012270000_community_challenge_lifecycle.sql` after the community profile migration, then `20261012280000_community_challenge_editorial_review.sql`.
 - Run the opt-in two-account integration suite with dedicated test accounts. The suite deletes all saved learning data for Account A.
 - Provision a moderator in the connected Supabase project and test the moderator queue and actions manually with that account. Ordinary learner accounts must receive HTTP 403 from moderation endpoints.
 - Do not enable broad public access until at least one trusted moderator is provisioned and the reporting/appeal process is operational.
