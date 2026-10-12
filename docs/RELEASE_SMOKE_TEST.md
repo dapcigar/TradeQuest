@@ -70,6 +70,11 @@ This check is intentionally narrow: it does not prove database migration status,
 - [ ] Inspect the session event ledger: it records session start, each accepted candle transition, and session closure in sequence; retrying a step does not duplicate events.
 - [ ] Inspect the simulated fill ledger: exactly one entry fill is recorded at the assumed entry price, and exactly one exit fill is recorded at closure with the opposite side, exit price, reason, and reconciled simulated P/L.
 - [ ] Confirm fill rows are read-only to learners, private to the owning account, included in that account's export, and removed only when the owning session is deleted.
+- [ ] Verify community profiles are private by default; publish one with a dedicated test account and confirm only handle, display name, and bio appear in the directory, then opt out and confirm it disappears.
+- [ ] Submit a private community reflection linked to a saved Chart Dojo attempt and reconcile the outcome/rubric result against the server-scored attempt; confirm the learner cannot supply a score.
+- [ ] Submit a public reflection with an opted-in profile and confirm it remains hidden while pending, appears only after moderator approval, and disappears when the profile is made private.
+- [ ] Verify reports are private, an ordinary learner receives 403 from moderation endpoints, each moderation action requires a reason and creates an audit record, and cross-account entry deletion does not remove another learner's entry.
+- [ ] Verify account export includes the signed-in learner's community profile/entries/reports and learning-data deletion removes those records while preserving moderation audit history.
 - [ ] Confirm the final ledger event records the simulated outcome and post-session virtual equity without exposing an internal learner ID.
 - [ ] Refresh/reopen the saved session and confirm the revealed candle history and final outcome persist.
 - [ ] As Account B, attempt to open Account A's session, event ledger, and fill ledger by ID and confirm all are not found; confirm Account A's sessions do not appear in B's history.
