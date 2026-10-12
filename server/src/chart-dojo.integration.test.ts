@@ -552,6 +552,10 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
       const mineBBody = await mineB.json() as { entries: Array<{ entryId: string }> };
       expect(mineABody.entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(true);
       expect(mineBBody.entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(false);
+      const crossAccountDelete = await request('/v1/community/challenges/entries/' + publicEntryBody.entry.entryId, userBToken!, { method: 'DELETE' });
+      expect(crossAccountDelete.status).toBe(204);
+      const stillOwnedByA = await request('/v1/community/challenges/entries/mine', userAToken!);
+      expect(((await stillOwnedByA.json()) as { entries: Array<{ entryId: string }> }).entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(true);
 
       const feed = await request('/v1/community/challenges/entries', userAToken!);
       const feedBody = await feed.json() as { entries: Array<{ entryId: string }> };
@@ -576,6 +580,14 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
       const privateEntryBody = await privateEntry.json() as { entry: { entryId: string; outcome: string; rubricMet: boolean; isPublic: boolean; moderationStatus: string } };
       entryIds.push(privateEntryBody.entry.entryId);
       expect(privateEntryBody.entry).toMatchObject({ outcome: 'risk-aware', rubricMet: true, isPublic: false, moderationStatus: 'approved' });
+      const communityExport = await request('/v1/me/export', userAToken!);
+      expect(communityExport.status).toBe(200);
+      const communityExportBody = await communityExport.json() as { data: { communityProfile: Record<string, unknown> | null; communityChallengeEntries: Array<{ entryId: string }>; communityReports: unknown[] } };
+      expect(communityExportBody.data.communityProfile).toMatchObject({ handle: handleA, displayName: 'Challenge Tester', isPublic: true });
+      expect(communityExportBody.data.communityProfile?.user_id).toBeUndefined();
+      expect(communityExportBody.data.communityChallengeEntries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(true);
+      expect(communityExportBody.data.communityChallengeEntries.some(entry => entry.entryId === privateEntryBody.entry.entryId)).toBe(true);
+      expect(communityExportBody.data.communityReports).toEqual([]);
       const makePrivate = await request('/v1/community/profile', userAToken!, {
         method: 'POST',
         body: JSON.stringify({ handle: handleA, displayName: 'Challenge Tester', bio: 'Testing community challenge lifecycle.', isPublic: false }),
