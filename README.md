@@ -20,7 +20,7 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of synthetic scenarios (three originals plus 21 additional variants, including six dedicated Adaptive Practice variants; see `docs/TRANSFER_PRACTICE.md`); answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice, server-scored spread-basics quiz attempts, and risk-calculator participation. It recommends the least-practised Chart Dojo skill, uses positive-decision rates only as a tie-breaker, and labels small samples as low-confidence. Risk-calculator use is tracked as participation, not mastery.
 - Signed-in Adaptive Practice uses the server-scored Chart Dojo endpoint for account-backed attempt history and feedback; anonymous learners retain a separate browser-local demo mode. Apply `20261012201500_adaptive_practice_server_scenarios.sql` before enabling the new variants in a Supabase environment.
-- The Paper Trade Lab runs a server-calculated, learner-bound synthetic scenario. It reveals one candle per request, calculates hypothetical size/P&L on the API, and uses a conservative stop-first rule for same-candle stop/target ambiguity. Sessions are temporary and are not a persistent trade ledger; see `docs/PAPER_TRADE_LAB.md`.
+- The Paper Trade Lab stores each learner's synthetic session and final outcome in Supabase. Session creation and candle advancement are server-authoritative; advancement uses version checks and retries return the last accepted response. Learners can reopen saved sessions and see their own history. This is still a simplified educational simulator, not a contract-accurate execution engine or a broker ledger; see `docs/PAPER_TRADE_LAB.md`.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
 
@@ -53,6 +53,7 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
    - `supabase/migrations/20261011200000_decision_journal.sql`
    - `supabase/migrations/20261012201500_adaptive_practice_server_scenarios.sql`
+   - `supabase/migrations/20261012210000_paper_trade_ledger.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
