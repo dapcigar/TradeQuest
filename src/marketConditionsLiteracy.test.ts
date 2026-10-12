@@ -18,7 +18,7 @@ describe('market conditions literacy', () => {
   it('avoids predictive or guaranteed-outcome claims', () => {
     const content = marketConditionsQuestions.map(question => question.prompt + ' ' + question.explanation + ' ' + question.options.map(option => option.label).join(' ')).join(' ').toLowerCase();
     expect(content).toContain('does not predict direction');
-    expect(content).toContain('liquidity tells you whether price will rise or fall');
+    expect(content).toContain('not a signal or guarantee');
     expect(content).toContain('guarantees');
   });
 });
