@@ -17,8 +17,9 @@ A free, risk-first trading education game for beginners learning forex, gold, in
 - Node/Express TypeScript API verifies learner access tokens and forwards the JWT to Supabase so RLS and `auth.uid()` operate in the learner's context.
 - Supabase PostgreSQL stores learner progress and server-scored lesson attempts.
 - First server-scored lesson: spread basics.
-- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of synthetic scenarios (three originals plus six unseen variants, see `docs/TRANSFER_PRACTICE.md`); answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
+- Authenticated progress events persist foundations completion and first risk calculator use. Chart Dojo now has a versioned, database-backed catalogue of synthetic scenarios (three originals plus 21 additional variants, including six dedicated Adaptive Practice variants; see `docs/TRANSFER_PRACTICE.md`); answer keys remain server-only, and choices, server-authored feedback, scenario version, and recent attempt history are persisted separately. The introductory milestone reward is awarded once per learner.
 - Anonymous demo progress remains separate from account progress. The authenticated `/v1/me/mastery` endpoint summarises Chart Dojo practice, server-scored spread-basics quiz attempts, and risk-calculator participation. It recommends the least-practised Chart Dojo skill, uses positive-decision rates only as a tie-breaker, and labels small samples as low-confidence. Risk-calculator use is tracked as participation, not mastery.
+- Signed-in Adaptive Practice uses the server-scored Chart Dojo endpoint for account-backed attempt history and feedback; anonymous learners retain a separate browser-local demo mode. Apply `20261012201500_adaptive_practice_server_scenarios.sql` before enabling the new variants in a Supabase environment.
 - The Paper Trade Lab runs a server-calculated, learner-bound synthetic scenario. It reveals one candle per request, calculates hypothetical size/P&L on the API, and uses a conservative stop-first rule for same-candle stop/target ambiguity. Sessions are temporary and are not a persistent trade ledger; see `docs/PAPER_TRADE_LAB.md`.
 
 The application is still an MVP. Community accounts/leaderboards, full cross-device adaptive mastery, licensed historical datasets, and complete server-authoritative chart simulation are not complete.
@@ -38,18 +39,22 @@ For the API, create `server/.env` with the server variables from `.env.example`,
 ## Supabase setup (development project only)
 
 1. Configure Supabase Auth email confirmation and allowed redirect URLs for local and deployed origins.
-2. Apply migrations 001–006 in numeric order:
+2. Review and apply SQL migrations in lexicographic filename order to a development project:
    - `supabase/migrations/202610110001_m2_learner_progress.sql`
    - `supabase/migrations/202610110002_m2_progress_events_and_xp_guard.sql`
    - `supabase/migrations/202610110003_chart_dojo_progress_event.sql`
    - `supabase/migrations/202610110004_chart_dojo_attempt_history.sql`
    - `supabase/migrations/202610110005_repair_chart_dojo_attempt_history.sql` (safe, repeatable repair)
    - `supabase/migrations/202610110006_versioned_chart_dojo_scenarios.sql`
+   - `supabase/migrations/202610110011_risk_budget_reasoning.sql`
    - `supabase/migrations/20261011170155_harden_grants_and_milestone_claims.sql`
    - `supabase/migrations/20261011170834_foundations_milestone_requires_quiz.sql`
    - `supabase/migrations/20261011175355_chart_dojo_scenario_variants.sql`
+   - `supabase/migrations/20261011182406_chart_dojo_transfer_depth.sql`
+   - `supabase/migrations/20261011200000_decision_journal.sql`
+   - `supabase/migrations/20261012201500_adaptive_practice_server_scenarios.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
-4. Start the API and Vite frontend, then test with two dedicated test accounts.
+4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
 Do not apply migrations to production until SQL, row-level security, RPC idempotency, and multi-user isolation have been validated in a disposable project. See the M2 implementation plan for the opt-in integration test setup.
 
