@@ -53,7 +53,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const { hostname } = new URL(process.env.TRADEQUEST_TEST_API_URL);
-          const safeHost = /(^localhost$|^127\\.0\\.0\\.1$|(^|[.-])(test|staging|preview)([.-]|$)|-git-)/i.test(hostname);
+          const safeHost = /(^localhost$|^127\.0\.0\.1$|(^|[.-])(test|staging|preview)([.-]|$)|-git-)/i.test(hostname);
           if (!safeHost) {
             console.error('::error::Refusing an API hostname that is not recognizably non-production: ' + hostname);
             process.exit(1);
