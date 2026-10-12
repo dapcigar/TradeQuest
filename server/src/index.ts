@@ -16,11 +16,11 @@ const learnerLimiter = createRateLimiter(LEARNER_RATE_LIMIT, LEARNER_RATE_WINDOW
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '32kb' }));
 app.use((_req, res, next) => {
   applyApiSecurityHeaders(res, env.NODE_ENV === 'production');
   next();
 });
+app.use(express.json({ limit: '32kb' }));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', env.WEB_ORIGIN);
   res.setHeader('Vary', 'Origin');
