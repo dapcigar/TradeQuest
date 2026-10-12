@@ -44,16 +44,16 @@ begin
     (pg_catalog.floor(extract(epoch from v_now) / v_window_seconds) * v_window_seconds)::double precision
   );
 
-  insert into public.api_rate_limit_windows (user_id, bucket, window_start, hit_count, updated_at)
+  insert into public.api_rate_limit_windows as current_rate_limit (user_id, bucket, window_start, hit_count, updated_at)
   values (v_user_id, p_bucket, v_window_start, 1, v_now)
   on conflict (user_id, bucket) do update
-    set window_start = greatest(public.api_rate_limit_windows.window_start, excluded.window_start),
+    set window_start = greatest(current_rate_limit.window_start, excluded.window_start),
         hit_count = case
-          when public.api_rate_limit_windows.window_start = excluded.window_start
-            then public.api_rate_limit_windows.hit_count + 1
-          when public.api_rate_limit_windows.window_start < excluded.window_start
+          when current_rate_limit.window_start = excluded.window_start
+            then current_rate_limit.hit_count + 1
+          when current_rate_limit.window_start < excluded.window_start
             then 1
-          else public.api_rate_limit_windows.hit_count + 1
+          else current_rate_limit.hit_count + 1
         end,
         updated_at = excluded.updated_at
   returning hit_count into v_hits;
