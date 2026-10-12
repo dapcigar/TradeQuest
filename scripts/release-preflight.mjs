@@ -73,6 +73,7 @@ const paperExecutionContractTests = read('server/src/paper-trade-execution-assum
 const paperTradeUi = read('src/PaperTradeLab.tsx');
 const apiIntegrationTests = read('server/src/chart-dojo.integration.test.ts');
 const packageJson = JSON.parse(read('package.json'));
+const packageLock = read('package-lock.json');
 
 checkOrderedMigrationList('README.md', readme, '## Supabase setup', '## Validation');
 checkOrderedMigrationList('docs/M2_IMPLEMENTATION_PLAN.md', plan, 'Current ordered migrations are:', 'The development-only seed file');
@@ -116,6 +117,7 @@ for (const path of ['src/AdaptivePractice.tsx', 'src/ReplayLab.tsx', 'src/PaperT
 }
 
 for (const [label, content, phrases] of [
+  ['Reproducible npm lockfile and patched test runner', packageLock, ['"lockfileVersion": 3', '"vitest": "^4.1.11"', '"vite": "^6.4.4"']],
   ['Release smoke test', smoke, ['Paper Trade Lab persistence and isolation', 'session event ledger', 'DELETE_MY_LEARNING_DATA', 'Security headers and abuse controls', 'weekly target']],
   ['Production readiness', readiness, ['not a global quota', 'restore', 'screen-reader', 'cross-account tests', 'editorial approval', 'CONTENT_REVIEW_REGISTER.md']],
   ['Production runbook', runbook, ['Backup before schema changes', 'Restore rehearsal', 'Deployment and rollback', 'Release evidence record']],
@@ -147,8 +149,8 @@ for (const [label, content, phrases] of [
   ['Paper-trade execution assumptions tests', paperExecutionContractTests, ['bounded user-defined execution assumptions', 'lot step and limits risk and margin', 'effective fill prices']],
   ['Paper-trade execution UI/API contract', paperTradeUi + masteryApi, ['Execution assumptions', 'estimatedStopLoss', 'marginRequired', 'start_paper_trade_session_with_specs']],
   ['Paper-trade custom-cost integration coverage', apiIntegrationTests, ['sizes positions by user-defined tick', 'estimatedStopLoss: 98.4', 'marginRequired: 422.3', '104.625']],
-  ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate dedicated account tokens against deployed API', '/v1/me/progress', 'No integration writes have been started', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
-  ['Legacy Supabase integration workflow safeguards', legacySupabaseIntegrationWorkflow, ['confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate both dedicated accounts against deployed API', '/v1/me/progress', 'No integration writes have been started', 'npm run test -- server/src/chart-dojo.integration.test.ts --reporter=verbose']],
+  ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate dedicated account tokens against deployed API', '/v1/me/progress', 'No integration writes have been started', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm ci', 'npm audit --audit-level=high', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
+  ['Legacy Supabase integration workflow safeguards', legacySupabaseIntegrationWorkflow, ['confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate both dedicated accounts against deployed API', '/v1/me/progress', 'No integration writes have been started', 'npm ci', 'npm audit --audit-level=high', 'npm run test -- server/src/chart-dojo.integration.test.ts --reporter=verbose']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));

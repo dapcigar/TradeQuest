@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - name: Require explicit dedicated-test-account confirmation
         env:
           CONFIRM_TEST_ACCOUNTS: ${{ inputs.confirm_test_accounts }}
@@ -65,7 +66,9 @@ jobs:
           console.log('Both dedicated accounts authenticated against the configured API. Tokens and response bodies were not logged.');
           NODE
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      - name: Fail on high or critical dependency advisories
+        run: npm audit --audit-level=high
       - name: Run API integration suite against disposable Supabase environment
         env:
           TRADEQUEST_RUN_INTEGRATION_TESTS: "true"
