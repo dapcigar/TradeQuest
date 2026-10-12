@@ -19,7 +19,7 @@ const handlers = indexSource.split(/\n(?=app\.(?:get|post)\()/).filter(chunk => 
 
 describe('API routes keep each learner\'s data separate', () => {
   it('finds the learner routes', () => {
-    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export']));
+    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export', '/v1/me/delete-learning-data']));
   });
 
   it('requires a verified learner on every /v1 route', () => {
@@ -118,6 +118,28 @@ describe('database policies keep attempts private and answer keys server-only', 
     expect(grants.length).toBeGreaterThan(0);
     for (const grant of grants) expect(grant[1]).not.toMatch(/answer_key/);
     expect(allMigrations).not.toMatch(/grant select on public\.chart_dojo_scenarios to (anon|authenticated)/i);
+  });
+});
+
+describe('self-service learning data deletion', () => {
+  it('requires authentication and an explicit confirmation on the API route', () => {
+    const handler = handlers.find(h => h.route === '/v1/me/delete-learning-data')!;
+    expect(handler.source).toContain('requireLearner');
+    expect(handler.source).toContain('deleteLearningDataSchema.safeParse(req.body)');
+    expect(handler.source).toContain("rpc('delete_own_learning_data')");
+    expect(handler.source).toContain("setHeader('Cache-Control', 'no-store')");
+  });
+
+  it('deletes only rows owned by auth.uid() through a restricted security-definer function', () => {
+    const fn = allMigrations.match(/create or replace function public\.delete_own_learning_data\(\)[\s\S]*?\n\$\$;/g)?.at(-1);
+    expect(fn).toBeTruthy();
+    expect(fn).toContain('v_user_id uuid := auth.uid()');
+    expect(fn).toMatch(/security definer/i);
+    expect(fn).toMatch(/set search_path = ''/i);
+    for (const table of ['paper_trade_sessions', 'decision_journal_entries', 'chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress']) {
+      expect(fn).toContain(`delete from public.${table} where user_id = v_user_id`);
+    }
+    expect(allMigrations).toMatch(/grant execute on function public\.delete_own_learning_data\(\) to authenticated/i);
   });
 });
 

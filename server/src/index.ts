@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
@@ -211,6 +211,20 @@ app.delete('/v1/decision-journal/:id', requireLearner, async (req: AuthedRequest
   if (error) { logError('Decision journal entry could not be deleted.', error); return res.status(400).json({ error: 'Journal entry could not be deleted.' }); }
   if (!data) return res.status(404).json({ error: 'Journal entry not found.' });
   return res.sendStatus(204);
+});
+
+// Destructive self-service action: clears saved learning records, not the auth identity.
+app.post('/v1/me/delete-learning-data', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = deleteLearningDataSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Confirm deletion of saved learning data to continue.' });
+  const { data, error } = await req.learnerDb!.rpc('delete_own_learning_data');
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Account learning data deletion failed.', error);
+    return res.status(503).json({ error: 'Saved learning data could not be deleted right now.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).json(data);
 });
 
 // Export only the signed-in learner's application data. This endpoint deliberately

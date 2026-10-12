@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, chartDojoAttemptSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -84,5 +84,14 @@ describe('decisionJournalSchema', () => {
     expect(decisionJournalSchema.safeParse({ ...valid, decision: 'buy' }).success).toBe(false);
     expect(decisionJournalSchema.safeParse({ ...valid, scenarioId: 'live-gold' }).success).toBe(false);
     expect(decisionJournalSchema.safeParse({ ...valid, thesis: 'x'.repeat(2001) }).success).toBe(false);
+  });
+});
+
+describe('deleteLearningDataSchema', () => {
+  it('requires the explicit confirmation phrase and rejects extra fields', () => {
+    expect(deleteLearningDataSchema.safeParse({ confirmation: 'DELETE_MY_LEARNING_DATA' }).success).toBe(true);
+    expect(deleteLearningDataSchema.safeParse({ confirmation: 'delete' }).success).toBe(false);
+    expect(deleteLearningDataSchema.safeParse({ confirmation: 'DELETE_MY_LEARNING_DATA', userId: 'another-user' }).success).toBe(false);
+    expect(deleteLearningDataSchema.safeParse({}).success).toBe(false);
   });
 });

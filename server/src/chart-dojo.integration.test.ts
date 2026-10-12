@@ -339,5 +339,48 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(afterDeleteBody.entries.some(entry => entry.id === entryId)).toBe(false);
   });
 
+  it('deletes only the current learner\'s saved learning data and keeps the account usable', async () => {
+    const titleA = 'Delete data fixture A ' + crypto.randomUUID();
+    const titleB = 'Delete data fixture B ' + crypto.randomUUID();
+    const createA = await request('/v1/decision-journal', userAToken!, {
+      method: 'POST', body: JSON.stringify({ title: titleA, decision: 'waited' }),
+    });
+    const createB = await request('/v1/decision-journal', userBToken!, {
+      method: 'POST', body: JSON.stringify({ title: titleB, decision: 'passed' }),
+    });
+    expect(createA.status).toBe(201);
+    expect(createB.status).toBe(201);
+    const idB = ((await createB.json()) as { entry: { id: string } }).entry.id;
+
+    const missingConfirmation = await request('/v1/me/delete-learning-data', userAToken!, {
+      method: 'POST', body: JSON.stringify({}),
+    });
+    expect(missingConfirmation.status).toBe(400);
+
+    const deletion = await request('/v1/me/delete-learning-data', userAToken!, {
+      method: 'POST', body: JSON.stringify({ confirmation: 'DELETE_MY_LEARNING_DATA' }),
+    });
+    expect(deletion.status).toBe(200);
+    const deletionBody = await deletion.json() as { deleted: Record<string, number> };
+    expect(deletionBody.deleted.decisionJournalEntries).toBeGreaterThan(0);
+
+    const exportA = await request('/v1/me/export', userAToken!);
+    expect(exportA.status).toBe(200);
+    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[] } };
+    expect(bodyA.data.progress.xp).toBe(0);
+    expect(bodyA.data.progressEvents).toHaveLength(0);
+    expect(bodyA.data.lessonAttempts).toHaveLength(0);
+    expect(bodyA.data.chartDojoAttempts).toHaveLength(0);
+    expect(bodyA.data.decisionJournalEntries).toHaveLength(0);
+    expect(bodyA.data.paperTradeSessions).toHaveLength(0);
+
+    const exportB = await request('/v1/me/export', userBToken!);
+    expect(exportB.status).toBe(200);
+    const bodyB = await exportB.json() as { data: { decisionJournalEntries: Array<{ id: string; title: string }> } };
+    expect(bodyB.data.decisionJournalEntries.some(entry => entry.id === idB && entry.title === titleB)).toBe(true);
+    const cleanupB = await request('/v1/decision-journal/' + idB, userBToken!, { method: 'DELETE' });
+    expect(cleanupB.status).toBe(204);
+  });
+
 });
 

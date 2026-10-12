@@ -46,7 +46,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 ### Privacy and data lifecycle
 - [ ] Explain which records are server-saved versus browser-local, and how local exports/imports work. A signed-in server-side learning export is implemented at `/v1/me/export`; validate its completeness and privacy in a disposable project before launch.
 - [ ] Test browser-local export/restore with malformed and oversized files; ensure imports never restore authentication tokens or overwrite unrelated browser storage. Test server export account isolation and confirm oversized exports fail rather than returning partial data.
-- [ ] Define and test account-data deletion and retention behaviour before collecting more personal data.
+- [ ] Self-service deletion of server-saved learning records is implemented by `20261012220000_delete_own_learning_data.sql`; verify it on a disposable project. It does not delete the Supabase Auth identity or browser-local records. Define retention and test those separate deletion paths before collecting more personal data.
 - [ ] Keep journals private by default; never expose private notes or learner activity through public profiles or leaderboards.
 - [ ] Review third-party logging, analytics, and hosting data handling.
 
