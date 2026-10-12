@@ -129,8 +129,9 @@ app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res
 });
 
 app.get('/v1/paper-lab/sessions/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
-  const { data, error } = await req.learnerDb!.rpc('get_paper_trade_session', { p_session_id: req.params.id });
+  const sessionId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
+  const { data, error } = await req.learnerDb!.rpc('get_paper_trade_session', { p_session_id: sessionId });
   if (error) {
     if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
     if (error.code === 'P0002') return res.status(404).json({ error: 'Paper trade session not found.' });
