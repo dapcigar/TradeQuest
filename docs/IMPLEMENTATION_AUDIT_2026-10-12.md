@@ -4,7 +4,7 @@
 
 TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Express API, Supabase Auth/Postgres persistence, server-scored learning attempts, evidence-based review recommendations, private decision journals, weekly practice plans, and a synthetic paper-trading lab.
 
-**Status: active MVP development, not production-ready.** Unit tests/build/preflight are passing on the recent merged feature PRs, but a passing CI run is not proof that the latest Supabase migrations have been applied, two-account isolation has been exercised against a live disposable project, browser journeys have passed, or a deployment succeeded.
+**Status: active MVP development, not production-ready.** Unit tests/build/preflight are passing on the recent merged feature PRs, but a passing CI run is not proof that the latest Supabase migrations have been applied, two-account isolation has been exercised against the connected Supabase environment, browser journeys have passed, or a deployment succeeded.
 
 ## Latest merged implementation phases
 
