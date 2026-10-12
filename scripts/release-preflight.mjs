@@ -137,7 +137,7 @@ for (const [label, content, phrases] of [
   ['Challenge editorial provenance and publication gate', communityEditorialMigration, ['source_reference text not null', 'editorial_status text not null default \'draft\'', 'is_community_admin', 'community_challenge_reviews', 'editorial_status in (\'approved\', \'legacy-published\')']],
   ['Challenge editorial migration tests', communityEditorialContractTests, ['records provenance', 'requires an admin role', 'hides draft, rejected and retired content']],
   ['Editorial admin UI and routes', communityChallengesUi + communityProfileApi, ['Editorial review queue', 'Approve &amp; publish', "app.get('/v1/community/editorial/queue'", "app.post('/v1/community/editorial/:id/review'"]],
-  ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']]
+  ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']],
   ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
 ]) {
   const lower = content.toLowerCase();
