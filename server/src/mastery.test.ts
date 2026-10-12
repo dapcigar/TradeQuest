@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { buildMastery } from './mastery.js';
 
 describe('buildMastery', () => {
+  it('uses lifetime retained attempts beyond the former 500-record recent window', () => {
+    const attempts = Array.from({ length: 1_201 }, (_, index) => ({
+      scenario_id: 'TQ-SYN-001',
+      outcome: index % 10 === 0 ? 'undefined-risk' : 'disciplined',
+      submitted_at: new Date(Date.UTC(2024, 0, 1 + index)).toISOString(),
+    }));
+    const result = buildMastery(attempts, [], [], new Date('2026-10-11T12:00:00.000Z'));
+    const planning = result.skills.find(skill => skill.skillId === 'planning');
+    expect(planning?.attempts).toBe(1_201);
+    expect(planning?.positiveDecisions).toBe(1_080);
+    expect(planning?.firstAttemptPositive).toBe(false);
+    expect(planning?.lastPractisedAt).toBe(attempts.at(-1)?.submitted_at);
+    expect(result.sampleSize).toBe(1_201);
+    expect(result.recommendation).toBeTruthy();
+  });
+
   it('starts with the least-practised skill and does not overstate confidence', () => {
     const result = buildMastery([
       { scenario_id: 'TQ-SYN-001', outcome: 'disciplined' },
