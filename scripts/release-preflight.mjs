@@ -128,5 +128,5 @@ if (failures.length) {
 } else {
   console.log('TradeQuest release preflight passed.');
   console.log('Verified ' + actualFiles.length + ' migration files are listed once, in filename order, in README and the M2 plan.');
-  console.log('Verified release smoke coverage, production readiness gates, runbook, CI wiring, and tracked secret/backup filename guard.');
+  console.log('Verified release smoke coverage, production readiness gates, recovery runbook, accessibility semantics, curriculum source/test coverage, synthetic labels, CI wiring, and tracked secret/backup filename guard.');
 }
