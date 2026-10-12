@@ -44,9 +44,9 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Check provider quotas and free-tier limits. A blocked deployment due to a provider quota is not a successful release.
 
 ### Privacy and data lifecycle
-- [ ] Explain which records are server-saved versus browser-local, and how local exports/imports work. A signed-in server-side learning export is implemented at `/v1/me/export`, including weekly plans and recorded sessions; validate its completeness and privacy in a disposable project before launch.
+- [ ] Explain which records are server-saved versus browser-local, and how local exports/imports work. A signed-in server-side learning export is implemented at `/v1/me/export`, including weekly plans, paper-trade sessions, and session event history; validate its completeness and privacy in a disposable project before launch.
 - [ ] Test browser-local export/restore with malformed and oversized files; ensure imports never restore authentication tokens or overwrite unrelated browser storage. Test server export account isolation and confirm oversized exports fail rather than returning partial data.
-- [ ] Self-service deletion of server-saved learning records is implemented by `20261012220000_delete_own_learning_data.sql`; verify it on a disposable project. It does not delete the Supabase Auth identity or browser-local records. Define retention and test those separate deletion paths before collecting more personal data.
+- [ ] Self-service deletion of server-saved learning records is implemented by `20261012220000_delete_own_learning_data.sql` and is extended to weekly plans by `20261012230000_account_weekly_practice_plan.sql`; paper-trade event history cascades with its session. Verify it on a disposable project. It does not delete the Supabase Auth identity or browser-local records. Define retention and test those separate deletion paths before collecting more personal data.
 - [ ] Keep journals private by default; never expose private notes or learner activity through public profiles or leaderboards.
 - [ ] Review third-party logging, analytics, and hosting data handling.
 
@@ -66,7 +66,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Decide whether browser-local Adaptive Practice history should remain local or be replaced by account-backed, server-scored attempts. Do not present the current local score as server-derived mastery.
 - [ ] Decide whether the weekly plan and demo journal should sync across devices; communicate current limits until implemented.
-- [ ] Persistent paper-trade sessions are implemented, but a full append-only order/fill/ledger-event model and instrument-accurate P/L remain unfinished. Validate transactional transitions, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
+- [ ] Persistent paper-trade sessions and append-only session transition events are implemented, but a full order/fill ledger and instrument-accurate P/L remain unfinished. Validate trigger atomicity, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready. Validate transactional transitions, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
 - [ ] Add an end-to-end smoke path covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export, and restore.
 - [ ] Establish a small release note and known-limitations section for each launch.
 - [ ] Re-check this list after any auth, schema, scoring, or storage change.
