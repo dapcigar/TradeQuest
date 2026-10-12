@@ -25,7 +25,7 @@ import {
   LockKeyhole, Menu, Play, ShieldCheck, Sparkles, Target, Trophy,
   Wallet, X, Zap,
 } from 'lucide-react';
-import { calculateRisk } from './risk';
+import { calculateRewardRisk, calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
 import { assessSpreadAnswer } from './learning';
 import { supabase, supabaseConfigured } from './supabase';
@@ -149,6 +149,7 @@ function App() {
   const [riskPercent, setRiskPercent] = useState('1');
   const [entry, setEntry] = useState('2350');
   const [stop, setStop] = useState('2335');
+  const [target, setTarget] = useState('2380');
   const [riskError, setRiskError] = useState('');
   const [scenarioChoice, setScenarioChoice] = useState<string | null>(null);
   const [scenarioRevealed, setScenarioRevealed] = useState(false);
@@ -265,6 +266,11 @@ function App() {
       return null;
     }
   }, [riskEquity, riskPercent, entry, stop]);
+
+  const rewardRisk = useMemo(() => {
+    try { return calculateRewardRisk({ entry: Number(entry), stop: Number(stop), target: Number(target) }); }
+    catch { return null; }
+  }, [entry, stop, target]);
 
   const navItems: { id: View; label: string; icon: typeof Compass; section?: string }[] = [
     { id: 'overview', label: 'Mission control', icon: Compass, section: 'YOUR WORLD' },
@@ -542,7 +548,7 @@ function App() {
           {view === 'adaptive' && <AdaptivePractice />}
           {view === 'weekly' && <WeeklyPracticePlan />}
           {view === 'review' && <ReviewQueue signedIn={Boolean(session)} mastery={session ? mastery : null} message={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} />}
-          {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} risk={risk} error={riskError} onCalculate={calculateAndSaveRisk} />}
+          {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} target={target} setTarget={setTarget} risk={risk} rewardRisk={rewardRisk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView onPractice={() => setView('practice')} />}
           {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} mastery={session ? mastery : null} masteryMessage={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
         </div>
@@ -654,14 +660,14 @@ function PracticeView({ scenarios, activeScenarioId, onSelectScenario, catalogue
   </>;
 }
 
-function RiskView({ equity, setEquity, riskPercent, setRiskPercent, entry, setEntry, stop, setStop, risk, error, onCalculate }: {
+function RiskView({ equity, setEquity, riskPercent, setRiskPercent, entry, setEntry, stop, setStop, target, setTarget, risk, rewardRisk, error, onCalculate }: {
   equity: string; setEquity: (s: string) => void; riskPercent: string; setRiskPercent: (s: string) => void;
-  entry: string; setEntry: (s: string) => void; stop: string; setStop: (s: string) => void;
-  risk: ReturnType<typeof calculateRisk> | null; error: string; onCalculate: () => void;
+  entry: string; setEntry: (s: string) => void; stop: string; setStop: (s: string) => void; target: string; setTarget: (s: string) => void;
+  risk: ReturnType<typeof calculateRisk> | null; rewardRisk: ReturnType<typeof calculateRewardRisk> | null; error: string; onCalculate: () => void;
 }) {
   return <><div className="page-intro"><div className="eyebrow"><span className="eyebrow-line" /> RISK LAB 01</div><h1>Know your risk <span>before the trade.</span></h1><p>Learn how a risk budget and stop distance influence position size. The assumptions here are simplified for teaching.</p></div>
-    <div className="risk-layout"><section className="risk-form panel"><div className="panel-heading"><div className="panel-heading-icon"><ShieldCheck size={19} /></div><div><h2>Build a risk plan</h2><p>Try the numbers. Nothing is sent to a broker.</p></div></div><label className="field-label" htmlFor="equity">Virtual account equity (£)</label><input id="equity" type="number" min="1" value={equity} onChange={e => setEquity(e.target.value)} /><label className="field-label" htmlFor="risk-percent">Risk budget (%)</label><div className="risk-presets">{['0.5','1','2'].map(v => <button key={v} className={riskPercent === v ? 'preset active' : 'preset'} onClick={() => setRiskPercent(v)}>{v}%</button>)}</div><input id="risk-percent" type="number" min="0.01" max="100" step="0.1" value={riskPercent} onChange={e => setRiskPercent(e.target.value)} /><div className="field-pair"><div><label className="field-label" htmlFor="entry">Illustrative entry</label><input id="entry" type="number" min="0.01" step="0.1" value={entry} onChange={e => setEntry(e.target.value)} /></div><div><label className="field-label" htmlFor="stop">Illustrative stop</label><input id="stop" type="number" min="0.01" step="0.1" value={stop} onChange={e => setStop(e.target.value)} /></div></div><button className="btn-primary full-button" onClick={onCalculate}>Calculate risk budget <ArrowRight size={15} /></button>{error && <p className="feedback">{error}</p>}<p className="form-footnote"><CircleHelp size={14} /> Simplified example: instrument contract size, pip/tick value, spread, slippage, fees, currency conversion, and gaps are not modelled.</p></section>
-      <section className="risk-result"><div className="result-top"><div><span className="result-label">YOUR ESTIMATED RISK BUDGET</span><div className="result-number">{risk ? risk.riskBudget.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }) : '—'}</div></div><div className="result-icon"><Wallet size={22} /></div></div><div className="result-divider" /><div className="result-row"><span>Stop distance</span><strong>{risk ? risk.distance.toLocaleString('en-GB', { maximumFractionDigits: 4 }) : '—'}</strong></div><div className="result-row"><span>Illustrative units*</span><strong>{risk ? risk.units.toLocaleString('en-GB', { maximumFractionDigits: 4 }) : '—'}</strong></div><div className="result-row"><span>Loss at stop (before costs)*</span><strong>{risk ? risk.estimatedLoss.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }) : '—'}</strong></div><div className="result-warning"><ShieldCheck size={18} /><div><strong>Estimate, not a guarantee</strong><p>Real execution can lose more than the planned amount due to gaps, slippage, costs, leverage, and instrument-specific contract rules.</p></div></div><div className="result-foot">* The example assumes one unit of account-currency loss per price unit. This is not a valid contract specification for every market.</div></section></div>
+    <div className="risk-layout"><section className="risk-form panel"><div className="panel-heading"><div className="panel-heading-icon"><ShieldCheck size={19} /></div><div><h2>Build a risk plan</h2><p>Try the numbers. Nothing is sent to a broker.</p></div></div><label className="field-label" htmlFor="equity">Virtual account equity (£)</label><input id="equity" type="number" min="1" value={equity} onChange={e => setEquity(e.target.value)} /><label className="field-label" htmlFor="risk-percent">Risk budget (%)</label><div className="risk-presets">{['0.5','1','2'].map(v => <button key={v} className={riskPercent === v ? 'preset active' : 'preset'} onClick={() => setRiskPercent(v)}>{v}%</button>)}</div><input id="risk-percent" type="number" min="0.01" max="100" step="0.1" value={riskPercent} onChange={e => setRiskPercent(e.target.value)} /><div className="field-pair"><div><label className="field-label" htmlFor="entry">Illustrative entry</label><input id="entry" type="number" min="0.01" step="0.1" value={entry} onChange={e => setEntry(e.target.value)} /></div><div><label className="field-label" htmlFor="stop">Illustrative stop</label><input id="stop" type="number" min="0.01" step="0.1" value={stop} onChange={e => setStop(e.target.value)} /></div></div><label className="field-label" htmlFor="target">Illustrative target</label><input id="target" type="number" min="0.01" step="0.1" value={target} onChange={e => setTarget(e.target.value)} /><button className="btn-primary full-button" onClick={onCalculate}>Calculate risk budget <ArrowRight size={15} /></button>{error && <p className="feedback">{error}</p>}<p className="form-footnote"><CircleHelp size={14} /> Simplified example: instrument contract size, pip/tick value, spread, slippage, fees, currency conversion, and gaps are not modelled.</p></section>
+      <section className="risk-result"><div className="result-top"><div><span className="result-label">YOUR ESTIMATED RISK BUDGET</span><div className="result-number">{risk ? risk.riskBudget.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }) : '—'}</div></div><div className="result-icon"><Wallet size={22} /></div></div><div className="result-divider" /><div className="result-row"><span>Stop distance</span><strong>{risk ? risk.distance.toLocaleString('en-GB', { maximumFractionDigits: 4 }) : '—'}</strong></div><div className="result-row"><span>Illustrative units*</span><strong>{risk ? risk.units.toLocaleString('en-GB', { maximumFractionDigits: 4 }) : '—'}</strong></div><div className="result-row"><span>Loss at stop (before costs)*</span><strong>{risk ? risk.estimatedLoss.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }) : '—'}</strong></div><div className="result-row"><span>Potential reward/risk*</span><strong>{rewardRisk ? rewardRisk.ratio.toLocaleString('en-GB', { maximumFractionDigits: 2 }) + ' : 1' : '—'}</strong></div><div className="result-row"><span>Target distance</span><strong>{rewardRisk ? rewardRisk.rewardDistance.toLocaleString('en-GB', { maximumFractionDigits: 4 }) : '—'}</strong></div><div className="result-warning"><ShieldCheck size={18} /><div><strong>Estimate, not a guarantee</strong><p>Real execution can lose more than the planned amount due to gaps, slippage, costs, leverage, and instrument-specific contract rules.</p></div></div><div className="result-foot">* The example assumes one unit of account-currency loss per price unit. This is not a valid contract specification for every market.</div></section></div>
   </>;
 }
 
