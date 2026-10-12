@@ -72,6 +72,9 @@ This is a **manual release check**, not proof of production readiness. Run it ag
 
 - [ ] Select each supported weekly target (3, 5, and 7 sessions); record a session and undo it.
 - [ ] Export browser-local learning data and inspect the file for the expected allowlisted categories only.
+- [ ] While signed in as Account A, export server-stored account learning data and confirm it includes only Account A's progress, attempts, private journal entries, and saved paper sessions.
+- [ ] Confirm the account export contains no authentication tokens, passwords, service-role credentials, or Account B records, and the response uses `Cache-Control: no-store`.
+- [ ] Confirm an export that exceeds the supported size limit fails clearly rather than returning a partial file.
 - [ ] Confirm the export contains no authentication tokens, passwords, server journal entries, or unrelated browser storage.
 - [ ] Restore a valid test export and verify that only included, allowlisted local categories are replaced.
 - [ ] Try an oversized or malformed export and confirm it is rejected with a clear message.

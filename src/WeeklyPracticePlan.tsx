@@ -3,6 +3,7 @@ import { CalendarDays, CheckCircle2, Circle, Download, ShieldCheck, Target, Uplo
 import { downloadLearningExport } from './learningExport';
 import { parseLearningImport, restoreLearningImport, type LearningImport } from './learningImport';
 import { clearLocalLearningData } from './learningDataControls';
+import type { Session } from '@supabase/supabase-js';
 export type WeeklyPlan = { week:string; target:number; completedDates:string[] };
 const storageKey='tradequest-weekly-practice-plan-v1';
 export function weekKey(date:Date):string { const copy=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));const day=copy.getUTCDay()||7;copy.setUTCDate(copy.getUTCDate()-day+1);return copy.toISOString().slice(0,10); }
@@ -13,13 +14,26 @@ export function normaliseWeeklyPlan(value:unknown,currentWeek:string):WeeklyPlan
  return {week:currentWeek,target,completedDates};
 }
 function readPlan(currentWeek:string):WeeklyPlan {try{return normaliseWeeklyPlan(JSON.parse(localStorage.getItem(storageKey)??'null'),currentWeek);}catch{return normaliseWeeklyPlan(null,currentWeek);}}
-export default function WeeklyPracticePlan(){
+export default function WeeklyPracticePlan({ session }: { session: Session | null }){
  const currentWeek=useMemo(()=>weekKey(new Date()),[]);const [plan,setPlan]=useState<WeeklyPlan>(()=>readPlan(currentWeek));const [saved,setSaved]=useState(false);
+ const [accountExportBusy,setAccountExportBusy]=useState(false); const [accountExportError,setAccountExportError]=useState(''); const [accountExportMessage,setAccountExportMessage]=useState('');
  const [pendingImport,setPendingImport]=useState<LearningImport|null>(null);const [importError,setImportError]=useState('');const [importMessage,setImportMessage]=useState(''); const [clearConfirm,setClearConfirm]=useState(false); const [clearMessage,setClearMessage]=useState('');
  const today=new Date().toISOString().slice(0,10);const complete=plan.completedDates.includes(today);const progress=Math.min(100,Math.round((plan.completedDates.length/plan.target)*100));
  function persist(next:WeeklyPlan){setPlan(next);setSaved(false);try{localStorage.setItem(storageKey,JSON.stringify(next));setSaved(true);}catch{setSaved(false);}}
  async function selectImport(file?:File){setPendingImport(null);setImportError('');setImportMessage('');if(!file)return;try{setPendingImport(parseLearningImport(await file.text()));}catch(error){setImportError(error instanceof Error?error.message:'Could not read this learning export.');}}
  function confirmClearLocalData(){const removed=clearLocalLearningData(localStorage);setPlan({week:currentWeek,target:3,completedDates:[]});setSaved(false);setPendingImport(null);setImportError('');setImportMessage('');setClearConfirm(false);setClearMessage(removed===3?'Browser-local learning records cleared. Account data and unrelated browser storage were not changed.':'Some local records could not be removed by this browser.');}
+ async function downloadAccountExport(){
+  if(!session||accountExportBusy)return;
+  setAccountExportBusy(true);setAccountExportError('');setAccountExportMessage('');
+  try{
+   const response=await fetch((import.meta.env.VITE_TRADEQUEST_API_URL||'http://localhost:4000')+'/v1/me/export',{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
+   if(!response.ok){let message='Account learning data could not be exported.';try{const body=await response.json() as {error?:string};message=body.error||message;}catch{/* Keep the safe generic message. */}throw new Error(message);}
+   const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement('a');
+   anchor.href=url;anchor.download='tradequest-account-learning-export-'+new Date().toISOString().slice(0,10)+'.json';anchor.click();URL.revokeObjectURL(url);
+   setAccountExportMessage('Account learning data export prepared. Check your downloads folder.');
+  }catch(error){setAccountExportError(error instanceof Error?error.message:'Account learning data could not be exported.');}
+  finally{setAccountExportBusy(false);}
+ }
  function confirmImport(){if(!pendingImport)return;try{const restored=restoreLearningImport(pendingImport,(key,value)=>localStorage.setItem(key,value));setPlan(readPlan(currentWeek));setSaved(true);setImportMessage(`Restored ${restored.length} learning record categories. Existing local data for those categories was replaced.`);setPendingImport(null);}catch{setImportError('The browser could not save the imported data. Check available storage and try again.');}}
  return <div className="weekly-plan-page">
  <div className="page-intro"><div className="eyebrow"><span className="eyebrow-line"/> CONSISTENCY OVER INTENSITY</div><h1>A plan you can <span>keep.</span></h1><p>Set a realistic weekly learning target, practise in short sessions, and review what you learned. This tracks learning activity—not trading skill or future results.</p></div>
@@ -28,6 +42,7 @@ export default function WeeklyPracticePlan(){
  <div className="weekly-progress-label"><span>Sessions recorded</span><strong>{plan.completedDates.length} of {plan.target}</strong></div><div className="weekly-progress-track" role="progressbar" aria-label="Weekly practice progress" aria-valuemin={0} aria-valuemax={plan.target} aria-valuenow={Math.min(plan.completedDates.length,plan.target)}><span style={{width:progress+'%'}}/></div>
  <div className="weekly-plan-actions"><button className="btn-primary" disabled={complete} onClick={()=>persist({...plan,completedDates:[...plan.completedDates,today]})}>{complete?<><CheckCircle2 size={16}/> Session recorded today</>:<><Target size={16}/> Record today’s session</>}</button>{complete&&<button className="btn-outline" onClick={()=>persist({...plan,completedDates:plan.completedDates.filter(date=>date!==today)})}>Undo today</button>}</div>
  <div className="weekly-export-row"><button className="btn-outline" onClick={()=>downloadLearningExport(key=>localStorage.getItem(key))}><Download size={16}/> Export browser-local learning data</button><p className="form-footnote">Exports the local practice plan, adaptive practice attempts, and demo journal entries as JSON. Server-stored account data is not included.</p></div>
+ <div className="weekly-import-panel"><h3><Download size={16}/> Export account-saved learning data</h3>{session?<><p className="form-footnote">Download server-saved progress, quiz and Chart Dojo attempts, private journal entries, and saved synthetic paper-trade sessions. This export excludes passwords, authentication tokens, and browser-local records.</p><button className="btn-outline" onClick={()=>void downloadAccountExport()} disabled={accountExportBusy}>{accountExportBusy?'Preparing account export…':'Export my account data'}</button>{accountExportError&&<p className="weekly-import-error" role="alert">{accountExportError}</p>}{accountExportMessage&&<p className="weekly-import-success" role="status">{accountExportMessage}</p>}</>:<p className="form-footnote">Sign in to export server-saved account data. Browser-local practice records are exported separately above.</p>}</div>
  <div className="weekly-import-panel"><h3><Upload size={16}/> Restore a learning export</h3><p className="form-footnote">Choose a TradeQuest JSON export to restore browser-local learning records. Server-stored account data is not included.</p><label className="weekly-import-file">Choose JSON export<input type="file" accept=".json,application/json" onChange={event=>void selectImport(event.currentTarget.files?.[0])}/></label>
  {pendingImport&&<div className="weekly-import-preview" role="status"><strong>Ready to restore</strong><p>Exported {pendingImport.exportedAt}. {Object.keys(pendingImport.data).length} record categories found.</p><p>This will replace existing local records only for categories present in the file. Other browser data and account data will not be changed.</p><div className="weekly-plan-actions"><button className="btn-primary" onClick={confirmImport}>Replace selected local records</button><button className="btn-outline" onClick={()=>setPendingImport(null)}>Cancel</button></div></div>}
  {importError&&<p className="weekly-import-error" role="alert">{importError}</p>}{importMessage&&<p className="weekly-import-success" role="status">{importMessage}</p>}</div>
