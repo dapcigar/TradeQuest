@@ -11,7 +11,7 @@ const migrationsDir = resolve(__dirname, '../../supabase/migrations');
 const allMigrations = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()
   .map(file => read('../../supabase/migrations', file)).join('\n');
 
-const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries', 'paper_trade_sessions', 'weekly_practice_plans', 'weekly_practice_sessions'];
+const LEARNER_TABLES = ['chart_dojo_attempts', 'lesson_attempts', 'progress_events', 'learner_progress', 'decision_journal_entries', 'paper_trade_sessions', 'paper_trade_ledger_events', 'weekly_practice_plans', 'weekly_practice_sessions'];
 
 // Route handlers, split on the app.get/app.post declarations.
 const handlers = indexSource.split(/\n(?=app\.(?:get|post|put|patch|delete)\()/).filter(chunk => chunk.startsWith('app.'))
@@ -19,7 +19,7 @@ const handlers = indexSource.split(/\n(?=app\.(?:get|post|put|patch|delete)\()/)
 
 describe('API routes keep each learner\'s data separate', () => {
   it('finds the learner routes', () => {
-    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export', '/v1/me/delete-learning-data', '/v1/weekly-plan', '/v1/weekly-plan/session']));
+    expect(handlers.map(h => h.route)).toEqual(expect.arrayContaining(['/v1/me/mastery', '/v1/chart-dojo/attempts', '/v1/me/progress', '/v1/me/export', '/v1/me/delete-learning-data', '/v1/weekly-plan', '/v1/weekly-plan/session', '/v1/paper-lab/sessions/:id/ledger']));
   });
 
   it('requires a verified learner on every /v1 route', () => {
@@ -34,6 +34,7 @@ describe('API routes keep each learner\'s data separate', () => {
     expect(exportHandler.source).toContain("eq('user_id', req.learnerId!)");
     expect(exportHandler.source).toContain('decisionJournalEntries');
     expect(exportHandler.source).toContain('paperTradeSessions');
+    expect(exportHandler.source).toContain('paperTradeLedgerEvents');
     expect(exportHandler.source).toContain('weeklyPracticePlans');
     expect(exportHandler.source).toContain('weeklyPracticeSessions');
     expect(exportHandler.source).not.toMatch(/service[_-]?role/i);
@@ -120,6 +121,22 @@ describe('database policies keep attempts private and answer keys server-only', 
     expect(grants.length).toBeGreaterThan(0);
     for (const grant of grants) expect(grant[1]).not.toMatch(/answer_key/);
     expect(allMigrations).not.toMatch(/grant select on public\.chart_dojo_scenarios to (anon|authenticated)/i);
+  });
+});
+
+describe('paper trade event ledger', () => {
+  it('scopes ledger reads to the verified learner and keeps events non-writable to clients', () => {
+    const handler = handlers.find(item => item.route === '/v1/paper-lab/sessions/:id/ledger')!;
+    expect(handler.source).toContain('requireLearner');
+    expect(handler.source).toContain("eq('user_id', req.learnerId!)");
+    expect(handler.source).toContain("eq('session_id', sessionId)");
+    expect(handler.source).toContain("setHeader('Cache-Control', 'no-store')");
+    expect(handler.source).toContain('eventSequence');
+    expect(allMigrations).toMatch(/alter table public\.paper_trade_ledger_events enable row level security/i);
+    expect(allMigrations).toMatch(/revoke all on public\.paper_trade_ledger_events from public, anon, authenticated/i);
+    expect(allMigrations).toMatch(/grant select on public\.paper_trade_ledger_events to authenticated/i);
+    expect(allMigrations).toMatch(/create trigger paper_trade_ledger_events_on_session_change\s+after insert or update on public\.paper_trade_sessions/i);
+    expect(allMigrations).toContain('on conflict (session_id, session_version, event_type) do nothing');
   });
 });
 
