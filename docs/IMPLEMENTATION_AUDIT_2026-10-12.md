@@ -2,9 +2,9 @@
 
 ## Executive status
 
-TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Express API, Supabase Auth/Postgres persistence, server-scored learning attempts, evidence-based review recommendations, private decision journals, weekly practice plans, and a synthetic paper-trading lab.
+TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Express API, Supabase Auth/Postgres persistence, server-scored learning attempts, evidence-based review recommendations, private decision journals, weekly practice plans, a synthetic paper-trading lab, opt-in community profiles, moderated challenge entries, and admin-only challenge editorial review.
 
-**Status: active MVP development, not production-ready.** Unit tests/build/preflight are passing on the recent merged feature PRs, but a passing CI run is not proof that the latest Supabase migrations have been applied, two-account isolation has been exercised against the connected Supabase environment, browser journeys have passed, or a deployment succeeded.
+**Status: active MVP development, not production-ready.** GitHub Actions tests/build/release preflight pass for the merged feature phases, but this is not proof that the latest Supabase migrations are applied to the connected project, two-account isolation has been exercised against the live API/database, moderator/editor roles have been provisioned, browser journeys have passed, or a deployment succeeded.
 
 ## Latest merged implementation phases
 
@@ -14,18 +14,27 @@ TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Expres
 | #83 | Merged | Private append-only simulated entry/exit fills; database triggers create fills with session start/closure; existing sessions are backfilled; API/UI/export integration and tests added. |
 | #84 | Merged | Signed-in overview uses account-backed lesson completion, XP, and risk-tool evidence rather than browser-local demo state. |
 | #85 | Merged | Solo challenge cards show process rubrics and the latest result from linked synthetic scenarios; results are not based on P/L. |
-| #86 | Merged | Chart Dojo interactive history remains capped at 500 records for responsive UI; the mastery and adaptive recommendation APIs now page through all retained relevant attempts. |
+| #86 | Merged | Chart Dojo interactive history remains capped at 500 records for responsive UI; mastery and adaptive recommendation APIs page through all retained relevant attempts. |
+| #87 | Merged | Added the dated implementation audit and explicit release blockers. |
+| #88 | Merged | Added short-side paper-trade fill reconciliation, closed-session replay idempotency, and cross-account fill isolation tests. |
+| #89 | Merged | Added opt-in connected-Supabase integration workflow wiring with explicit dedicated-test-account confirmation. |
+| #90 | Merged | Added private-by-default community profiles, owner-bound profile RPCs, and a privacy-safe directory. |
+| #91 | Merged | Added process-scored community challenge entries, private reporting, moderation queue/actions, and durable moderation audit records. |
+| #92 | Merged | Mastery and signed-in Adaptive Practice use all retained relevant attempts with paginated loading and fail closed on incomplete history. |
+| #93 | Merged | Added source provenance, content versions, and admin-only editorial review/publish/revise/retire actions with an audit trail. |
 
-For each of these PRs, GitHub Actions passed npm run test, npm run build, npm run api:build, and npm run release:preflight before merge.
+For these merged phases, GitHub Actions passed `npm run test`, `npm run build`, `npm run api:build`, and `npm run release:preflight` before merge.
 
 ## Implemented foundations
 
 - Anonymous demo activity is kept separate from account-backed activity.
 - Signed-in Chart Dojo and Adaptive Practice use server-scored attempts and server-provided feedback; answer keys are not sent to the client.
+- The mastery endpoint pages through all retained Chart Dojo and lesson attempts; signed-in Adaptive Practice uses aggregate counts across all retained adaptive variants. The interactive history endpoint remains capped at 500 records.
 - The review queue is based on server-stored practice evidence and labels limited evidence conservatively.
-- Learner-owned weekly plans, decision journal entries, paper-trade sessions, session transition events, and simulated fills are persisted and included in account export/deletion flows as documented.
+- Learner-owned weekly plans, decision journal entries, paper-trade sessions, session transition events, simulated fills, community profiles, challenge entries, and reports are included in account export/deletion flows. Moderation/editorial audit history is retained separately.
 - Replay cursor tokens are signed and learner-bound; replay returns one synthetic candle per request.
-- Paper Trade Lab uses server-authoritative candle advancement and version checks, with an append-only session transition history and an append-only simulated entry/exit fill ledger.
+- Paper Trade Lab uses server-authoritative candle advancement and version checks, with append-only session-transition and simulated entry/exit fill ledgers.
+- Community profiles are private by default. Public challenge entries require an opted-in profile and moderator approval; new challenge content defaults to unpublished draft status. Only an explicitly provisioned admin can approve or retire challenge content.
 - The API has a read-only deployment smoke check and the repository has a manual end-to-end release checklist.
 - Live market feeds, broker connectivity, real-money execution, and personalised financial advice remain out of scope.
 
@@ -33,36 +42,37 @@ For each of these PRs, GitHub Actions passed npm run test, npm run build, npm ru
 
 ### P0 — Must be evidenced before production
 
-1. **Connected Supabase integration validation.** Use the repository's configured Supabase/API environment with two dedicated test accounts and run the opt-in two-account suite. It deletes all learning data for Account A and must never use a real learner account. The latest paper-trade fill migration (20261012250000_paper_trade_fill_ledger.sql) still needs live database validation, including entry/exit trigger atomicity, backfill, RLS isolation, export inclusion, deletion cascade, P/L reconciliation, and idempotent retry behaviour. Static migration contract tests now protect key grants, RLS, trigger, backfill, and uniqueness invariants; these do not replace runtime database checks.
-2. **Two-account security evidence.** Verify User A cannot read, export, alter, or delete User B's progress, attempts, journal entries, weekly plan, paper sessions, transition ledger, or fill ledger, and vice versa. Unit tests and CI do not prove live RLS isolation.
-3. **Backup/restore rehearsal.** Follow the production runbook against a disposable environment and record actual restore evidence, rollback steps, and recovery ownership.
-4. **Deployment evidence.** Vercel has been returning api-deployments-free-per-day because the project exceeded the free-tier daily deployment limit. This is an external deployment constraint, not a passing deployment. Recheck deployment after the quota window resets or after the deployment limit is resolved.
-5. **Browser journey evidence.** The manual checklist exists, but an end-to-end browser run covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export/restore, responsive layout, and keyboard/screen-reader basics still needs recorded evidence.
+1. **Connected Supabase integration validation.** Apply/reconcile the ordered migrations, then run the opt-in two-account suite against the configured Supabase/API environment with dedicated test accounts. It deletes all learning data for Account A and must never use a real learner account. Validate paper-trade trigger atomicity/backfill, RLS, profile privacy, challenge entry idempotency, editorial/moderation role checks, export/deletion cascades, and fill/P&L reconciliation. Static migration tests do not replace runtime database checks.
+2. **Two-account security evidence.** Verify User A cannot read, export, alter, or delete User B's progress, attempts, journal entries, weekly plan, paper sessions, transition/fill ledger, community profile, challenge entries, or reports, and vice versa.
+3. **Trusted community roles and editorial sign-off.** Provision a verified moderator/admin through the documented database-admin procedure. Review the legacy-published challenge definitions, test approval/revision/retirement and moderation reports, and confirm ordinary learners receive HTTP 403 from protected queues/actions. Do not claim the moderation workflow is operational until a trusted role is provisioned.
+4. **Backup/restore rehearsal.** Follow the production runbook against a disposable environment and record actual restore evidence, rollback steps, and recovery ownership.
+5. **Deployment evidence.** Vercel has been returning `api-deployments-free-per-day` because the project exceeded the free-tier daily deployment limit. This is an external deployment constraint, not a passing deployment. Recheck deployment after the quota window resets or after the deployment limit is resolved.
+6. **Browser journey evidence.** The manual checklist exists, but an end-to-end browser run covering sign-in, lesson assessment, Chart Dojo, review queue, journal, export/deletion, community profile, challenge submission/reporting, editorial/moderation screens, responsive layout, and keyboard/screen-reader basics still needs recorded evidence.
 
 ### P1 — Product completeness
 
-1. **Long-term adaptive mastery operations.** Mastery and signed-in Adaptive Practice now use all retained relevant server attempts with paginated queries and fail closed on partial history. Still define retention/aggregation before per-account histories become large, and validate confidence/retention behaviour against live multi-account data.
+1. **Long-term mastery operations.** Mastery and signed-in Adaptive Practice now use all retained relevant server attempts with paginated queries and fail closed on partial history. Define retention/aggregation before per-account histories become large, and validate confidence/retention behaviour against live multi-account data.
 2. **Full simulation engine.** The current simulator remains synthetic and simplified. It does not support instrument-specific tick size/value, contract size, lot increments, margin, spread/fees, ordinary slippage, pending orders, partial fills, or contract-accurate P/L. The fill ledger records the documented immediate-entry and simulated-exit assumptions; it is not a broker ledger.
-3. **Community challenges and profiles.** Public profiles, community challenge submissions, leaderboards, reporting, and moderator workflows are not implemented. The product brief requires opt-in visibility, process-based scoring rather than P/L, no open direct messages, private-data protection, and an audited moderation trail.
+3. **Broader community product.** Opt-in profiles, private reflections, public-entry moderation/reporting, and editorial review are implemented. Public profiles with richer learning stats, community leaderboards, user-authored challenge creation, moderator appeals/history UI, and a wider community administration console remain incomplete. Do not introduce P/L-based rankings or direct messaging.
 4. **Licensed historical datasets.** No historical dataset should be imported or presented as history until rights, storage, redistribution, symbol mapping, timezone, and data validation requirements are confirmed.
-5. **Content governance.** Human editorial approval and publication provenance must be recorded for all published curriculum and scenarios; automated checks are not editorial sign-off.
+5. **Content governance beyond the community catalogue.** Challenge provenance and publication decisions are recorded, but human editorial approval and publication provenance still need to be recorded for the rest of the curriculum and scenarios.
 6. **Accessibility sign-off.** The manual audit checklist exists; complete and record the keyboard, screen-reader, contrast, reduced-motion, zoom/reflow, and mobile checks before release.
 
 ## Decisions that must not be silently invented
 
 - Supported instrument specifications and cost assumptions for the simulator.
 - Historical data provider, licence, storage, and redistribution rights.
-- Community scoring rules, profile visibility, report categories, moderation actions, and moderator provisioning.
+- Community scoring rules, profile visibility, report categories, moderation actions, appeal process, and trusted moderator/admin provisioning.
 - Production hosting region, backup ownership, retention/analytics policy, and incident response ownership.
 
-Until those decisions are made, keep simulation labels synthetic, do not introduce live/broker paths, and keep community publication disabled.
+Until those decisions and release gates are addressed, keep simulation labels synthetic, do not introduce live/broker paths, and keep public community submissions pending until a trusted moderator is provisioned.
 
 ## Recommended next sequence
 
-1. Confirm the checked-in migrations are applied to the connected Supabase project, then run the two-account integration suite using dedicated test accounts; fix every observed schema, RLS, trigger, and export/deletion issue.
-2. Execute and record the release smoke checklist and backup/restore rehearsal.
-3. Resolve the Vercel deployment quota and verify the deployed commit and API smoke command.
-4. Agree the supported instrument/cost model before implementing instrument-accurate orders or P/L.
-5. Agree community privacy/scoring/moderation policy before implementing public profiles, leaderboards, or moderation controls.
+1. Confirm the checked-in migrations are applied to the connected Supabase project, then run the two-account integration suite using dedicated test accounts; fix every observed schema, RLS, trigger, export, and deletion issue.
+2. Provision a trusted moderator/admin, review the legacy-published challenge content, and verify moderation/editorial workflows end to end.
+3. Execute and record the release smoke checklist and backup/restore rehearsal.
+4. Resolve the Vercel deployment quota and verify the deployed commit and API smoke command.
+5. Agree the supported instrument/cost model before implementing instrument-accurate orders or P/L.
 6. Confirm historical-data licensing before adding historical candles.
-7. Update this audit after each merged phase; do not mark the application complete until the release gates above have recorded evidence.
+7. Complete the remaining accessibility/browser checks and update this audit after each merged phase; do not mark the application complete until the release gates above have recorded evidence.
