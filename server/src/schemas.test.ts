@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema } from './schemas.js';
+import { attemptSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -93,5 +93,20 @@ describe('deleteLearningDataSchema', () => {
     expect(deleteLearningDataSchema.safeParse({ confirmation: 'delete' }).success).toBe(false);
     expect(deleteLearningDataSchema.safeParse({ confirmation: 'DELETE_MY_LEARNING_DATA', userId: 'another-user' }).success).toBe(false);
     expect(deleteLearningDataSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('weekly practice plan schemas', () => {
+  it('accepts a valid Monday, supported target, and date in ISO format', () => {
+    expect(weeklyPracticePlanQuerySchema.safeParse({ weekStart: '2026-10-12' }).success).toBe(true);
+    expect(weeklyPracticeTargetSchema.safeParse({ weekStart: '2026-10-12', target: 5 }).success).toBe(true);
+    expect(weeklyPracticeSessionSchema.safeParse({ weekStart: '2026-10-12', sessionDate: '2026-10-14', completed: true }).success).toBe(true);
+  });
+
+  it('rejects non-Mondays, invalid calendar dates, unsupported targets, and extra fields', () => {
+    expect(weeklyPracticePlanQuerySchema.safeParse({ weekStart: '2026-10-13' }).success).toBe(false);
+    expect(weeklyPracticePlanQuerySchema.safeParse({ weekStart: '2026-02-30' }).success).toBe(false);
+    expect(weeklyPracticeTargetSchema.safeParse({ weekStart: '2026-10-12', target: 4 }).success).toBe(false);
+    expect(weeklyPracticeTargetSchema.safeParse({ weekStart: '2026-10-12', target: 3, userId: 'other' }).success).toBe(false);
   });
 });
