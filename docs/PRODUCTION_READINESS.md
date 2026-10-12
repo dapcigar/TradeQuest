@@ -68,6 +68,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 ## P2 — Before calling the experience complete
 
 - [ ] Anonymous Adaptive Practice remains browser-local; signed-in Adaptive Practice uses server-scored account attempts. Verify the UI keeps those modes distinct and never presents an anonymous local score as account-derived mastery.
+- [ ] Solo challenge status uses the latest attempt on its linked scenario and its process rubric, not simulated P/L or the learner's best historical result. Verify signed-in status follows account history across devices.
 - [ ] Signed-in weekly plans and private journals sync through the account; anonymous weekly plans and demo journal records remain browser-local. Verify the UI clearly communicates this separation.
 - [ ] Persistent paper-trade sessions, append-only session transitions, and simulated entry/exit fills are implemented, but pending orders, partial fills, instrument-specific costs, and instrument-accurate P/L remain unfinished. Validate trigger atomicity, fill/outcome reconciliation, idempotent retries, RLS isolation and two-account integration before treating the simulator as release-ready.
 - [ ] The generic risk calculator rejects intermediate overflow/underflow. It remains a price-distance estimate; instrument-specific increments, costs, margin, and contract-accurate P/L are unsupported until instrument specifications are approved.
