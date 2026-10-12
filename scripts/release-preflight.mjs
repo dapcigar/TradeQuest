@@ -81,12 +81,12 @@ for (const [label, sourcePath, testPath] of curriculumModules) {
   if (!contentRegister.includes(sourcePath) || !contentRegister.includes(testPath)) {
     failures.push('Content review register is missing source/test coverage for ' + label + '.');
   }
-  if (/\\b(?:TODO|TBD|FIXME|Lorem ipsum|placeholder text)\\b/i.test(source)) {
+  if (/\b(?:TODO|TBD|FIXME|Lorem ipsum|placeholder text)\b/i.test(source)) {
     failures.push(label + ': placeholder content marker found in ' + sourcePath + '.');
   }
 }
 for (const path of ['src/AdaptivePractice.tsx', 'src/ReplayLab.tsx', 'src/PaperTradeLab.tsx']) {
-  if (!/\\bsynthetic\\b/i.test(read(path))) failures.push(path + ': explicit synthetic-data disclosure is missing.');
+  if (!/\bsynthetic\b/i.test(read(path))) failures.push(path + ': explicit synthetic-data disclosure is missing.');
 }
 
 for (const [label, content, phrases] of [
