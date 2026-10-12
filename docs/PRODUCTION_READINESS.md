@@ -6,7 +6,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 - [ ] Synthetic scenarios are visibly labelled; no live market feed is enabled.
 - [ ] No broker connection, copy trading, real-money order path, or personalised financial advice.
-- [ ] Adaptive Practice, Weekly Practice Plan, and anonymous Decision Journal use browser-local storage. They are not account-synced and can be lost when browser data is cleared. Export important local data before changing devices.
+- [ ] Anonymous Adaptive Practice, Weekly Practice Plan, and anonymous Decision Journal use browser-local storage. They are not account-synced and can be lost when browser data is cleared. Signed-in Adaptive Practice uses server-scored Chart Dojo attempts, but the new scenario migration must be applied before those variants are available. Export important local data before changing devices.
 - [ ] Paper Trade Lab sessions are temporary signed simulations, not a persistent or tamper-evident trade ledger. Replaying an earlier valid token can fork a practice run; this does not alter a saved account balance because none is persisted. See `PAPER_TRADE_LAB.md`.
 - [ ] Server-scored lessons and Chart Dojo remain authoritative on the API/database; never trust client-submitted score, answer key, XP, or pass state.
 - [ ] Community/leaderboards, licensed historical data, and complete server-authoritative chart simulation remain out of scope until separately reviewed.
@@ -22,7 +22,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 
 ### Account isolation and authoritative scoring
 - [ ] Run the opt-in integration suite against a disposable Supabase project with two dedicated test accounts; verify it actually ran rather than skipped.
-- [ ] Verify account A cannot read, edit, delete, or infer account B's journal, attempts, progress, or mastery.
+- [ ] Verify account A cannot read, edit, delete, or infer account B's journal, attempts, progress, adaptive practice history, or mastery.
 - [ ] Verify database grants and RLS deny unauthorised access even when requests bypass the UI.
 - [ ] Verify retries and concurrent requests cannot duplicate XP or milestone rewards.
 - [ ] Verify invalid scenario IDs, stale versions, unknown choices, malformed inputs, and client-supplied outcome fields are rejected.
