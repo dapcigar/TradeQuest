@@ -6,7 +6,7 @@ describe('buildMastery', () => {
     const attempts = Array.from({ length: 1_201 }, (_, index) => ({
       scenario_id: 'TQ-SYN-001',
       outcome: index % 10 === 0 ? 'undefined-risk' : 'disciplined',
-      submitted_at: new Date(Date.UTC(2024, 0, 1 + index)).toISOString(),
+      submitted_at: new Date(Date.UTC(2023, 0, 1 + index)).toISOString(),
     }));
     const result = buildMastery(attempts, [], [], new Date('2026-10-11T12:00:00.000Z'));
     const planning = result.skills.find(skill => skill.skillId === 'planning');
