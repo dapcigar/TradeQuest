@@ -1,0 +1,25 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const migration = readFileSync(join(process.cwd(), 'supabase/migrations/20261012260000_community_profiles.sql'), 'utf8');
+
+describe('community profile migration contract', () => {
+  it('defaults profiles to private and limits public identity fields', () => {
+    expect(migration).toMatch(/is_public boolean not null default false/i);
+    expect(migration).toMatch(/handle text not null check \(handle ~ '\^\[a-z0-9\]/i);
+    expect(migration).toMatch(/char_length\(btrim\(display_name\)\) between 2 and 40/i);
+    expect(migration).toMatch(/char_length\(bio\) <= 280/i);
+    expect(migration).toMatch(/create unique index if not exists community_profiles_handle_ci_unique\s+on public\.community_profiles \(pg_catalog\.lower\(handle\)\)/i);
+    expect(migration).not.toMatch(/email|access_token|balance|journal|xp/i);
+  });
+
+  it('uses owner-scoped RLS for private reads and all writes', () => {
+    expect(migration).toMatch(/alter table public\.community_profiles enable row level security/i);
+    expect(migration).toMatch(/auth\.uid\(\) = user_id or is_public = true/i);
+    expect(migration).toMatch(/for insert to authenticated with check \(auth\.uid\(\) = user_id\)/i);
+    expect(migration).toMatch(/for update to authenticated using \(auth\.uid\(\) = user_id\) with check \(auth\.uid\(\) = user_id\)/i);
+    expect(migration).toMatch(/for delete to authenticated using \(auth\.uid\(\) = user_id\)/i);
+    expect(migration).not.toMatch(/grant all on public\.community_profiles/i);
+  });
+});
