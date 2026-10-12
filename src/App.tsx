@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { calculateRewardRisk, calculateRisk } from './risk';
 import { normaliseProgress, awardProgressXPOnce } from './progress';
+import { resolveDashboardProgress } from './dashboardProgress';
 import { assessSpreadAnswer } from './learning';
 import { supabase, supabaseConfigured } from './supabase';
 import { useModalFocus } from './useModalFocus';
@@ -313,7 +314,8 @@ function App() {
   ];
 
   const activeXp = session ? (accountProgress?.xp ?? 0) : progress.xp;
-  const completed = Number(progress.lessonComplete) + Number(progress.quizCorrect);
+  const dashboardProgress = resolveDashboardProgress(Boolean(session), accountProgress, progress);
+  const completed = Number(dashboardProgress.lessonComplete) + Number(dashboardProgress.quizCorrect);
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
     overview: 'Mission control', learn: 'Your learning path', practice: 'Chart dojo',
@@ -545,7 +547,7 @@ function App() {
 
         <div className="page-content">
           {view === 'overview' && <Overview
-            progress={progress} completion={completion} onStart={() => setLessonOpen(true)}
+            progress={dashboardProgress} completion={completion} onStart={() => setLessonOpen(true)}
             onNavigate={setView} onPractice={() => setView('practice')}
           />}
           {view === 'glossary' && <GlossaryView />}
