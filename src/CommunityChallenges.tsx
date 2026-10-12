@@ -9,6 +9,7 @@ type PublicEntry = { entryId: string; challengeId: string; title: string; handle
 type QueueEntry = { entryId: string; challengeId: string; title: string; handle: string; displayName: string; reflection: string; rubricMet: boolean; createdAt: string };
 type Report = { reportId: string; entryId: string; category: string; details: string; createdAt: string; handle: string; entryReflection: string };
 type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
+type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 const categories = [
@@ -27,6 +28,8 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [publicEntries, setPublicEntries] = useState<PublicEntry[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
+  const [editorialQueue, setEditorialQueue] = useState<EditorialChallenge[]>([]);
   const [queue, setQueue] = useState<ModerationQueue>({ entries: [], reports: [] });
   const [challengeId, setChallengeId] = useState('QUEST-001');
   const [attemptId, setAttemptId] = useState('');
@@ -50,22 +53,24 @@ export default function CommunityChallenges({ session }: { session: Session | nu
     if (!headers) return;
     setLoading(true); setError('');
     try {
-      const [challengeRes, attemptsRes, mineRes, publicRes, profileRes, moderatorRes] = await Promise.all([
+      const [challengeRes, attemptsRes, mineRes, publicRes, profileRes, moderatorRes, editorialRes] = await Promise.all([
         fetch(apiBase() + '/v1/community/challenges', { headers, cache: 'no-store' }),
         fetch(apiBase() + '/v1/chart-dojo/attempts', { headers, cache: 'no-store' }),
         fetch(apiBase() + '/v1/community/challenges/entries/mine', { headers, cache: 'no-store' }),
         fetch(apiBase() + '/v1/community/challenges/entries', { headers, cache: 'no-store' }),
         fetch(apiBase() + '/v1/community/profile', { headers, cache: 'no-store' }),
         fetch(apiBase() + '/v1/community/moderation/me', { headers, cache: 'no-store' }),
+        fetch(apiBase() + '/v1/community/editorial/me', { headers, cache: 'no-store' }),
       ]);
-      const [challengeBody, attemptsBody, mineBody, publicBody, profileBody, moderatorBody] = await Promise.all([
-        challengeRes.json(), attemptsRes.json(), mineRes.json(), publicRes.json(), profileRes.json(), moderatorRes.json(),
+      const [challengeBody, attemptsBody, mineBody, publicBody, profileBody, moderatorBody, editorialBody] = await Promise.all([
+        challengeRes.json(), attemptsRes.json(), mineRes.json(), publicRes.json(), profileRes.json(), moderatorRes.json(), editorialRes.json(),
       ]) as [
         { challenges?: Challenge[]; error?: string }, { attempts?: Attempt[]; error?: string },
         { entries?: Entry[]; error?: string }, { entries?: PublicEntry[]; error?: string },
-        { profile?: Profile | null; error?: string }, { isModerator?: boolean; error?: string }
+        { profile?: Profile | null; error?: string }, { isModerator?: boolean; error?: string },
+        { isEditor?: boolean; error?: string }
       ];
-      for (const [response, body] of [[challengeRes, challengeBody], [attemptsRes, attemptsBody], [mineRes, mineBody], [publicRes, publicBody], [profileRes, profileBody], [moderatorRes, moderatorBody]] as const) {
+      for (const [response, body] of [[challengeRes, challengeBody], [attemptsRes, attemptsBody], [mineRes, mineBody], [publicRes, publicBody], [profileRes, profileBody], [moderatorRes, moderatorBody], [editorialRes, editorialBody]] as const) {
         if (!response.ok) throw new Error(body.error || 'Community challenges could not be loaded.');
       }
       setChallenges(Array.isArray(challengeBody.challenges) ? challengeBody.challenges : []);
@@ -74,6 +79,7 @@ export default function CommunityChallenges({ session }: { session: Session | nu
       setPublicEntries(Array.isArray(publicBody.entries) ? publicBody.entries : []);
       setProfile(profileBody.profile ?? null);
       setIsModerator(moderatorBody.isModerator === true);
+      setIsEditor(editorialBody.isEditor === true);
       if (moderatorBody.isModerator === true) {
         const queueResponse = await fetch(apiBase() + '/v1/community/moderation/queue', { headers, cache: 'no-store' });
         const queueBody = await queueResponse.json() as { queue?: ModerationQueue; error?: string };
@@ -81,6 +87,14 @@ export default function CommunityChallenges({ session }: { session: Session | nu
         setQueue(queueBody.queue ?? { entries: [], reports: [] });
       } else {
         setQueue({ entries: [], reports: [] });
+      }
+      if (editorialBody.isEditor === true) {
+        const editorialResponse = await fetch(apiBase() + '/v1/community/editorial/queue', { headers, cache: 'no-store' });
+        const editorialResult = await editorialResponse.json() as { challenges?: EditorialChallenge[]; error?: string };
+        if (!editorialResponse.ok) throw new Error(editorialResult.error || 'Editorial review queue could not be loaded.');
+        setEditorialQueue(Array.isArray(editorialResult.challenges) ? editorialResult.challenges : []);
+      } else {
+        setEditorialQueue([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Community challenges could not be loaded.');
@@ -161,6 +175,24 @@ export default function CommunityChallenges({ session }: { session: Session | nu
     finally { setBusy(false); }
   }
 
+  async function reviewEditorial(challengeId: string, decision: 'approve' | 'revision-needed' | 'retire') {
+    if (!headers || !isEditor) return;
+    const reason = window.prompt('Record the editorial rationale (required).');
+    if (!reason || reason.trim().length < 3) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await fetch(apiBase() + '/v1/community/editorial/' + challengeId + '/review', {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, reason: reason.trim() }),
+      });
+      const body = await response.json() as { review?: { editorialStatus: string }; error?: string };
+      if (!response.ok || !body.review) throw new Error(body.error || 'Editorial review could not be saved.');
+      setMessage('Editorial decision recorded. Status: ' + body.review.editorialStatus + '.');
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Editorial review could not be saved.'); }
+    finally { setBusy(false); }
+  }
+
   if (!session) return null;
 
   return <section className="community-challenges-section">
@@ -219,6 +251,16 @@ export default function CommunityChallenges({ session }: { session: Session | nu
           </form>}
         </article>)}</div>}
       </section>
+      {isEditor && <section className="community-moderation panel">
+        <div className="community-section-heading"><div className="community-icon"><ShieldCheck size={20}/></div><div><h3>Editorial review queue</h3><p>Review source provenance, version and process rubric before approving a challenge for learner use. Every decision and reason is audited.</p></div></div>
+        {editorialQueue.length === 0 ? <p className="community-help">No challenges require editorial review.</p> : editorialQueue.map(item => <article className="community-moderation-item" key={item.challengeId}>
+          <div className="community-entry-heading"><strong>{item.challengeId} · {item.title}</strong><span className="tag tag-violet">{item.editorialStatus.toUpperCase()}</span></div>
+          <p>{item.description}</p><p><strong>Rubric:</strong> {item.rubric}</p>
+          <p className="community-help">Source: {item.sourceReference} · Content version {item.contentVersion} · Published: {item.published ? 'yes' : 'no'}</p>
+          {item.reviewReason && <p className="community-help">Previous review: {item.reviewReason}</p>}
+          <div className="community-actions"><button className="btn-primary" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'approve')}>Approve &amp; publish</button><button className="btn-outline" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'revision-needed')}>Request revision</button><button className="btn-outline" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'retire')}>Retire challenge</button></div>
+        </article>)}
+      </section>}
       {isModerator && <section className="community-moderation panel">
         <div className="community-section-heading"><div className="community-icon"><ShieldCheck size={20}/></div><div><h3>Moderator queue</h3><p>Every action requires a reason and is recorded in an audit trail.</p></div></div>
         {queue.entries.length === 0 && queue.reports.length === 0 ? <p className="community-help">No pending entries or reports.</p> : <>
