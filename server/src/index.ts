@@ -6,7 +6,6 @@ import { attemptSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, deci
 import { buildMastery } from './mastery.js';
 import { createRateLimiter } from './rateLimit.js';
 import { getReplayStep } from './replay.js';
-import { advancePaperTrade, startPaperTrade } from './paperLab.js';
 
 // Recall vs application is derived from attempt order, so read generously.
 const MASTERY_ATTEMPT_LIMIT = 500;
@@ -84,33 +83,62 @@ app.get('/v1/replay/synthetic-basics', requireLearner, (req: AuthedRequest, res:
 });
 
 
-// Server-owned paper trade simulation. Tokens are signed and learner-bound; no real orders or persistent account balance exist.
-app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, (req: AuthedRequest, res: Response) => {
+// Persistent server-owned paper trade sessions. Database RPCs own sizing, fills, outcomes and version checks.
+app.post('/v1/paper-lab/synthetic-basics/start', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = paperTradePlanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade plan.' });
-  try {
-    const result = startPaperTrade({ plan: parsed.data, secret: process.env.REPLAY_CURSOR_SECRET ?? '', learnerId: req.learnerId! });
-    res.setHeader('Cache-Control', 'no-store');
-    return res.status(201).json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Paper trade could not start.';
-    if (message.includes('not configured securely')) return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable.' });
-    return res.status(400).json({ error: message });
+  const d = parsed.data;
+  const { data, error } = await req.learnerDb!.rpc('start_paper_trade_session', {
+    p_direction: d.direction, p_entry: d.entry, p_stop: d.stop, p_target: d.target,
+    p_virtual_equity: d.equity, p_risk_percent: d.riskPercent,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The paper trade plan is invalid.' });
+    logError('Paper trade session could not start.', error);
+    return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable. Check that the paper trade migration is applied.' });
   }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(201).json(data);
 });
 
-app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, (req: AuthedRequest, res: Response) => {
+app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, async (req: AuthedRequest, res: Response) => {
   const parsed = paperTradeStepSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade continuation token.' });
-  try {
-    const result = advancePaperTrade({ token: parsed.data.token, secret: process.env.REPLAY_CURSOR_SECRET ?? '', learnerId: req.learnerId! });
-    res.setHeader('Cache-Control', 'no-store');
-    return res.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Paper trade could not continue.';
-    if (message.includes('not configured securely')) return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable.' });
-    return res.status(400).json({ error: 'Paper trade session is invalid. Start a new session.' });
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid paper trade continuation.' });
+  const { data, error } = await req.learnerDb!.rpc('advance_paper_trade_session', {
+    p_session_id: parsed.data.sessionId, p_expected_version: parsed.data.expectedVersion,
+  });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === 'P0002') return res.status(404).json({ error: 'Paper trade session not found.' });
+    if (error.code === '40001') return res.status(409).json({ error: 'This session changed in another request. Reload it before continuing.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Paper trade session is closed or invalid.' });
+    logError('Paper trade session could not advance.', error);
+    return res.status(503).json({ error: 'Paper trade lab is temporarily unavailable. Check that the paper trade migration is applied.' });
   }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json(data);
+});
+
+app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.from('paper_trade_sessions')
+    .select('id, scenario_id, direction, current_index, status, pnl, exit_reason, created_at, closed_at, version')
+    .eq('user_id', req.learnerId!).order('created_at', { ascending: false }).limit(20);
+  if (error) { logError('Paper trade history could not be loaded.', error); return res.status(503).json({ error: 'Paper trade history is temporarily unavailable.' }); }
+  return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
+});
+
+app.get('/v1/paper-lab/sessions/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
+  const { data, error } = await req.learnerDb!.rpc('get_paper_trade_session', { p_session_id: req.params.id });
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    if (error.code === 'P0002') return res.status(404).json({ error: 'Paper trade session not found.' });
+    logError('Paper trade session could not be loaded.', error);
+    return res.status(503).json({ error: 'Paper trade session is temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json(data);
 });
 
 // Only learner-safe scenario fields are selected; answer keys are never sent to the browser.
