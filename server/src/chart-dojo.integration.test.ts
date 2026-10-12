@@ -499,6 +499,97 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     }
   });
 
+  it('scores challenge entries from saved attempts, keeps public submissions pending, and isolates accounts', async () => {
+    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+    const handleA = 'quest_' + suffix;
+    const attemptId = crypto.randomUUID();
+    const privateAttemptId = crypto.randomUUID();
+    const entryIds: string[] = [];
+    try {
+      const profile = await request('/v1/community/profile', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ handle: handleA, displayName: 'Challenge Tester', bio: 'Testing community challenge lifecycle.', isPublic: true }),
+      });
+      expect(profile.status).toBe(200);
+
+      const catalogueResponse = await request('/v1/community/challenges', userAToken!);
+      expect(catalogueResponse.status).toBe(200);
+      const catalogue = await catalogueResponse.json() as { challenges: Array<{ challengeId: string; scenarioId: string; rubric: string }> };
+      expect(catalogue.challenges.map(item => item.challengeId)).toEqual(['QUEST-001', 'QUEST-002']);
+
+      const savedAttempt = await request('/v1/chart-dojo/attempts', userAToken!, {
+        method: 'POST', body: JSON.stringify({ attemptId, scenarioId: 'TQ-SYN-003', choiceId: 'wait' }),
+      });
+      expect(savedAttempt.status).toBe(200);
+      const savedAttemptBody = await savedAttempt.json() as { result: { outcome: string } };
+      expect(savedAttemptBody.result.outcome).toBe('evidence-led');
+
+      const publicEntryResponse = await request('/v1/community/challenges/entries', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: 'QUEST-001', attemptId, reflection: 'I waited for a defined close and wrote the invalidation condition before deciding.', isPublic: true }),
+      });
+      expect(publicEntryResponse.status).toBe(201);
+      const publicEntryBody = await publicEntryResponse.json() as { entry: { entryId: string; outcome: string; rubricMet: boolean; isPublic: boolean; moderationStatus: string } };
+      entryIds.push(publicEntryBody.entry.entryId);
+      expect(publicEntryBody.entry).toMatchObject({ outcome: 'evidence-led', rubricMet: true, isPublic: true, moderationStatus: 'pending' });
+
+      const idempotentRetry = await request('/v1/community/challenges/entries', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: 'QUEST-001', attemptId, reflection: 'I waited for a defined close and wrote the invalidation condition before deciding.', isPublic: true }),
+      });
+      expect(idempotentRetry.status).toBe(200);
+      expect((await idempotentRetry.json() as { entry: { entryId: string; idempotentReplay: boolean } }).entry).toMatchObject({ entryId: publicEntryBody.entry.entryId, idempotentReplay: true });
+
+      const attemptTheft = await request('/v1/community/challenges/entries', userBToken!, {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: 'QUEST-001', attemptId, reflection: 'Trying to submit another learner’s attempt for this challenge.', isPublic: false }),
+      });
+      expect(attemptTheft.status).toBe(404);
+
+      const mineA = await request('/v1/community/challenges/entries/mine', userAToken!);
+      const mineB = await request('/v1/community/challenges/entries/mine', userBToken!);
+      const mineABody = await mineA.json() as { entries: Array<{ entryId: string }> };
+      const mineBBody = await mineB.json() as { entries: Array<{ entryId: string }> };
+      expect(mineABody.entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(true);
+      expect(mineBBody.entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(false);
+
+      const feed = await request('/v1/community/challenges/entries', userAToken!);
+      const feedBody = await feed.json() as { entries: Array<{ entryId: string }> };
+      expect(feedBody.entries.some(entry => entry.entryId === publicEntryBody.entry.entryId)).toBe(false);
+
+      const reportPending = await request('/v1/community/challenges/entries/' + publicEntryBody.entry.entryId + '/report', userBToken!, {
+        method: 'POST', body: JSON.stringify({ category: 'other', details: 'Pending entries must not be reportable yet.' }),
+      });
+      expect(reportPending.status).toBe(404);
+      const nonModeratorQueue = await request('/v1/community/moderation/queue', userBToken!);
+      expect(nonModeratorQueue.status).toBe(403);
+
+      const privateAttempt = await request('/v1/chart-dojo/attempts', userAToken!, {
+        method: 'POST', body: JSON.stringify({ attemptId: privateAttemptId, scenarioId: 'TQ-SYN-002', choiceId: 'recalculate' }),
+      });
+      expect(privateAttempt.status).toBe(200);
+      const privateEntry = await request('/v1/community/challenges/entries', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: 'QUEST-002', attemptId: privateAttemptId, reflection: 'I compared the estimated loss with the stated budget and resized the hypothetical plan.', isPublic: false }),
+      });
+      expect(privateEntry.status).toBe(201);
+      const privateEntryBody = await privateEntry.json() as { entry: { entryId: string; outcome: string; rubricMet: boolean; isPublic: boolean; moderationStatus: string } };
+      entryIds.push(privateEntryBody.entry.entryId);
+      expect(privateEntryBody.entry).toMatchObject({ outcome: 'risk-aware', rubricMet: true, isPublic: false, moderationStatus: 'approved' });
+      const makePrivate = await request('/v1/community/profile', userAToken!, {
+        method: 'POST',
+        body: JSON.stringify({ handle: handleA, displayName: 'Challenge Tester', bio: 'Testing community challenge lifecycle.', isPublic: false }),
+      });
+      expect(makePrivate.status).toBe(200);
+      const mineAfterOptOut = await request('/v1/community/challenges/entries/mine', userAToken!);
+      const afterOptOutBody = await mineAfterOptOut.json() as { entries: Array<{ entryId: string; isPublic: boolean }> };
+      expect(afterOptOutBody.entries.every(entry => !entry.isPublic)).toBe(true);
+    } finally {
+      for (const entryId of entryIds) await request('/v1/community/challenges/entries/' + entryId, userAToken!, { method: 'DELETE' });
+      await request('/v1/community/profile', userAToken!, { method: 'DELETE' });
+    }
+  });
+
   it('deletes only the current learner\'s saved learning data and keeps the account usable', async () => {
     const titleA = 'Delete data fixture A ' + crypto.randomUUID();
     const titleB = 'Delete data fixture B ' + crypto.randomUUID();
@@ -528,7 +619,7 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
 
     const exportA = await request('/v1/me/export', userAToken!);
     expect(exportA.status).toBe(200);
-    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; paperTradeLedgerEvents: unknown[]; paperTradeFills: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[] } };
+    const bodyA = await exportA.json() as { data: { progress: { xp: number }; progressEvents: unknown[]; lessonAttempts: unknown[]; chartDojoAttempts: unknown[]; decisionJournalEntries: Array<{ title: string }>; paperTradeSessions: unknown[]; paperTradeLedgerEvents: unknown[]; paperTradeFills: unknown[]; weeklyPracticePlans: unknown[]; weeklyPracticeSessions: unknown[]; communityProfile: unknown | null; communityChallengeEntries: unknown[]; communityReports: unknown[] } };
     expect(bodyA.data.progress.xp).toBe(0);
     expect(bodyA.data.progressEvents).toHaveLength(0);
     expect(bodyA.data.lessonAttempts).toHaveLength(0);
@@ -539,6 +630,9 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(bodyA.data.paperTradeFills).toHaveLength(0);
     expect(bodyA.data.weeklyPracticePlans).toHaveLength(0);
     expect(bodyA.data.weeklyPracticeSessions).toHaveLength(0);
+    expect(bodyA.data.communityProfile).toBeNull();
+    expect(bodyA.data.communityChallengeEntries).toHaveLength(0);
+    expect(bodyA.data.communityReports).toHaveLength(0);
 
     const exportB = await request('/v1/me/export', userBToken!);
     expect(exportB.status).toBe(200);
