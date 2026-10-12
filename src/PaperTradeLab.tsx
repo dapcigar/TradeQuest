@@ -27,11 +27,12 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [ledgerEvents, setLedgerEvents] = useState<LedgerEvent[]>([]);
+  const [ledgerError, setLedgerError] = useState('');
   const base = import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 
   useEffect(() => {
     let cancelled = false;
-    setCandles([]); setResult(null); setLedgerEvents([]); setError(''); setBusy(false);
+    setCandles([]); setResult(null); setLedgerEvents([]); setLedgerError(''); setError(''); setBusy(false);
     if (!session) { setSavedSessions([]); setLoadingSessions(false); return () => { cancelled = true; }; }
     setLoadingSessions(true);
     fetch(base + '/v1/paper-lab/sessions', { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' })
@@ -54,12 +55,18 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
 
   async function refreshLedger(sessionId: string) {
     if (!session) return;
-    const response = await fetch(base + '/v1/paper-lab/sessions/' + sessionId + '/ledger', {
-      headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
-    });
-    const body = await response.json() as { events?: LedgerEvent[]; error?: string };
-    if (!response.ok || !Array.isArray(body.events)) throw new Error(body.error || 'Session ledger could not load.');
-    setLedgerEvents(body.events);
+    setLedgerError('');
+    try {
+      const response = await fetch(base + '/v1/paper-lab/sessions/' + sessionId + '/ledger', {
+        headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
+      });
+      const body = await response.json() as { events?: LedgerEvent[]; error?: string };
+      if (!response.ok || !Array.isArray(body.events)) throw new Error(body.error || 'Session ledger could not load.');
+      setLedgerEvents(body.events);
+    } catch (error) {
+      setLedgerEvents([]);
+      setLedgerError(error instanceof Error ? error.message : 'Session ledger could not load.');
+    }
   }
 
   async function openSavedSession(sessionId: string) {
@@ -129,7 +136,7 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
         {result && <div className="paper-lab-position"><h3>Plan snapshot</h3><dl><div><dt>Direction</dt><dd>{result.position.direction}</dd></div><div><dt>Estimated size*</dt><dd>{result.position.units.toLocaleString('en-GB', { maximumFractionDigits: 4 })} units</dd></div><div><dt>Risk budget*</dt><dd>{money(result.position.riskBudget)}</dd></div><div><dt>Entry / stop / target</dt><dd>{result.position.entry} / {result.position.stop} / {result.position.target}</dd></div></dl></div>}
         {result?.complete && result.outcome && <div className="paper-lab-outcome" role="status"><div className="eyebrow">SESSION RESULT · SIMULATED ONLY</div><h3>{result.outcome.reason === 'target' ? 'Target reached' : result.outcome.reason === 'ambiguous-stop-first' ? 'Stop assumed first' : result.outcome.reason === 'stop' ? 'Stop reached' : 'Sequence ended'}</h3><p>Exit price: {result.outcome.exitPrice.toLocaleString('en-GB', { maximumFractionDigits: 4 })}</p><p>Simulated P/L: <strong>{money(result.outcome.pnl)}</strong></p><p>Virtual equity after: <strong>{money(result.outcome.virtualEquityAfter)}</strong></p><small>{result.policy}</small><button className="btn-outline" type="button" onClick={() => { setCandles([]); setResult(null); setLedgerEvents([]); setError(''); }}><RotateCcw size={15} /> New session</button></div>}
         {result && !result.complete && <div className="candle-result"><div><strong>What does the evidence show?</strong><p>The outcome is not known in advance. Reveal only the next candle and review the plan as new information appears.</p></div><button className="btn-primary" type="button" onClick={() => void revealNext()} disabled={busy || result.complete}>{busy ? <LoaderCircle size={15} /> : <Play size={15} />} Reveal next candle</button></div>}
-        {result && <div className="paper-lab-position paper-lab-ledger"><h3>Session event ledger</h3><p className="form-footnote">Recorded server-side as the synthetic session advances. This is an educational state-transition history, not a broker statement.</p>{ledgerEvents.length===0?<p role="status">No ledger events are available yet.</p>:<ol aria-label="Paper trade session ledger events">{ledgerEvents.map(event=><li key={event.eventId}><strong>{event.eventType==='session_started'?'Session started':event.eventType==='session_closed'?'Session closed':'Candle '+(event.candleIndex+1)+' revealed'}</strong><span> · Version {event.version} · {new Date(event.createdAt).toLocaleString('en-GB')}</span>{event.payload.status&&<span> · {event.payload.status}</span>}{event.payload.exitReason&&<span> · {event.payload.exitReason}</span>}{typeof event.payload.pnl==='number'&&<span> · Simulated P/L {money(event.payload.pnl)}</span>}{typeof event.payload.virtualEquityAfter==='number'&&event.eventType==='session_closed'&&<span> · Virtual equity after {money(event.payload.virtualEquityAfter)}</span>}</li>)}</ol>}</div>}
+        {result && <div className="paper-lab-position paper-lab-ledger"><h3>Session event ledger</h3><p className="form-footnote">Recorded server-side as the synthetic session advances. This is an educational state-transition history, not a broker statement.</p>{ledgerError&&<p className="weekly-import-error" role="alert">{ledgerError}</p>}{ledgerEvents.length===0&&!ledgerError?<p role="status">No ledger events are available yet.</p>:ledgerEvents.length>0&&<ol aria-label="Paper trade session ledger events">{ledgerEvents.map(event=><li key={event.eventId}><strong>{event.eventType==='session_started'?'Session started':event.eventType==='session_closed'?'Session closed':'Candle '+(event.candleIndex+1)+' revealed'}</strong><span> · Version {event.version} · {new Date(event.createdAt).toLocaleString('en-GB')}</span>{event.payload.status&&<span> · {event.payload.status}</span>}{event.payload.exitReason&&<span> · {event.payload.exitReason}</span>}{typeof event.payload.pnl==='number'&&<span> · Simulated P/L {money(event.payload.pnl)}</span>}{typeof event.payload.virtualEquityAfter==='number'&&event.eventType==='session_closed'&&<span> · Virtual equity after {money(event.payload.virtualEquityAfter)}</span>}</li>)}</ol>}</div>}
         <p className="form-footnote">* Simplified position sizing assumes one unit of account-currency P/L per fictional price unit. Saved sessions belong to your learner account; they are not broker records or real trades.</p>
       </section>
     </div>
