@@ -15,15 +15,57 @@ export function normaliseWeeklyPlan(value:unknown,currentWeek:string):WeeklyPlan
 }
 function readPlan(currentWeek:string):WeeklyPlan {try{return normaliseWeeklyPlan(JSON.parse(localStorage.getItem(storageKey)??'null'),currentWeek);}catch{return normaliseWeeklyPlan(null,currentWeek);}}
 export default function WeeklyPracticePlan({ session }: { session: Session | null }){
- const currentWeek=useMemo(()=>weekKey(new Date()),[]);const [plan,setPlan]=useState<WeeklyPlan>(()=>readPlan(currentWeek));const [saved,setSaved]=useState(false);
+ const currentWeek=useMemo(()=>weekKey(new Date()),[]);const [plan,setPlan]=useState<WeeklyPlan>(()=>readPlan(currentWeek));const [saved,setSaved]=useState(false); const [planLoading,setPlanLoading]=useState(Boolean(session)); const [planBusy,setPlanBusy]=useState(false); const [planError,setPlanError]=useState('');
  const [accountExportBusy,setAccountExportBusy]=useState(false); const [accountExportError,setAccountExportError]=useState(''); const [accountExportMessage,setAccountExportMessage]=useState('');
  const [deleteDataConfirmation,setDeleteDataConfirmation]=useState(''); const [deleteDataBusy,setDeleteDataBusy]=useState(false); const [deleteDataError,setDeleteDataError]=useState(''); const [deleteDataMessage,setDeleteDataMessage]=useState('');
  useEffect(()=>{setDeleteDataConfirmation('');setDeleteDataError('');setDeleteDataMessage('');setAccountExportError('');setAccountExportMessage('');},[session?.access_token]);
+ useEffect(()=>{
+  let active=true;
+  if(!session){
+   setPlan(readPlan(currentWeek));setSaved(false);setPlanLoading(false);setPlanError('');
+   return ()=>{active=false;};
+  }
+  setPlanLoading(true);setPlanError('');
+  const url=(import.meta.env.VITE_TRADEQUEST_API_URL||'http://localhost:4000')+'/v1/weekly-plan?weekStart='+encodeURIComponent(currentWeek);
+  fetch(url,{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'})
+   .then(async response=>{
+    const body=await response.json() as {plan?:unknown;error?:string};
+    if(!response.ok||!body.plan)throw new Error(body.error||'Your account-backed weekly plan could not be loaded. Apply the weekly plan migration, then retry.');
+    if(active){setPlan(normaliseWeeklyPlan(body.plan,currentWeek));setSaved(true);}
+   })
+   .catch(error=>{if(active){setPlanError(error instanceof Error?error.message:'Your weekly plan could not be loaded.');setSaved(false);}})
+   .finally(()=>{if(active)setPlanLoading(false);});
+  return ()=>{active=false;};
+ },[session?.access_token,currentWeek]);
  const [pendingImport,setPendingImport]=useState<LearningImport|null>(null);const [importError,setImportError]=useState('');const [importMessage,setImportMessage]=useState(''); const [clearConfirm,setClearConfirm]=useState(false); const [clearMessage,setClearMessage]=useState('');
  const today=new Date().toISOString().slice(0,10);const complete=plan.completedDates.includes(today);const progress=Math.min(100,Math.round((plan.completedDates.length/plan.target)*100));
- function persist(next:WeeklyPlan){setPlan(next);setSaved(false);try{localStorage.setItem(storageKey,JSON.stringify(next));setSaved(true);}catch{setSaved(false);}}
+ async function persist(next:WeeklyPlan){
+  if(planBusy||planLoading)return;
+  if(!session){
+   setPlan(next);setSaved(false);setPlanError('');
+   try{localStorage.setItem(storageKey,JSON.stringify(next));setSaved(true);}catch{setSaved(false);}
+   return;
+  }
+  setPlanBusy(true);setPlanError('');setSaved(false);
+  const apiBase=import.meta.env.VITE_TRADEQUEST_API_URL||'http://localhost:4000';
+  const headers={'Content-Type':'application/json',Authorization:'Bearer '+session.access_token};
+  const send=async(path:string,body:Record<string,unknown>)=>{
+   const response=await fetch(apiBase+path,{method:'PUT',headers,cache:'no-store',body:JSON.stringify(body)});
+   const result=await response.json() as {plan?:unknown;error?:string};
+   if(!response.ok||!result.plan)throw new Error(result.error||'Your weekly plan could not be saved.');
+   return normaliseWeeklyPlan(result.plan,currentWeek);
+  };
+  try{
+   let savedPlan:WeeklyPlan=next;
+   if(next.target!==plan.target)savedPlan=await send('/v1/weekly-plan',{weekStart:currentWeek,target:next.target});
+   const changedDates=[...new Set([...plan.completedDates,...next.completedDates])].filter(date=>plan.completedDates.includes(date)!==next.completedDates.includes(date));
+   for(const sessionDate of changedDates)savedPlan=await send('/v1/weekly-plan/session',{weekStart:currentWeek,sessionDate,completed:next.completedDates.includes(sessionDate)});
+   setPlan(savedPlan);setSaved(true);
+  }catch(error){setPlanError(error instanceof Error?error.message:'Your weekly plan could not be saved.');setSaved(false);}
+  finally{setPlanBusy(false);}
+ }
  async function selectImport(file?:File){setPendingImport(null);setImportError('');setImportMessage('');if(!file)return;try{setPendingImport(parseLearningImport(await file.text()));}catch(error){setImportError(error instanceof Error?error.message:'Could not read this learning export.');}}
- function confirmClearLocalData(){const removed=clearLocalLearningData(localStorage);setPlan({week:currentWeek,target:3,completedDates:[]});setSaved(false);setPendingImport(null);setImportError('');setImportMessage('');setClearConfirm(false);setClearMessage(removed===3?'Browser-local learning records cleared. Account data and unrelated browser storage were not changed.':'Some local records could not be removed by this browser.');}
+ function confirmClearLocalData(){const removed=clearLocalLearningData(localStorage);if(!session){setPlan({week:currentWeek,target:3,completedDates:[]});setSaved(false);}setPendingImport(null);setImportError('');setImportMessage('');setClearConfirm(false);setClearMessage(removed===3?(session?'Browser-local learning records cleared. Your account-saved weekly plan was not changed.':'Browser-local learning records cleared. Account data and unrelated browser storage were not changed.'):'Some local records could not be removed by this browser.');}
  async function downloadAccountExport(){
   if(!session||accountExportBusy)return;
   setAccountExportBusy(true);setAccountExportError('');setAccountExportMessage('');
@@ -52,7 +94,7 @@ export default function WeeklyPracticePlan({ session }: { session: Session | nul
   }catch(error){setDeleteDataError(error instanceof Error?error.message:'Saved learning data could not be deleted.');}
   finally{setDeleteDataBusy(false);}
  }
- function confirmImport(){if(!pendingImport)return;try{const restored=restoreLearningImport(pendingImport,(key,value)=>localStorage.setItem(key,value));setPlan(readPlan(currentWeek));setSaved(true);setImportMessage(`Restored ${restored.length} learning record categories. Existing local data for those categories was replaced.`);setPendingImport(null);}catch{setImportError('The browser could not save the imported data. Check available storage and try again.');}}
+ function confirmImport(){if(!pendingImport)return;try{const restored=restoreLearningImport(pendingImport,(key,value)=>localStorage.setItem(key,value));if(!session){setPlan(readPlan(currentWeek));setSaved(true);}setImportMessage(`Restored ${restored.length} browser-local learning record categories. Account-saved data was not changed.`);setPendingImport(null);}catch{setImportError('The browser could not save the imported data. Check available storage and try again.');}}
  return <div className="weekly-plan-page">
  <div className="page-intro"><div className="eyebrow"><span className="eyebrow-line"/> CONSISTENCY OVER INTENSITY</div><h1>A plan you can <span>keep.</span></h1><p>Set a realistic weekly learning target, practise in short sessions, and review what you learned. This tracks learning activity—not trading skill or future results.</p></div>
  <section className="panel weekly-plan-card"><div className="weekly-plan-heading"><div className="weekly-plan-icon"><CalendarDays size={22}/></div><div><div className="eyebrow">THIS WEEK</div><h2>Your practice commitment</h2><p>Choose a target that fits your week. You can change it at any time.</p></div></div>
