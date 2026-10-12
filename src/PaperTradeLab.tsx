@@ -78,7 +78,7 @@ export default function PaperTradeLab({ session }: { session: Session | null }) 
   }
 
   async function revealNext() {
-    if (!session || !result?.nextToken || result.complete) return;
+    if (!session || !result?.sessionId || result.complete) return;
     setBusy(true); setError('');
     try {
       const response = await fetch(base + '/v1/paper-lab/synthetic-basics/step', {
