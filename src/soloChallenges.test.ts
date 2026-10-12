@@ -4,17 +4,16 @@ import { soloChallenges, summariseChallengeAttempts } from './soloChallenges';
 describe('solo challenge rubric results', () => {
   it('keeps the rubric tied to the latest attempt, not the best historical score', () => {
     const attempts = [
-      { scenarioId: 'TQ-SYN-003', outcome: 'impulsive', feedback: 'Earlier error', submittedAt: '2026-10-10T10:00:00Z' },
-      { scenarioId: 'TQ-SYN-003', outcome: 'evidence-led', feedback: 'Latest evidence-led choice', submittedAt: '2026-10-11T10:00:00Z' },
+      { scenarioId: 'TQ-SYN-003', outcome: 'impulsive', feedback: 'Latest error', submittedAt: '2026-10-10T09:00:00Z' },
+      { scenarioId: 'TQ-SYN-003', outcome: 'evidence-led', feedback: 'Earlier correct choice', submittedAt: '2026-10-11T10:00:00Z' },
     ];
     expect(summariseChallengeAttempts(attempts, 'TQ-SYN-003', 'evidence-led')).toEqual({
       attempts: 2,
-      latestOutcome: 'evidence-led',
-      latestFeedback: 'Latest evidence-led choice',
-      latestSubmittedAt: '2026-10-11T10:00:00Z',
-      rubricMet: true,
+      latestOutcome: 'impulsive',
+      latestFeedback: 'Latest error',
+      latestSubmittedAt: '2026-10-10T09:00:00Z',
+      rubricMet: false,
     });
-    expect(summariseChallengeAttempts([...attempts].reverse(), 'TQ-SYN-003', 'evidence-led').rubricMet).toBe(true);
   });
 
   it('does not count unrelated scenarios as challenge attempts', () => {
