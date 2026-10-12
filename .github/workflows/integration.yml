@@ -8,6 +8,9 @@ on:
         required: true
         type: boolean
         default: false
+  push:
+    branches:
+      - integration-test/confirm-dedicated-test-accounts-2026-10-12
 
 permissions:
   contents: read
@@ -35,8 +38,13 @@ jobs:
         env:
           CONFIRM_TEST_ACCOUNTS: ${{ inputs.confirm_test_accounts }}
         run: |
-          if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
-            echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$CONFIRM_TEST_ACCOUNTS" != "true" ]; then
+              echo "::error::Confirm that both tokens belong to dedicated test accounts; the suite deletes all saved learning data for Account A."
+              exit 1
+            fi
+          elif [ "$GITHUB_REF_NAME" != "integration-test/confirm-dedicated-test-accounts-2026-10-12" ]; then
+            echo "::error::Only the explicitly named one-shot integration-test branch may trigger this destructive test automatically."
             exit 1
           fi
       - name: Require all dedicated test secrets
