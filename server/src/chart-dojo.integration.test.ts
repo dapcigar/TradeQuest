@@ -197,6 +197,18 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(Number(fillsBody.fills[1].price)).toBeCloseTo(104.625);
     expect(Number(fillsBody.fills[0].units)).toBeCloseTo(4.1);
     expect(Number(fillsBody.fills[1].realizedPnl)).toBeCloseTo(finalBody.outcome.pnl);
+
+    const exportResponse = await request('/v1/me/export', userAToken!);
+    expect(exportResponse.status).toBe(200);
+    const exportBody = await exportResponse.json() as { data: { paperTradeSessions: Array<{ id: string; instrument_label: string; tick_size: number | string; tick_value: number | string; spread_ticks: number | string; estimated_stop_loss: number | string; margin_required: number | string }> } };
+    const exported = exportBody.data.paperTradeSessions.find(item => item.id === startBody.sessionId);
+    expect(exported).toBeTruthy();
+    expect(exported).toMatchObject({ instrument_label: 'Integration cost model' });
+    expect(Number(exported?.tick_size)).toBeCloseTo(0.5);
+    expect(Number(exported?.tick_value)).toBeCloseTo(2);
+    expect(Number(exported?.spread_ticks)).toBeCloseTo(1);
+    expect(Number(exported?.estimated_stop_loss)).toBeCloseTo(98.4);
+    expect(Number(exported?.margin_required)).toBeCloseTo(422.3);
   });
 
   it('syncs weekly practice plans only to the owning learner', async () => {
