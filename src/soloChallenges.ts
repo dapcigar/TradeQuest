@@ -44,16 +44,10 @@ export function summariseChallengeAttempts(
   scenarioId: string,
   positiveOutcome: string,
 ) {
-  const matching = attempts
-    .filter(attempt => attempt.scenarioId === scenarioId)
-    .map((attempt, index) => ({ attempt, index, timestamp: Date.parse(attempt.submittedAt) }))
-    .sort((a, b) => {
-      if (Number.isFinite(a.timestamp) && Number.isFinite(b.timestamp)) return b.timestamp - a.timestamp;
-      if (Number.isFinite(a.timestamp)) return -1;
-      if (Number.isFinite(b.timestamp)) return 1;
-      return a.index - b.index;
-    });
-  const latest = matching[0]?.attempt;
+  // The API returns account attempts newest-first, and new local attempts are prepended.
+  // Trust that authoritative ordering instead of client timestamps, which can be clock-skewed.
+  const matching = attempts.filter(attempt => attempt.scenarioId === scenarioId);
+  const latest = matching[0];
   return {
     attempts: matching.length,
     latestOutcome: latest?.outcome ?? null,
