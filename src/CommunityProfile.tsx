@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Globe2, LockKeyhole, Save, ShieldCheck, Trash2, Users } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export default function CommunityProfile({ session, onSignIn }: { session: Sessi
     return () => { cancelled = true; };
   }, [session]);
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
     setSaving(true); setError(''); setMessage('');
@@ -109,7 +109,7 @@ export default function CommunityProfile({ session, onSignIn }: { session: Sessi
               <input type="checkbox" checked={profile.isPublic} onChange={e => setProfile(p => ({...p, isPublic: e.target.checked}))}/>
               <span><strong>Make my profile visible to signed-in learners</strong><small>Only your handle, display name and bio are shown. You can switch this off or delete your profile at any time.</small></span>
             </label>
-            <div className="community-privacy-note"><{profile.isPublic ? 'Globe2' : 'LockKeyhole'} size={17}/><span>{profile.isPublic ? 'Public profile selected. Save to publish these fields.' : 'Private profile selected. Other learners cannot see your profile.'}</span></div>
+            <div className="community-privacy-note">{profile.isPublic ? <Globe2 size={17}/> : <LockKeyhole size={17}/>}<span>{profile.isPublic ? 'Public profile selected. Save to publish these fields.' : 'Private profile selected. Other learners cannot see your profile.'}</span></div>
             <div className="community-actions"><button className="btn-primary" type="submit" disabled={saving || loading}><Save size={15}/>{saving ? 'Saving…' : 'Save profile'}</button><button className="btn-outline" type="button" disabled={saving || loading || !profile.handle} onClick={() => void removeProfile()}><Trash2 size={15}/>Delete profile</button></div>
           </form>}
         </section>
