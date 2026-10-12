@@ -27,3 +27,21 @@ export function calculateRisk(input: RiskInput): RiskResult {
   const units = riskBudget / (distance * unitsPerPrice);
   return { riskBudget, distance, units, estimatedLoss: units * distance * unitsPerPrice };
 }
+
+export type RewardRiskResult = { riskDistance: number; rewardDistance: number; ratio: number };
+
+/** Calculate price-distance reward/risk for a fictional plan. Contract value and costs are intentionally excluded. */
+export function calculateRewardRisk(input: { entry: number; stop: number; target: number }): RewardRiskResult {
+  const { entry, stop, target } = input;
+  if (![entry, stop, target].every(Number.isFinite)) throw new Error('Enter valid numeric prices.');
+  if (entry <= 0 || stop <= 0 || target <= 0) throw new Error('Entry, stop and target must be positive.');
+  if (entry === stop) throw new Error('Entry and stop must be different.');
+  if (entry === target) throw new Error('Target must be beyond entry in the planned direction.');
+  const isLong = stop < entry;
+  if ((isLong && target <= entry) || (!isLong && target >= entry)) {
+    throw new Error('Target must be beyond entry and opposite the stop direction.');
+  }
+  const riskDistance = Math.abs(entry - stop);
+  const rewardDistance = Math.abs(target - entry);
+  return { riskDistance, rewardDistance, ratio: rewardDistance / riskDistance };
+}
