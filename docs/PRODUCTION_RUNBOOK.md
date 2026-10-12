@@ -28,7 +28,8 @@ Before running it:
 - Deploy the API against a disposable Supabase project with all migrations applied and required synthetic scenarios seeded.
 - Create two dedicated test accounts. The suite deletes Account A's saved learning data at the end, so neither account may contain real learner data.
 - Configure these repository Actions secrets: `TRADEQUEST_TEST_API_URL`, `TRADEQUEST_TEST_USER_A_TOKEN`, and `TRADEQUEST_TEST_USER_B_TOKEN`. Never paste token values into workflow inputs or logs.
-- Run Actions → **Disposable Supabase integration** and explicitly confirm the disposable environment. A missing confirmation or secret causes the workflow to fail before running tests.
+- Name the test API host clearly as test/staging/preview (or use localhost); the workflow rejects production-looking hostnames.
+- Run Actions → **Disposable Supabase integration** and explicitly confirm the disposable environment. A missing confirmation, secret, or non-production hostname causes the workflow to fail before running tests.
 - Save the successful workflow run URL in the release evidence record. A skipped suite or missing credentials is not a successful isolation test.
 
 ## 4. Restore rehearsal
