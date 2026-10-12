@@ -523,7 +523,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     product: 'TradeQuest',
     formatVersion: 1,
     exportedAt,
-    scope: 'Server-stored learning data for the signed-in account only. Authentication credentials, access tokens, and browser-local records are not included.',
+    scope: 'Server-stored learning data and community profile/contribution records for the signed-in account only. Authentication credentials, access tokens, private data belonging to other learners, and browser-local records are not included.',
     data: {
       progress: progressResult.data ?? { xp: 0, lessons_completed: [], updated_at: null },
       progressEvents: eventsResult.data ?? [],
