@@ -67,6 +67,7 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     const initialLedgerBody = await initialLedger.json() as { events: Array<{ eventType: string; version: number; user_id?: string }> };
     expect(initialLedgerBody.events.map(event => event.eventType)).toEqual(['session_started']);
     expect(initialLedgerBody.events[0].user_id).toBeUndefined();
+    expect(initialLedgerBody.events[0]).not.toHaveProperty('sequence');
     const forbiddenLedger = await request('/v1/paper-lab/sessions/' + startBody.sessionId + '/ledger', userBToken!);
     expect(forbiddenLedger.status).toBe(404);
 
