@@ -51,6 +51,7 @@ const riskSource = read('src/risk.ts');
 const riskTests = read('src/risk.test.ts');
 const workflow = read('.github/workflows/ci.yml');
 const integrationWorkflow = read('.github/workflows/integration.yml');
+const legacySupabaseIntegrationWorkflow = read('.github/workflows/supabase-integration.yml');
 const paperFillMigration = read('supabase/migrations/20261012250000_paper_trade_fill_ledger.sql');
 const paperFillContractTests = read('server/src/paper-trade-fill-migration.test.ts');
 const communityProfileMigration = read('supabase/migrations/20261012260000_community_profiles.sql');
@@ -147,6 +148,7 @@ for (const [label, content, phrases] of [
   ['Paper-trade execution UI/API contract', paperTradeUi + masteryApi, ['Execution assumptions', 'estimatedStopLoss', 'marginRequired', 'start_paper_trade_session_with_specs']],
   ['Paper-trade custom-cost integration coverage', apiIntegrationTests, ['sizes positions by user-defined tick', 'estimatedStopLoss: 98.4', 'marginRequired: 422.3', '104.625']],
   ['Connected Supabase integration workflow', integrationWorkflow, ['workflow_dispatch', 'confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate dedicated account tokens against deployed API', '/v1/me/progress', 'No integration writes have been started', 'TRADEQUEST_TEST_API_URL', 'TRADEQUEST_TEST_USER_A_TOKEN', 'TRADEQUEST_TEST_USER_B_TOKEN', 'npm run test -- server/src/chart-dojo.integration.test.ts', 'deletes all saved learning data for Account A']],
+  ['Legacy Supabase integration workflow safeguards', legacySupabaseIntegrationWorkflow, ['confirm_test_accounts', 'Require explicit dedicated-test-account confirmation', 'Validate both dedicated accounts against deployed API', '/v1/me/progress', 'No integration writes have been started', 'npm run test -- server/src/chart-dojo.integration.test.ts --reporter=verbose']],
 ]) {
   const lower = content.toLowerCase();
   const missing = phrases.filter(phrase => !lower.includes(phrase.toLowerCase()));
