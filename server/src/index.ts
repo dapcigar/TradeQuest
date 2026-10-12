@@ -131,11 +131,11 @@ app.post('/v1/paper-lab/synthetic-basics/step', requireLearner, async (req: Auth
 
 app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res: Response) => {
   const { data, error } = await req.learnerDb!.from('paper_trade_sessions')
-    .select('id, scenario_id, direction, current_index, status, pnl, exit_reason, created_at, closed_at, version')
+    .select('id, scenario_id, direction, instrument_label, estimated_stop_loss, margin_required, current_index, status, pnl, exit_reason, created_at, closed_at, version')
     .eq('user_id', req.learnerId!).order('created_at', { ascending: false }).limit(20);
   if (error) { logError('Paper trade history could not be loaded.', error); return res.status(503).json({ error: 'Paper trade history is temporarily unavailable.' }); }
   res.setHeader('Cache-Control', 'no-store');
-  return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
+  return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, instrumentLabel: item.instrument_label, estimatedStopLoss: item.estimated_stop_loss, marginRequired: item.margin_required, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
 });
 
 app.get('/v1/paper-lab/sessions/:id/fills', requireLearner, async (req: AuthedRequest, res: Response) => {
