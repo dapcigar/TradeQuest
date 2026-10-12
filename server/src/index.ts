@@ -134,6 +134,21 @@ app.get('/v1/paper-lab/sessions', requireLearner, async (req: AuthedRequest, res
   return res.json({ sessions: (data ?? []).map(item => ({ sessionId: item.id, scenarioId: item.scenario_id, direction: item.direction, currentIndex: item.current_index, status: item.status, pnl: item.pnl, exitReason: item.exit_reason, createdAt: item.created_at, closedAt: item.closed_at, version: item.version })) });
 });
 
+app.get('/v1/paper-lab/sessions/:id/fills', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const sessionId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
+  const { data, error } = await req.learnerDb!.from('paper_trade_fills')
+    .select('fill_id, fill_sequence, fill_type, side, fill_price, units, realized_pnl, fill_reason, filled_at')
+    .eq('user_id', req.learnerId!).eq('session_id', sessionId).order('fill_sequence', { ascending: true }).limit(2);
+  if (error) {
+    logError('Paper trade fills could not be loaded.', error);
+    return res.status(503).json({ error: 'Paper trade fills are temporarily unavailable. Check that the fill ledger migration is applied.' });
+  }
+  if (!data || data.length === 0) return res.status(404).json({ error: 'Paper trade session not found.' });
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ fills: data.map(item => ({ fillId: item.fill_id, sequence: item.fill_sequence, type: item.fill_type, side: item.side, price: item.fill_price, units: item.units, realizedPnl: item.realized_pnl, reason: item.fill_reason, filledAt: item.filled_at })) });
+});
+
 app.get('/v1/paper-lab/sessions/:id/ledger', requireLearner, async (req: AuthedRequest, res: Response) => {
   const sessionId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
   if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) return res.status(400).json({ error: 'Invalid paper trade session id.' });
