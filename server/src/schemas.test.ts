@@ -147,8 +147,8 @@ describe('community challenge schemas', () => {
     expect(communityChallengeEntrySchema.safeParse(validEntry).success).toBe(true);
   });
 
-  it('rejects unknown challenges, invalid attempt IDs, short reflections, and caller-supplied scores', () => {
-    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, challengeId: 'QUEST-999' }).success).toBe(true);
+  it('rejects malformed challenge IDs, invalid attempt IDs, short reflections, and caller-supplied scores', () => {
+    expect(communityChallengeEntrySchema.safeParse({ ...validEntry, challengeId: 'NOT-A-QUEST' }).success).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, attemptId: 'bad' }).success).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, reflection: 'Too short' }).success).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, rubricMet: true, outcome: 'evidence-led' }).success).toBe(false);
