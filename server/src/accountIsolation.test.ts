@@ -132,6 +132,7 @@ describe('paper trade event ledger', () => {
     expect(handler.source).toContain("eq('session_id', sessionId)");
     expect(handler.source).toContain("setHeader('Cache-Control', 'no-store')");
     expect(handler.source).toContain('event_sequence');
+    expect(handler.source).not.toContain('sequence: item.event_sequence');
     expect(allMigrations).toMatch(/alter table public\.paper_trade_ledger_events enable row level security/i);
     expect(allMigrations).toMatch(/revoke all on public\.paper_trade_ledger_events from public, anon, authenticated/i);
     expect(allMigrations).toMatch(/grant select on public\.paper_trade_ledger_events to authenticated/i);
