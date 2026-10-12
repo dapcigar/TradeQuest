@@ -6,6 +6,7 @@ import WeeklyPracticePlan from './WeeklyPracticePlan';
 import GlossaryView from './GlossaryView';
 import CandleLiteracy from './CandleLiteracy';
 import SupportResistanceLiteracy from './SupportResistanceLiteracy';
+import TrendStructureLiteracy from './TrendStructureLiteracy';
 import {
   Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
@@ -20,7 +21,7 @@ import { useModalFocus } from './useModalFocus';
 import { describeEvidence, describeTransfer, type ApplicationBucket, type EvidenceBucket } from './masteryDisplay';
 import type { Session } from '@supabase/supabase-js';
 
-type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure';
+type View = 'overview' | 'learn' | 'practice' | 'risk' | 'challenges' | 'progress' | 'journal' | 'review' | 'adaptive' | 'weekly' | 'glossary' | 'candles' | 'structure' | 'trend';
 type Progress = { lessonComplete: boolean; quizCorrect: boolean; xp: number; riskToolUsed: boolean; awardedActions: string[] };
 type MasterySummary = {
   skills: Array<{ skillId: string; scenarioId: string; label: string; description: string; attempts: number; positiveDecisions: number; successRate: number | null; confidence: string; distinctScenarios: number; scenariosAvailable: number; recall: EvidenceBucket; application: ApplicationBucket; lastPractisedAt: string | null; reviewStatus: string; firstAttemptPositive: boolean | null; delayedReviewAttempts: number; retentionStatus: string }>;
@@ -258,7 +259,8 @@ function App() {
     { id: 'learn', label: 'Learning path', icon: BookOpen },
     { id: 'glossary', label: 'Learning glossary', icon: BookOpen, section: 'FIELD GUIDE' },
     { id: 'candles', label: 'Candle literacy', icon: BarChart3 },
-    { id: 'structure', label: 'Support & resistance', icon: BarChart3 }, 
+    { id: 'structure', label: 'Support & resistance', icon: BarChart3 },
+    { id: 'trend', label: 'Trend structure', icon: Activity }, 
     { id: 'practice', label: 'Chart dojo', icon: Activity, section: 'PRACTICE LABS' },
     { id: 'risk', label: 'Risk simulator', icon: ShieldCheck },
     { id: 'journal', label: 'Decision journal', icon: BookOpen, section: 'REFLECT' },
@@ -274,7 +276,7 @@ function App() {
   const completion = Math.round((completed / 2) * 100);
   const titleMap: Record<View, string> = {
     overview: 'Mission control', learn: 'Your learning path', practice: 'Chart dojo',
-    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance',
+    risk: 'Risk simulator', challenges: 'Community quests', progress: 'Your skill tree', journal: 'Decision journal', review: 'Spaced review queue', adaptive: 'Adaptive practice', weekly: 'Weekly practice plan', glossary: 'Learning glossary', candles: 'Candle literacy', structure: 'Support and resistance', trend: 'Trend structure',
   };
 
   function awardXPOnce(actionId: string, amount: number) {
@@ -497,6 +499,7 @@ function App() {
           {view === 'glossary' && <GlossaryView />}
           {view === 'candles' && <CandleLiteracy />}
           {view === 'structure' && <SupportResistanceLiteracy />}
+          {view === 'trend' && <TrendStructureLiteracy />}
           {view === 'learn' && <LearningView progress={progress} onOpen={() => setLessonOpen(true)} quizChoice={quizChoice} setQuizChoice={value => { setQuizChoice(value); setQuizSubmitted(false); setQuizResult(null); }} quizSubmitted={quizSubmitted} submitQuiz={submitQuiz} quizResult={quizResult} quizError={quizError} onRetryQuiz={() => { setQuizChoice(''); setQuizSubmitted(false); setQuizResult(null); setQuizError(''); }} accountMode={Boolean(session)} />}
           {view === 'practice' && <PracticeView scenarios={dojoScenarios} activeScenarioId={activeScenarioId} onSelectScenario={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} catalogueMessage={session ? dojoCatalogueMessage : ''} choice={scenarioChoice} setChoice={value => { setScenarioChoice(value); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); }} revealed={scenarioRevealed} onSubmit={submitChartDojoAttempt} result={dojoResult} error={dojoError} busy={dojoBusy} history={session ? dojoHistory : []} />}
           {view === 'journal' && <JournalView session={session} scenarioId={activeScenarioId} />}
