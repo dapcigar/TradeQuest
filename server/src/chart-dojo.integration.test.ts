@@ -126,6 +126,39 @@ suite('TradeQuest API integration (explicit opt-in; uses two dedicated test acco
     expect(fillExportBody.data.paperTradeFills.some(fill => fill.sessionId === startBody.sessionId && fill.type === 'entry')).toBe(true);
     expect(fillExportBody.data.paperTradeFills.some(fill => fill.sessionId === startBody.sessionId && fill.type === 'exit')).toBe(true);
     expect(fillExportBody.data.paperTradeFills.every(fill => fill.user_id === undefined)).toBe(true);
+
+    const shortStart = await request('/v1/paper-lab/synthetic-basics/start', userAToken!, {
+      method: 'POST', body: JSON.stringify({ direction: 'short', entry: 103, stop: 108, target: 98, equity: 10000, riskPercent: 1 }),
+    });
+    expect(shortStart.status).toBe(201);
+    const shortStarted = await shortStart.json() as { sessionId: string; version: number; complete: boolean };
+    let shortState: { version: number; complete: boolean; outcome?: { pnl: number; reason: string } | null } = {
+      version: shortStarted.version, complete: shortStarted.complete,
+    };
+    for (let step = 0; step < 12 && !shortState.complete; step++) {
+      const response = await request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
+        method: 'POST', body: JSON.stringify({ sessionId: shortStarted.sessionId, expectedVersion: shortState.version }),
+      });
+      expect(response.status).toBe(200);
+      shortState = await response.json() as typeof shortState;
+    }
+    expect(shortState.complete).toBe(true);
+    expect(shortState.outcome).toBeTruthy();
+    const shortFillsResponse = await request('/v1/paper-lab/sessions/' + shortStarted.sessionId + '/fills', userAToken!);
+    expect(shortFillsResponse.status).toBe(200);
+    const shortFillsBody = await shortFillsResponse.json() as { fills: Array<{ type: string; side: string; price: number | string; realizedPnl: number | string | null; reason: string | null }> };
+    expect(shortFillsBody.fills.map(fill => fill.type)).toEqual(['entry', 'exit']);
+    expect(shortFillsBody.fills.map(fill => fill.side)).toEqual(['sell', 'buy']);
+    expect(Number(shortFillsBody.fills[0].price)).toBe(103);
+    expect(Number(shortFillsBody.fills[1].realizedPnl)).toBeCloseTo(Number(shortState.outcome?.pnl));
+    expect(shortFillsBody.fills[1].reason).toBe(shortState.outcome?.reason);
+    const shortExitReplay = await request('/v1/paper-lab/synthetic-basics/step', userAToken!, {
+      method: 'POST', body: JSON.stringify({ sessionId: shortStarted.sessionId, expectedVersion: shortState.version - 1 }),
+    });
+    expect(shortExitReplay.status).toBe(200);
+    expect(await shortExitReplay.json()).toMatchObject({ complete: true, outcome: shortState.outcome });
+    const privateShortFills = await request('/v1/paper-lab/sessions/' + shortStarted.sessionId + '/fills', userBToken!);
+    expect(privateShortFills.status).toBe(404);
   });
 
   it('syncs weekly practice plans only to the owning learner', async () => {
