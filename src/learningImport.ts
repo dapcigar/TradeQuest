@@ -1,12 +1,13 @@
+import { isValidDateKey } from './dateKey';
 import { localLearningDataKeys } from './learningExport';
 export type LearningImport = { product: 'TradeQuest'; formatVersion: 1; exportedAt: string; scope: string; data: Partial<Record<(typeof localLearningDataKeys)[number], unknown>> };
 const MAX_IMPORT_BYTES = 1_000_000;
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function validWeeklyPlan(value: unknown): boolean {
  if (!isRecord(value)) return false;
- return typeof value.week === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.week)
+ return isValidDateKey(value.week)
   && [3,5,7].includes(Number(value.target)) && Array.isArray(value.completedDates)
-  && value.completedDates.length <= 7 && value.completedDates.every(date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date));
+  && value.completedDates.length <= 7 && value.completedDates.every(isValidDateKey);
 }
 export function parseLearningImport(raw: string): LearningImport {
  if (new TextEncoder().encode(raw).length > MAX_IMPORT_BYTES) throw new Error('This file is too large. Choose a TradeQuest export under 1 MB.');
