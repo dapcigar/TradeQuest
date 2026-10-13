@@ -1,0 +1,63 @@
+name: Deployed API smoke (unauthenticated, no-write)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_no_write_smoke:
+        description: "Confirm this checks the configured deployed API using unauthenticated requests only; it does not run Supabase integration tests."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tradequest-deployed-api-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TRADEQUEST_SMOKE_API_URL: ${{ vars.TRADEQUEST_SMOKE_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Require explicit no-write confirmation
+        env:
+          CONFIRM_NO_WRITE_SMOKE: ${{ inputs.confirm_no_write_smoke }}
+        run: |
+          if [ "$CONFIRM_NO_WRITE_SMOKE" != "true" ]; then
+            echo "::error::Confirm that this is the unauthenticated, no-write API smoke check."
+            exit 1
+          fi
+      - name: Validate configured deployed API URL
+        shell: bash
+        run: |
+          if [ -z "$TRADEQUEST_SMOKE_API_URL" ]; then
+            echo "::error::Set the TRADEQUEST_SMOKE_API_URL repository Actions variable to the intended deployed API base URL."
+            exit 1
+          fi
+          node --input-type=module <<'NODE'
+          let url;
+          try { url = new URL(process.env.TRADEQUEST_SMOKE_API_URL); } catch {
+            console.error('::error::TRADEQUEST_SMOKE_API_URL must be a valid absolute URL.');
+            process.exit(1);
+          }
+          if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+            console.error('::error::The deployed smoke URL must use HTTPS and must not contain credentials, query parameters, or fragments.');
+            process.exit(1);
+          }
+          console.log('Deployed API smoke URL validated; host and URL are not printed.');
+          NODE
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Block high or critical dependency advisories
+        run: npm audit --audit-level=high
+      - name: Run unauthenticated API smoke checks
+        run: npm run api:smoke

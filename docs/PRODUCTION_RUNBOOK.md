@@ -10,6 +10,7 @@ This runbook is a checklist for an operator. It does not assert that a backup ex
 4. Run the opt-in integration suite with two dedicated test accounts. Confirm the tests ran rather than skipped.
 5. Verify the deployed frontend and API headers, authentication redirects, account export/deletion, weekly plan sync, and paper-trade ledger.
 6. Check Vercel deployment status and provider quotas. A rate-limited or failed deployment is not a release; do not repeatedly trigger builds while the provider's rate limit is active.
+7. After deployment, set the GitHub Actions repository variable `TRADEQUEST_SMOKE_API_URL` to the intended deployed HTTPS API base URL. Run **Actions → Deployed API smoke (unauthenticated, no-write)** and explicitly confirm the no-write check. Capture the workflow URL and deployed commit as evidence. This check uses unauthenticated requests, carries no bearer tokens, and does not replace the Supabase integration suite or browser journey.
 
 ## 2. Backup before schema changes
 

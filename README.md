@@ -86,5 +86,6 @@ npm run release:preflight
 ```
 
 For a read-only check against a deployed or local API, set `TRADEQUEST_SMOKE_API_URL` to the API base URL and run `npm run api:smoke`. It checks the health response, defensive headers, and that key learner endpoints reject unauthenticated requests. It does not mutate learner data and does not replace the two-account integration suite or manual browser smoke test.
+For a repeatable hosted check after deployment, set the GitHub Actions repository variable `TRADEQUEST_SMOKE_API_URL` and manually run **Deployed API smoke (unauthenticated, no-write)**. It does not use test-account tokens or run Supabase integration tests.
 
 See `docs/PAPER_TRADE_LAB.md` for simulation assumptions and limitations, `docs/IMPLEMENTATION_BRIEF.md` for product direction, `docs/M2_IMPLEMENTATION_PLAN.md` for the current account-persistence setup, `docs/SECURITY_ARCHITECTURE.md` for trust boundaries and security controls, `docs/ACCESSIBILITY.md` for the manual accessibility audit, `docs/CONTENT_REVIEW_REGISTER.md` for curriculum coverage and editorial sign-off, `docs/PRODUCTION_READINESS.md` for the release gates that must be evidenced before launch, `docs/PRODUCTION_RUNBOOK.md` for backup/restore and rollback procedures, and `docs/RELEASE_SMOKE_TEST.md` for the repeatable manual end-to-end smoke checklist.
