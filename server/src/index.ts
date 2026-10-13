@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 import { getBearerToken } from './auth.js';
-import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityChallengeProposalSchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, decisionJournalPatchSchema, decisionJournalSchema, deleteLearningDataSchema, paperTradePlanSchema, paperTradeStepSchema, progressEventSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 import { buildMastery } from './mastery.js';
 import { collectAllPages } from './masteryHistory.js';
 import { createRateLimiter } from './rateLimit.js';
@@ -240,6 +240,73 @@ app.get('/v1/community/challenges', requireLearner, async (req: AuthedRequest, r
   }
   res.setHeader('Cache-Control', 'no-store');
   return res.json({ challenges: Array.isArray(data) ? data : [] });
+});
+
+app.get('/v1/community/challenges/proposals/mine', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_my_community_challenge_proposals');
+  if (error) {
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Your challenge proposals could not be loaded.', error);
+    return res.status(503).json({ error: 'Your challenge proposals are temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ proposals: Array.isArray(data?.proposals) ? data.proposals : [] });
+});
+
+app.post('/v1/community/challenges/proposals', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const parsed = communityChallengeProposalSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid challenge proposal.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('create_community_challenge_draft', {
+    p_scenario_id: parsed.data.scenarioId, p_title: parsed.data.title,
+    p_description: parsed.data.description, p_rubric: parsed.data.rubric,
+    p_positive_outcome: parsed.data.positiveOutcome, p_estimated_minutes: parsed.data.estimatedMinutes,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'The selected published synthetic scenario was not found.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'The proposal does not match the selected scenario rubric or allowed limits.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Challenge proposal could not be created.', error);
+    return res.status(503).json({ error: 'Challenge proposal could not be created.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(201).json({ proposal: data });
+});
+
+app.patch('/v1/community/challenges/proposals/:id', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const challengeId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof challengeId !== 'string' || !/^QUEST-[0-9]{3}$/.test(challengeId)) return res.status(400).json({ error: 'Invalid challenge proposal ID.' });
+  const parsed = communityChallengeProposalSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid challenge proposal.', details: parsed.error.flatten() });
+  const { data, error } = await req.learnerDb!.rpc('update_community_challenge_draft', {
+    p_challenge_id: challengeId, p_scenario_id: parsed.data.scenarioId, p_title: parsed.data.title,
+    p_description: parsed.data.description, p_rubric: parsed.data.rubric,
+    p_positive_outcome: parsed.data.positiveOutcome, p_estimated_minutes: parsed.data.estimatedMinutes,
+  });
+  if (error) {
+    if (error.code === 'P0002') return res.status(404).json({ error: 'The selected published synthetic scenario was not found.' });
+    if (error.code === '22023') return res.status(400).json({ error: 'Only valid draft proposals can be edited.' });
+    if (error.code === '42501' && /not owned by learner/i.test(error.message)) return res.status(403).json({ error: 'You can only edit your own challenge proposals.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Challenge proposal could not be updated.', error);
+    return res.status(503).json({ error: 'Challenge proposal could not be updated.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ proposal: data });
+});
+
+app.post('/v1/community/challenges/proposals/:id/submit', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const challengeId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+  if (typeof challengeId !== 'string' || !/^QUEST-[0-9]{3}$/.test(challengeId)) return res.status(400).json({ error: 'Invalid challenge proposal ID.' });
+  const { data, error } = await req.learnerDb!.rpc('submit_community_challenge_draft', { p_challenge_id: challengeId });
+  if (error) {
+    if (error.code === '22023') return res.status(400).json({ error: 'Only draft proposals can be submitted for review.' });
+    if (error.code === '42501' && /not owned by learner/i.test(error.message)) return res.status(403).json({ error: 'You can only submit your own challenge proposals.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Challenge proposal could not be submitted for review.', error);
+    return res.status(503).json({ error: 'Challenge proposal could not be submitted for review.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ proposal: data });
 });
 
 app.get('/v1/community/challenges/entries/mine', requireLearner, async (req: AuthedRequest, res: Response) => {
