@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import type { Session } from '@supabase/supabase-js';
 import { AlertTriangle, CheckCircle2, Flag, LockKeyhole, Send, ShieldCheck, Trash2, Users } from 'lucide-react';
 
-type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; estimatedMinutes: number };
+type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number };
 type Attempt = { attemptId: string; scenarioId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string };
 type Entry = { entryId: string; challengeId: string; scenarioId: string; outcome: string; rubricMet: boolean; reflection: string; isPublic: boolean; moderationStatus: string; createdAt: string };
 type PublicEntry = { entryId: string; challengeId: string; title: string; handle: string; displayName: string; reflection: string; rubricMet: boolean; createdAt: string };
@@ -12,6 +12,7 @@ type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
 type ModerationAction = { actionId: string; entryId: string; action: 'approve' | 'hide' | 'remove'; previousStatus: string | null; newStatus: string; reason: string; createdAt: string };
 type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
 type EditorialReviewAction = { reviewId: string; challengeId: string; decision: 'approve' | 'revision-needed' | 'retire'; previousStatus: string; newStatus: string; previousPublished: boolean; newPublished: boolean; contentVersion: number; reason: string; createdAt: string };
+type ChallengeProposal = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null; createdAt: string };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 const categories = [
@@ -33,6 +34,14 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [isEditor, setIsEditor] = useState(false);
   const [editorialQueue, setEditorialQueue] = useState<EditorialChallenge[]>([]);
   const [editorialHistory, setEditorialHistory] = useState<EditorialReviewAction[]>([]);
+  const [proposals, setProposals] = useState<ChallengeProposal[]>([]);
+  const [proposalError, setProposalError] = useState('');
+  const [proposalScenarioId, setProposalScenarioId] = useState('TQ-SYN-001');
+  const [proposalTitle, setProposalTitle] = useState('');
+  const [proposalDescription, setProposalDescription] = useState('');
+  const [proposalRubric, setProposalRubric] = useState('');
+  const [proposalMinutes, setProposalMinutes] = useState('8');
+  const [editingProposalId, setEditingProposalId] = useState<string | null>(null);
   const [queue, setQueue] = useState<ModerationQueue>({ entries: [], reports: [] });
   const [moderationHistory, setModerationHistory] = useState<ModerationAction[]>([]);
   const [challengeId, setChallengeId] = useState('QUEST-001');
@@ -48,6 +57,8 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [error, setError] = useState('');
 
   const selectedChallenge = challenges.find(item => item.challengeId === challengeId) ?? challenges[0];
+  const proposalScenarios = [...new Map(challenges.map(item => [item.scenarioId, item])).values()];
+  const selectedProposalScenario = proposalScenarios.find(item => item.scenarioId === proposalScenarioId) ?? proposalScenarios[0];
   const eligibleAttempts = useMemo(() => selectedChallenge ? attempts.filter(item => item.scenarioId === selectedChallenge.scenarioId) : [], [attempts, selectedChallenge]);
   const selectedAttempt = eligibleAttempts.find(item => item.attemptId === attemptId) ?? eligibleAttempts[0];
 
@@ -118,6 +129,20 @@ export default function CommunityChallenges({ session }: { session: Session | nu
         setEditorialQueue([]);
         setEditorialHistory([]);
       }
+      // Proposal support is migration-gated; keep the existing community experience
+      // usable and surface a local proposal error if that optional endpoint is unavailable.
+      try {
+        setProposalError('');
+        const proposalsResponse = await fetch(apiBase() + '/v1/community/challenges/proposals/mine', { headers, cache: 'no-store' });
+        const proposalsBody = await proposalsResponse.json() as { proposals?: ChallengeProposal[]; error?: string };
+        if (!proposalsResponse.ok || !Array.isArray(proposalsBody.proposals)) {
+          throw new Error(proposalsBody.error || 'Your proposals could not be loaded. The challenge proposal migration may not be applied yet.');
+        }
+        setProposals(proposalsBody.proposals);
+      } catch (proposalLoadError) {
+        setProposals([]);
+        setProposalError(proposalLoadError instanceof Error ? proposalLoadError.message : 'Your challenge proposals are temporarily unavailable.');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Community challenges could not be loaded.');
     } finally { setLoading(false); }
@@ -145,6 +170,68 @@ export default function CommunityChallenges({ session }: { session: Session | nu
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : 'Challenge entry could not be saved.'); }
     finally { setBusy(false); }
+  }
+
+  async function saveProposal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!headers || !selectedProposalScenario) return;
+    setBusy(true); setProposalError(''); setError(''); setMessage('');
+    try {
+      const payload = {
+        scenarioId: selectedProposalScenario.scenarioId,
+        title: proposalTitle.trim(),
+        description: proposalDescription.trim(),
+        rubric: proposalRubric.trim(),
+        positiveOutcome: selectedProposalScenario.positiveOutcome,
+        estimatedMinutes: Number(proposalMinutes),
+      };
+      const editing = editingProposalId !== null;
+      const response = await fetch(
+        apiBase() + '/v1/community/challenges/proposals' + (editing ? '/' + editingProposalId : ''),
+        {
+          method: editing ? 'PATCH' : 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+        },
+      );
+      const body = await response.json() as { proposal?: ChallengeProposal; error?: string };
+      if (!response.ok || !body.proposal) throw new Error(body.error || 'Challenge proposal could not be saved.');
+      setProposalTitle(''); setProposalDescription(''); setProposalRubric('');
+      setProposalMinutes('8'); setEditingProposalId(null);
+      setMessage('Challenge draft saved privately. It is not published; submit it for editorial review when ready.');
+      await load();
+    } catch (e) {
+      setProposalError(e instanceof Error ? e.message : 'Challenge proposal could not be saved.');
+    } finally { setBusy(false); }
+  }
+
+  function editProposal(proposal: ChallengeProposal) {
+    if (proposal.editorialStatus !== 'draft') return;
+    setEditingProposalId(proposal.challengeId);
+    setProposalScenarioId(proposal.scenarioId);
+    setProposalTitle(proposal.title);
+    setProposalDescription(proposal.description);
+    setProposalRubric(proposal.rubric);
+    setProposalMinutes(String(proposal.estimatedMinutes));
+    setProposalError('');
+    setMessage('Editing your private draft.');
+  }
+
+  async function submitProposal(challengeId: string) {
+    if (!headers) return;
+    setBusy(true); setProposalError(''); setError(''); setMessage('');
+    try {
+      const response = await fetch(apiBase() + '/v1/community/challenges/proposals/' + challengeId + '/submit', {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+      });
+      const body = await response.json() as { proposal?: { editorialStatus?: string }; error?: string };
+      if (!response.ok || !body.proposal) throw new Error(body.error || 'Challenge proposal could not be submitted.');
+      setMessage('Proposal submitted for admin editorial review. It remains unpublished until approved.');
+      await load();
+    } catch (e) {
+      setProposalError(e instanceof Error ? e.message : 'Challenge proposal could not be submitted.');
+    } finally { setBusy(false); }
   }
 
   async function deleteEntry(entryId: string) {
@@ -260,6 +347,49 @@ export default function CommunityChallenges({ session }: { session: Session | nu
           </article>)}</div>}
         </section>
       </div>
+      <section className="panel community-proposal-panel" aria-labelledby="community-proposal-title">
+        <div className="community-section-heading"><div className="community-icon"><Send size={20}/></div><div><h3 id="community-proposal-title">Create a challenge proposal</h3><p>Write a process-based challenge for an existing synthetic scenario. Every proposal stays unpublished until a community admin approves it.</p></div></div>
+        {proposalError && <p className="weekly-import-error" role="alert">{proposalError}</p>}
+        {proposalScenarios.length === 0
+          ? <p className="community-help">No published synthetic scenarios are available for proposals right now.</p>
+          : <form className="community-proposal-form" onSubmit={saveProposal}>
+              <label className="community-label" htmlFor="proposal-scenario">Synthetic scenario</label>
+              <select className="community-input" id="proposal-scenario" value={selectedProposalScenario?.scenarioId ?? ''} onChange={e => setProposalScenarioId(e.target.value)} disabled={busy} required>
+                {proposalScenarios.map(item => <option key={item.scenarioId} value={item.scenarioId}>{item.scenarioId} · {item.title}</option>)}
+              </select>
+              <p className="community-help">The server binds your proposal to the selected scenario’s existing answer rubric. You cannot create or change scores or answer keys.</p>
+              <label className="community-label" htmlFor="proposal-title">Challenge title</label>
+              <input className="community-input" id="proposal-title" value={proposalTitle} onChange={e => setProposalTitle(e.target.value)} minLength={3} maxLength={100} required disabled={busy} />
+              <label className="community-label" htmlFor="proposal-description">Description</label>
+              <textarea className="community-input community-textarea" id="proposal-description" value={proposalDescription} onChange={e => setProposalDescription(e.target.value)} rows={3} minLength={10} maxLength={500} required disabled={busy} placeholder="Describe the learning question and what the learner should consider." />
+              <label className="community-label" htmlFor="proposal-rubric">Process-based rubric</label>
+              <textarea className="community-input community-textarea" id="proposal-rubric" value={proposalRubric} onChange={e => setProposalRubric(e.target.value)} rows={3} minLength={10} maxLength={1000} required disabled={busy} placeholder="Explain the reasoning process that the challenge should reinforce." />
+              <label className="community-label" htmlFor="proposal-minutes">Estimated minutes</label>
+              <input className="community-input" id="proposal-minutes" type="number" min={1} max={120} step={1} value={proposalMinutes} onChange={e => setProposalMinutes(e.target.value)} required disabled={busy} />
+              <div className="community-actions">
+                <button className="btn-primary" type="submit" disabled={busy || !selectedProposalScenario || proposalTitle.trim().length < 3 || proposalDescription.trim().length < 10 || proposalRubric.trim().length < 10}>{busy ? 'Saving…' : editingProposalId ? 'Update draft' : 'Save private draft'}</button>
+                {editingProposalId && <button className="btn-outline" type="button" disabled={busy} onClick={() => { setEditingProposalId(null); setProposalTitle(''); setProposalDescription(''); setProposalRubric(''); setProposalMinutes('8'); }}>Cancel editing</button>}
+              </div>
+            </form>}
+        <div className="community-proposal-list">
+          <h4>Your challenge proposals</h4>
+          {proposals.length === 0
+            ? <p className="community-help">You have no challenge proposals yet.</p>
+            : proposals.map(proposal => <article className="community-proposal-item" key={proposal.challengeId}>
+                <div className="community-entry-heading"><strong>{proposal.challengeId} · {proposal.title}</strong><span className="tag tag-violet">{proposal.editorialStatus.toUpperCase()}</span></div>
+                <p>{proposal.description}</p>
+                <p className="community-help">Scenario {proposal.scenarioId} · Version {proposal.contentVersion} · {proposal.estimatedMinutes} min · {proposal.published ? 'Published after approval' : 'Unpublished'}</p>
+                {proposal.reviewReason && <p className="community-help">Editorial feedback: {proposal.reviewReason}</p>}
+                {proposal.editorialStatus === 'draft' && <div className="community-actions">
+                  <button className="btn-outline" type="button" disabled={busy} onClick={() => editProposal(proposal)}>Edit draft</button>
+                  <button className="btn-primary" type="button" disabled={busy} onClick={() => void submitProposal(proposal.challengeId)}>Submit for review</button>
+                </div>}
+                {proposal.editorialStatus === 'in-review' && <p className="community-help" role="status">Waiting for admin editorial review. This proposal is not public.</p>}
+                {proposal.editorialStatus === 'approved' && <p className="community-help" role="status">Approved and published in the challenge catalogue.</p>}
+                {proposal.editorialStatus === 'retired' && <p className="community-help">This proposal was retired and is no longer available for publication.</p>}
+              </article>)}
+        </div>
+      </section>
       <section className="community-public-feed">
         <div className="community-section-heading"><div className="community-icon"><Users size={20}/></div><div><h3>Approved community reflections</h3><p>Only entries approved by a moderator and attached to an opted-in public profile appear here.</p></div></div>
         {publicEntries.length === 0 ? <div className="community-empty"><Users size={23}/><h3>No approved public entries yet</h3><p>Public submissions remain hidden until reviewed. No leaderboard or profit ranking is used.</p></div> : <div className="community-entry-list">{publicEntries.map(entry => <article className="panel community-entry-card" key={entry.entryId}>

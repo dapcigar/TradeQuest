@@ -104,6 +104,15 @@ export const communityChallengeEntrySchema = z.object({
   isPublic: z.boolean(),
 }).strict();
 
+export const communityChallengeProposalSchema = z.object({
+  scenarioId: z.string().regex(/^TQ-SYN-[0-9]{3}$/),
+  title: z.string().trim().min(3).max(100),
+  description: z.string().trim().min(10).max(500),
+  rubric: z.string().trim().min(10).max(1000),
+  positiveOutcome: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
+  estimatedMinutes: z.number().int().min(1).max(120),
+}).strict();
+
 export const communityReportSchema = z.object({
   category: z.enum(['spam', 'harassment', 'personal-information', 'unsafe-advice', 'copyright', 'other']),
   details: z.string().trim().max(1000).default(''),

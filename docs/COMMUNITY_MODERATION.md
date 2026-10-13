@@ -3,7 +3,7 @@
 ## Current behaviour
 
 - Curated challenges use synthetic Chart Dojo scenarios only.
-- The current challenge catalogue reuses the two existing solo-challenge scenarios and process rubrics. New or changed challenge definitions must be added through a reviewed migration and receive human editorial sign-off; there is no learner-facing challenge authoring or publication control.
+- The challenge catalogue reuses published synthetic Chart Dojo scenarios and their server-defined outcome rubrics. Learners can create private challenge drafts, edit their own drafts, and submit them to the admin editorial queue. New proposals remain unpublished until a provisioned admin approves them; users cannot create scenarios, answer keys, scores, or P/L.
 - Challenge definitions carry a source reference, content version, editorial status, reviewer, review timestamp, and rationale. Existing solo challenges are marked `legacy-published` and appear in the admin editorial queue; new challenge rows default to unpublished `draft` status.
 - Only a community admin can approve and publish, request revisions, or retire a challenge. Every decision is recorded in `community_challenge_reviews`. `revision-needed` unpublishes the item; after changing source-controlled content, increment `content_version` in a migration and re-review before publication.
 - Provisioned community admins can view the latest 100 editorial decisions in the read-only history panel, including challenge ID, decision, content version, publication/status transition, reason, and timestamp. Reviewer account identifiers are not exposed.
@@ -57,6 +57,7 @@ where user_id = 'REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid;
 - Apply `20261012270000_community_challenge_lifecycle.sql` after the community profile migration, then `20261012280000_community_challenge_editorial_review.sql`.
 - Apply `20261013060000_community_moderation_history.sql` after the existing migrations to enable the moderator-only read history endpoint and panel.
 - Apply `20261013070000_community_editorial_history.sql` after the moderation history migration to enable the admin-only editorial decision history endpoint and panel.
+- Apply `20261013080000_community_challenge_proposals.sql` after the editorial history migration to enable learner-owned draft creation/editing, submission to the admin queue, and private proposal status/history.
 - Run the opt-in two-account integration suite with dedicated test accounts. The suite deletes all saved learning data for Account A.
 - Provision a moderator in the connected Supabase project and test the moderator queue and actions manually with that account. Ordinary learner accounts must receive HTTP 403 from moderation endpoints.
 - Do not enable broad public access until at least one trusted moderator is provisioned and the reporting/appeal process is operational.
