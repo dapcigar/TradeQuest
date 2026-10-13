@@ -94,6 +94,8 @@ const challengeProposalDataLifecycleTests = read('server/src/community-challenge
 const apiSchemas = read('server/src/schemas.ts');
 const apiSchemaTests = read('server/src/schemas.test.ts');
 const apiSmokeRoutes = read('scripts/api-smoke-lib.mjs');
+const apiSmokeWorkflow = read('.github/workflows/api-smoke.yml');
+const apiSmokeWorkflowTests = read('scripts/api-smoke-workflow.test.ts');
 const communityEditorialContractTests = read('server/src/community-editorial-migration.test.ts');
 const paperExecutionMigration = read('supabase/migrations/20261012290000_paper_trade_execution_assumptions.sql');
 const paperExecutionContractTests = read('server/src/paper-trade-execution-assumptions.test.ts');
@@ -146,6 +148,7 @@ for (const path of ['src/AdaptivePractice.tsx', 'src/ReplayLab.tsx', 'src/PaperT
 for (const [label, content, phrases] of [
   ['Reproducible npm lockfile and patched test runner', packageLock, ['"lockfileVersion": 3', '"vitest": "^4.1.11"', '"vite": "^6.4.4"']],
   ['Release smoke test', smoke, ['Paper Trade Lab persistence and isolation', 'session event ledger', 'DELETE_MY_LEARNING_DATA', 'Security headers and abuse controls', 'weekly target']],
+  ['Manual deployed API smoke workflow', apiSmokeWorkflow + apiSmokeWorkflowTests + runbook + readme, ['workflow_dispatch:', 'confirm_no_write_smoke', 'vars.TRADEQUEST_SMOKE_API_URL', 'npm run api:smoke', 'does not run Supabase integration tests']],
   ['Production readiness', readiness, ['not a global quota', 'restore', 'screen-reader', 'cross-account tests', 'editorial approval', 'CONTENT_REVIEW_REGISTER.md']],
   ['Production runbook', runbook, ['Backup before schema changes', 'Restore rehearsal', 'Deployment and rollback', 'Release evidence record']],
   ['Accessibility navigation', appSource, ['href="#main-content"', 'id="main-content"', 'aria-label={titleMap[view]}', 'mainContentRef.current?.focus({ preventScroll: true })', 'aria-controls="primary-navigation"', 'aria-expanded={mobileNav}', "aria-current={view === item.id ? 'page' : undefined}"]],
