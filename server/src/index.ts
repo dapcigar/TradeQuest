@@ -381,6 +381,18 @@ app.get('/v1/community/moderation/queue', requireLearner, async (req: AuthedRequ
   return res.json({ queue: data });
 });
 
+app.get('/v1/community/moderation/history', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_community_moderation_history');
+  if (error) {
+    if (error.code === '42501' && /Moderator access required/i.test(error.message)) return res.status(403).json({ error: 'Moderator access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community moderation history could not be loaded.', error);
+    return res.status(503).json({ error: 'Community moderation history is temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ actions: Array.isArray(data?.actions) ? data.actions : [] });
+});
+
 app.post('/v1/community/moderation/entries/:id/action', requireLearner, async (req: AuthedRequest, res: Response) => {
   const entryId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
   if (typeof entryId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entryId)) {
