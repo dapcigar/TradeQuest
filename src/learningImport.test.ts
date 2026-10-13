@@ -8,5 +8,9 @@ describe('browser-local learning import',()=>{
  it('accepts supported exports and ignores non-allowlisted keys',()=>{const result=parseLearningImport(JSON.stringify(validExport));expect(Object.keys(result.data)).toHaveLength(3);expect(JSON.stringify(result)).not.toContain('must-not-import');});
  it('rejects unsupported formats, malformed JSON and oversized files',()=>{expect(()=>parseLearningImport('{bad json')).toThrow('not valid JSON');expect(()=>parseLearningImport(JSON.stringify({...validExport,product:'Other'}))).toThrow('not a supported TradeQuest');expect(()=>parseLearningImport(' '.repeat(1_000_001))).toThrow('too large');});
  it('rejects malformed allowlisted records',()=>{expect(()=>parseLearningImport(JSON.stringify({...validExport,data:{...validExport.data,'tradequest-weekly-practice-plan-v1':{target:4}}}))).toThrow('weekly practice plan');});
+ it('rejects impossible calendar dates in imported weekly plans',()=>{
+  expect(()=>parseLearningImport(JSON.stringify({...validExport,data:{...validExport.data,'tradequest-weekly-practice-plan-v1':{week:'2026-02-30',target:5,completedDates:[]}}}))).toThrow('weekly practice plan');
+  expect(()=>parseLearningImport(JSON.stringify({...validExport,data:{...validExport.data,'tradequest-weekly-practice-plan-v1':{week:'2026-10-12',target:5,completedDates:['2026-04-31']}}}))).toThrow('weekly practice plan');
+ });
  it('restores only included allowlisted keys',()=>{const result=parseLearningImport(JSON.stringify(validExport));const written:Record<string,string>={};const keys=restoreLearningImport(result,(key,value)=>{written[key]=value;});expect(keys).toHaveLength(3);expect(written['supabase.auth.token']).toBeUndefined();expect(JSON.parse(written['tradequest-weekly-practice-plan-v1'])).toEqual(validExport.data['tradequest-weekly-practice-plan-v1']);});
 });

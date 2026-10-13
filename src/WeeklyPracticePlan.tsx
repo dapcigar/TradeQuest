@@ -1,3 +1,4 @@
+import { isValidDateKey } from './dateKey';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CheckCircle2, Circle, Download, ShieldCheck, Target, Upload, Trash2 } from 'lucide-react';
 import { downloadLearningExport } from './learningExport';
@@ -11,7 +12,7 @@ export function weekKey(date:Date):string { const copy=new Date(Date.UTC(date.ge
 export function normaliseWeeklyPlan(value:unknown,currentWeek:string):WeeklyPlan {
  const fallback:WeeklyPlan={week:currentWeek,target:3,completedDates:[]};if(!value||typeof value!=='object')return fallback;
  const candidate=value as Partial<WeeklyPlan>;if(candidate.week!==currentWeek)return fallback;const target=candidate.target;if(typeof target!=='number'||![3,5,7].includes(target))return fallback;
- const completedDates=Array.isArray(candidate.completedDates)?[...new Set(candidate.completedDates.filter((date):date is string=>typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)))].slice(0,7):[];
+ const completedDates=Array.isArray(candidate.completedDates)?[...new Set(candidate.completedDates.filter((date):date is string=>isValidDateKey(date)))].slice(0,7):[];
  return {week:currentWeek,target,completedDates};
 }
 function readPlan(currentWeek:string):WeeklyPlan {try{return normaliseWeeklyPlan(JSON.parse(localStorage.getItem(storageKey)??'null'),currentWeek);}catch{return normaliseWeeklyPlan(null,currentWeek);}}
