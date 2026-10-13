@@ -160,7 +160,6 @@ describe('community challenge schemas', () => {
       title: 'Wait for evidence',
       description: 'A short synthetic scenario proposal with a clear decision point.',
       rubric: 'Reward defined evidence and a stated invalidation level before any decision.',
-      positiveOutcome: 'disciplined',
       estimatedMinutes: 8,
     };
     expect(communityChallengeProposalSchema.safeParse(proposal).success).toBe(true);
@@ -168,6 +167,7 @@ describe('community challenge schemas', () => {
     expect(communityChallengeProposalSchema.safeParse({ ...proposal, title: 'x' }).success).toBe(false);
     expect(communityChallengeProposalSchema.safeParse({ ...proposal, estimatedMinutes: 121 }).success).toBe(false);
     expect(communityChallengeProposalSchema.safeParse({ ...proposal, score: 100 }).success).toBe(false);
+    expect(communityChallengeProposalSchema.safeParse({ ...proposal, positiveOutcome: 'disciplined' }).success).toBe(false);
   });
 
   it('allowlists report categories and moderator actions with bounded reasons', () => {
