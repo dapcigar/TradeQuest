@@ -51,6 +51,8 @@ TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Expres
 | #120 | Merged | Updated the implementation audit for the private challenge proposal workflow and its remaining release gates. |
 | #121 | Merged | Removed client-supplied proposal outcomes and public positive-outcome exposure; the database now derives the outcome from a published server-owned challenge rubric. |
 | #122 | Merged | Included learner challenge proposals in account export and deletion; unreviewed proposals are deleted and reviewed proposals are redacted/unpublished while editorial audit history is preserved. |
+| #123 | Merged | Updated the audit after proposal outcome privacy and account data lifecycle changes. |
+| #124 | Merged | Added a manually triggered deployed API smoke workflow using unauthenticated no-write probes, URL validation, and release-preflight coverage. The workflow has not been run against a live endpoint. |
 
 The latest lockfile-refresh run passed tests, frontend build, API build, and release preflight. Its final npm audit summary was **0 vulnerabilities**. The standard CI workflow now repeats the tests/builds/preflight with `npm ci` and `npm audit --audit-level=high`.
 
@@ -73,6 +75,7 @@ The latest lockfile-refresh run passed tests, frontend build, API build, and rel
 - Learners can create private challenge drafts, edit only their own drafts, and submit them for admin editorial review. The server binds proposals to existing published synthetic scenarios/outcomes; submitted proposals stay unpublished until admin approval. Unsubmitted drafts are excluded from the admin queue.
 - Challenge proposal outcomes are derived on the server from an existing published challenge rubric; the public catalogue omits the internal positive-outcome field and the proposal API rejects client-supplied outcomes.
 - Challenge proposals are included in account export. Account deletion removes unreviewed proposals and redacts/unpublishes reviewed proposals while retaining the editorial audit trail.
+- A manual GitHub Actions workflow now provides repeatable deployed API health/security-header/protected-route smoke evidence without bearer tokens or Supabase integration. The repository owner must configure `TRADEQUEST_SMOKE_API_URL` and run it after deployment.
 - Mastery aggregation no longer spreads unbounded timestamp arrays into `Math.max`; a regression test covers 150,000 retained attempts. This protects against argument-count overflow but is not a substitute for live latency/retention validation.
 - Live market feeds, broker connectivity, real-money execution, and personalised financial advice remain out of scope.
 
@@ -107,10 +110,10 @@ Until those decisions and release gates are addressed, keep simulation labels sy
 
 ## Recommended next sequence
 
-1. Refresh the two dedicated bearer-token secrets and deploy the current API; verify both accounts against `GET /v1/me/progress`.
-2. Apply/reconcile migrations in order, then run the connected two-account integration suite and fix every observed schema, RLS, trigger, export, and deletion issue.
-3. Provision a trusted moderator/admin, review legacy-published challenge content, and verify moderation/editorial workflows end to end.
-4. Execute and record the release smoke checklist and backup/restore rehearsal.
-5. Resolve the Vercel deployment quota or use an approved deployment path; verify the deployed commit and API smoke command.
-6. Agree the supported instrument/cost model before implementing verified presets or more advanced order types.
-7. Confirm historical-data licensing, complete browser/accessibility checks, and update this audit after each merged phase. Do not mark the application complete until the release gates above have recorded evidence.
+1. The previous migration-ledger reconciliation issue is user-confirmed sorted. Verify the latest feature migrations are applied in order through `20261013110000_challenge_proposal_data_lifecycle.sql`; this implementation pass did not apply migrations to a live environment.
+2. Deploy the current API through an approved deployment path, configure the GitHub Actions variable `TRADEQUEST_SMOKE_API_URL`, and run **Deployed API smoke (unauthenticated, no-write)** to capture health, security-header, and protected-route evidence.
+3. The repository owner runs the dedicated two-account Supabase integration suite with isolated test accounts; do not report account isolation, export/deletion, or RLS as verified until it passes.
+4. Provision a trusted moderator/admin, review legacy-published challenge content, and verify proposal, moderation, and editorial workflows end to end.
+5. Execute and record the browser/accessibility smoke checklist and backup/restore rehearsal.
+6. Resolve the Vercel deployment quota or use an approved deployment path if deployment is still blocked.
+7. Agree the supported instrument/cost model before implementing verified presets or more advanced order types; confirm historical-data licensing and the moderator appeal policy before adding those features. Do not mark the application complete until the release gates above have recorded evidence.
