@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import type { Session } from '@supabase/supabase-js';
 import { AlertTriangle, CheckCircle2, Flag, LockKeyhole, Send, ShieldCheck, Trash2, Users } from 'lucide-react';
 
-type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number };
+type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; estimatedMinutes: number };
 type Attempt = { attemptId: string; scenarioId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string };
 type Entry = { entryId: string; challengeId: string; scenarioId: string; outcome: string; rubricMet: boolean; reflection: string; isPublic: boolean; moderationStatus: string; createdAt: string };
 type PublicEntry = { entryId: string; challengeId: string; title: string; handle: string; displayName: string; reflection: string; rubricMet: boolean; createdAt: string };
@@ -182,7 +182,6 @@ export default function CommunityChallenges({ session }: { session: Session | nu
         title: proposalTitle.trim(),
         description: proposalDescription.trim(),
         rubric: proposalRubric.trim(),
-        positiveOutcome: selectedProposalScenario.positiveOutcome,
         estimatedMinutes: Number(proposalMinutes),
       };
       const editing = editingProposalId !== null;
