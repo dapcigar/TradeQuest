@@ -49,6 +49,8 @@ jobs:
             fi
           done
           echo "All required integration secrets are present; secret values are not printed."
+      - name: Ensure tokens belong to distinct test accounts
+        run: node scripts/validate-integration-tokens.mjs
       - name: Validate configured API URL without exposing secrets
         shell: bash
         run: |

@@ -39,6 +39,11 @@ jobs:
           test -n "$API_URL" || (echo "::error::Missing TRADEQUEST_TEST_API_URL secret"; exit 1)
           test -n "$USER_A_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_A_TOKEN secret"; exit 1)
           test -n "$USER_B_TOKEN" || (echo "::error::Missing TRADEQUEST_TEST_USER_B_TOKEN secret"; exit 1)
+      - name: Ensure tokens belong to distinct test accounts
+        env:
+          TRADEQUEST_TEST_USER_A_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_A_TOKEN }}
+          TRADEQUEST_TEST_USER_B_TOKEN: ${{ secrets.TRADEQUEST_TEST_USER_B_TOKEN }}
+        run: node scripts/validate-integration-tokens.mjs
       - name: Validate both dedicated accounts against deployed API
         env:
           TRADEQUEST_TEST_API_URL: ${{ secrets.TRADEQUEST_TEST_API_URL }}
