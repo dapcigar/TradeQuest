@@ -23,6 +23,7 @@ export const protectedApiChecks = [
   ['POST', '/v1/community/editorial/' + exampleId + '/review'],
   ['GET', '/v1/community/moderation/me'],
   ['GET', '/v1/community/moderation/queue'],
+  ['GET', '/v1/community/moderation/history'],
   ['POST', '/v1/community/moderation/entries/' + exampleId + '/action'],
   ['GET', '/v1/chart-dojo/scenarios'],
   ['GET', '/v1/decision-journal'],

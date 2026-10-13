@@ -11,6 +11,7 @@
 - Public entries are shown only while the author's profile is opted in, the entry is marked public, and moderation status is `approved`.
 - Reports are private to the moderation workflow. A learner can report a public approved entry once; self-reporting, reporting pending entries, and cross-account access are denied.
 - Moderation actions (`approve`, `hide`, `remove`) require a reason and are written to `community_moderation_actions`. Report status is resolved or dismissed as part of the same database function.
+- Provisioned moderators and admins can view the latest 100 moderation decisions in the read-only audit history panel. It is ordered newest first, includes the action, status transition, reason and entry reference, and deliberately omits moderator account identifiers. Learners cannot call the history RPC.
 - Disabling profile visibility withdraws previously public entries. Deleting the profile also withdraws public entries. Turning visibility back on does not republish entries automatically.
 - There are no direct messages, profit-based rankings, public account balances, journal exposure, or user-editable rubric scores.
 
@@ -53,6 +54,7 @@ where user_id = 'REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid;
 ## Release checks
 
 - Apply `20261012270000_community_challenge_lifecycle.sql` after the community profile migration, then `20261012280000_community_challenge_editorial_review.sql`.
+- Apply `20261013060000_community_moderation_history.sql` after the existing migrations to enable the moderator-only read history endpoint and panel.
 - Run the opt-in two-account integration suite with dedicated test accounts. The suite deletes all saved learning data for Account A.
 - Provision a moderator in the connected Supabase project and test the moderator queue and actions manually with that account. Ordinary learner accounts must receive HTTP 403 from moderation endpoints.
 - Do not enable broad public access until at least one trusted moderator is provisioned and the reporting/appeal process is operational.
