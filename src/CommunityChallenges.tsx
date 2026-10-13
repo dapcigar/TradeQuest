@@ -11,6 +11,7 @@ type Report = { reportId: string; entryId: string; category: string; details: st
 type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
 type ModerationAction = { actionId: string; entryId: string; action: 'approve' | 'hide' | 'remove'; previousStatus: string | null; newStatus: string; reason: string; createdAt: string };
 type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
+type EditorialReviewAction = { reviewId: string; challengeId: string; decision: 'approve' | 'revision-needed' | 'retire'; previousStatus: string; newStatus: string; previousPublished: boolean; newPublished: boolean; contentVersion: number; reason: string; createdAt: string };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 const categories = [
@@ -31,6 +32,7 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [isModerator, setIsModerator] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [editorialQueue, setEditorialQueue] = useState<EditorialChallenge[]>([]);
+  const [editorialHistory, setEditorialHistory] = useState<EditorialReviewAction[]>([]);
   const [queue, setQueue] = useState<ModerationQueue>({ entries: [], reports: [] });
   const [moderationHistory, setModerationHistory] = useState<ModerationAction[]>([]);
   const [challengeId, setChallengeId] = useState('QUEST-001');
@@ -100,12 +102,21 @@ export default function CommunityChallenges({ session }: { session: Session | nu
         setModerationHistory([]);
       }
       if (editorialBody.isEditor === true) {
-        const editorialResponse = await fetch(apiBase() + '/v1/community/editorial/queue', { headers, cache: 'no-store' });
-        const editorialResult = await editorialResponse.json() as { challenges?: EditorialChallenge[]; error?: string };
+        const [editorialResponse, historyResponse] = await Promise.all([
+          fetch(apiBase() + '/v1/community/editorial/queue', { headers, cache: 'no-store' }),
+          fetch(apiBase() + '/v1/community/editorial/history', { headers, cache: 'no-store' }),
+        ]);
+        const [editorialResult, historyResult] = await Promise.all([
+          editorialResponse.json() as Promise<{ challenges?: EditorialChallenge[]; error?: string }>,
+          historyResponse.json() as Promise<{ reviews?: EditorialReviewAction[]; error?: string }>,
+        ]);
         if (!editorialResponse.ok) throw new Error(editorialResult.error || 'Editorial review queue could not be loaded.');
+        if (!historyResponse.ok) throw new Error(historyResult.error || 'Editorial review history could not be loaded.');
         setEditorialQueue(Array.isArray(editorialResult.challenges) ? editorialResult.challenges : []);
+        setEditorialHistory(Array.isArray(historyResult.reviews) ? historyResult.reviews : []);
       } else {
         setEditorialQueue([]);
+        setEditorialHistory([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Community challenges could not be loaded.');
@@ -271,6 +282,16 @@ export default function CommunityChallenges({ session }: { session: Session | nu
           {item.reviewReason && <p className="community-help">Previous review: {item.reviewReason}</p>}
           <div className="community-actions"><button className="btn-primary" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'approve')}>Approve &amp; publish</button><button className="btn-outline" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'revision-needed')}>Request revision</button><button className="btn-outline" disabled={busy} onClick={() => void reviewEditorial(item.challengeId,'retire')}>Retire challenge</button></div>
         </article>)}
+        <div className="community-moderation-history">
+          <h4>Recent editorial decisions</h4>
+          {editorialHistory.length === 0
+            ? <p className="community-help">No editorial decisions have been recorded yet.</p>
+            : <ol aria-label="Recent editorial decision history">{editorialHistory.map(item => <li key={item.reviewId}>
+                <strong>{item.challengeId} · {item.decision.replace('-', ' ').toUpperCase()}</strong>
+                <p>{item.reason}</p>
+                <small>Version {item.contentVersion} · {item.previousStatus} → {item.newStatus} · {item.previousPublished ? 'published' : 'unpublished'} → {item.newPublished ? 'published' : 'unpublished'} · {new Date(item.createdAt).toLocaleString('en-GB')}</small>
+              </li>)}</ol>}
+        </div>
       </section>}
       {isModerator && <section className="community-moderation panel">
         <div className="community-section-heading"><div className="community-icon"><ShieldCheck size={20}/></div><div><h3>Moderator queue</h3><p>Every action requires a reason and is recorded in an audit trail.</p></div></div>
