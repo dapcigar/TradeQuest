@@ -83,6 +83,11 @@ const communityModerationHistoryMigration = read('supabase/migrations/2026101306
 const communityModerationHistoryContractTests = read('server/src/community-moderation-history-migration.test.ts');
 const communityEditorialHistoryMigration = read('supabase/migrations/20261013070000_community_editorial_history.sql');
 const communityEditorialHistoryContractTests = read('server/src/community-editorial-history-migration.test.ts');
+const communityChallengeProposalMigration = read('supabase/migrations/20261013080000_community_challenge_proposals.sql');
+const communityChallengeProposalContractTests = read('server/src/community-challenge-proposals-migration.test.ts');
+const apiSchemas = read('server/src/schemas.ts');
+const apiSchemaTests = read('server/src/schemas.test.ts');
+const apiSmokeRoutes = read('scripts/api-smoke-lib.mjs');
 const communityEditorialContractTests = read('server/src/community-editorial-migration.test.ts');
 const paperExecutionMigration = read('supabase/migrations/20261012290000_paper_trade_execution_assumptions.sql');
 const paperExecutionContractTests = read('server/src/paper-trade-execution-assumptions.test.ts');
@@ -168,10 +173,13 @@ for (const [label, content, phrases] of [
   ['Community moderation history contract tests', communityModerationHistoryContractTests, ['limits history access', 'newest-first', 'moderator identifiers']],
   ['Community editorial history migration', communityEditorialHistoryMigration, ['create or replace function public.list_community_challenge_review_history()', 'is_community_admin()', 'limit 100', 'revoke all on function public.list_community_challenge_review_history()', 'grant execute on function public.list_community_challenge_review_history()']],
   ['Community editorial history contract tests', communityEditorialHistoryContractTests, ['requires an authenticated community admin', 'newest-first', 'reviewer identifiers']],
+  ['Learner-authored challenge proposal migration', communityChallengeProposalMigration + communityChallengeProposalContractTests, ['create_community_challenge_draft', 'list_my_community_challenge_proposals', 'published = false', 'only draft proposals can be edited']],
+  ['Challenge proposal API/UI/schema contract', communityChallengesUi + communityProfileApi + apiSchemas + apiSchemaTests + apiSmokeRoutes, ["app.post('/v1/community/challenges/proposals'", "app.patch('/v1/community/challenges/proposals/:id'", "app.post('/v1/community/challenges/proposals/:id/submit'", 'Create a challenge proposal', 'communityChallengeProposalSchema', "['PATCH', '/v1/community/challenges/proposals/:id']"]],
   ['Editorial admin UI and routes', communityChallengesUi + communityProfileApi, ['Editorial review queue', 'Approve &amp; publish', "app.get('/v1/community/editorial/queue'", "app.post('/v1/community/editorial/:id/review'"]],
   ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']],
   ['Community moderation history API/UI/docs', communityChallengesUi + communityProfileApi + communityModerationDocs, ["app.get('/v1/community/moderation/history'", 'Recent moderation history', 'latest 100 moderation decisions', '20261013060000_community_moderation_history.sql']],
   ['Community editorial history API/UI/docs', communityChallengesUi + communityProfileApi + communityModerationDocs + readiness + smoke, ["app.get('/v1/community/editorial/history'", 'Recent editorial decisions', 'latest 100 editorial decisions', '20261013070000_community_editorial_history.sql']],
+  ['Community challenge proposal release gates', communityChallengeProposalMigration + communityModerationDocs + readiness + smoke + readme + plan, ['Learner-authored proposal submitted in TradeQuest', '20261013080000_community_challenge_proposals.sql', 'revision request returns it to an editable draft']],
   ['Paper-trade execution assumptions migration', paperExecutionMigration, ['tick_size numeric not null default 1', 'estimated_stop_loss', 'margin_required', 'start_paper_trade_session_with_specs', 'v_exit_fill_price', 'exclude adverse gap-through']],
   ['Paper-trade execution assumptions tests', paperExecutionContractTests, ['bounded user-defined execution assumptions', 'lot step and limits risk and margin', 'effective fill prices']],
   ['Paper-trade execution UI/API contract', paperTradeUi + masteryApi, ['Execution assumptions', 'estimatedStopLoss', 'marginRequired', 'start_paper_trade_session_with_specs']],
