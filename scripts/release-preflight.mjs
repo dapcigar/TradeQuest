@@ -45,6 +45,7 @@ const readiness = read('docs/PRODUCTION_READINESS.md');
 const runbook = read('docs/PRODUCTION_RUNBOOK.md');
 const accessibility = read('docs/ACCESSIBILITY.md');
 const contentRegister = read('docs/CONTENT_REVIEW_REGISTER.md');
+const contentReviewRegisterTests = read('src/contentReviewRegister.test.ts');
 const appSource = read('src/App.tsx');
 const appCodeSplittingTests = read('src/appCodeSplitting.test.ts');
 const styles = read('src/styles.css');
@@ -133,6 +134,7 @@ for (const [label, content, phrases] of [
   ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
+  ['Curriculum route review coverage', contentRegister + appSource + contentReviewRegisterTests, ['Learner-facing content route coverage', 'src/PaperTradeLab.tsx', 'src/AdaptivePractice.tsx', 'registers every learner-facing curriculum route component', 'keeps human editorial sign-off explicitly pending']],
   ['Paper trade fill ledger', paperFillMigration, ['create table if not exists public.paper_trade_fills', 'enable row level security', 'revoke all on public.paper_trade_fills', 'unique (session_id, fill_sequence)', 'on conflict (session_id, fill_type) do nothing', 'paper_trade_fills_on_session_change']],
   ['Paper trade fill-ledger contract tests', paperFillContractTests, ['learner roles and scoped by owner RLS', 'direction-correct sides', 'closing transaction if required outcome fields are missing', 'backfills existing open and closed sessions']],
   ['Opt-in community profile migration', communityProfileMigration, ['is_public boolean not null default false', 'enable row level security', 'Learners read public community profiles', 'get_my_community_profile', 'save_my_community_profile', 'delete_my_community_profile', 'community_profiles_handle_ci_unique']],
