@@ -70,6 +70,7 @@ For the API, create `server/.env` with the server variables from `.env.example`,
    - `supabase/migrations/20261013080000_community_challenge_proposals.sql`
    - `supabase/migrations/20261013090000_hide_unsubmitted_challenge_drafts.sql`
    - `supabase/migrations/20261013100000_server_own_proposal_outcome.sql`
+   - `supabase/migrations/20261013110000_challenge_proposal_data_lifecycle.sql`
 3. Apply `supabase/seed/dev_spread_lesson.sql`.
 4. Start the API and Vite frontend, then test with two dedicated test accounts. Configure the server-only `REPLAY_CURSOR_SECRET` with a random value of at least 32 characters.
 
