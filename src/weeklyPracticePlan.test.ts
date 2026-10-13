@@ -16,6 +16,15 @@ describe('weekly practice plan', () => {
       .toEqual({ week: '2026-10-12', target: 3, completedDates: [] });
   });
 
+  it('drops impossible calendar dates from browser-local weekly plans', () => {
+    expect(normaliseWeeklyPlan({
+      week: '2026-10-12', target: 5,
+      completedDates: ['2026-10-12', '2026-02-30', '2026-04-31', '2024-02-29'],
+    }, '2026-10-12')).toEqual({
+      week: '2026-10-12', target: 5, completedDates: ['2026-10-12', '2024-02-29'],
+    });
+  });
+
   it('accepts only supported targets and unique date-shaped completions', () => {
     expect(normaliseWeeklyPlan({ week: '2026-10-12', target: 5, completedDates: ['2026-10-12', '2026-10-12', 'bad'] }, '2026-10-12'))
       .toEqual({ week: '2026-10-12', target: 5, completedDates: ['2026-10-12'] });
