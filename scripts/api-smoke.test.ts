@@ -6,6 +6,7 @@ import {
   assertHealthPayload,
   assertProtectedEndpointStatus,
   parseApiBaseUrl,
+  protectedApiChecks,
   protectedApiPaths,
 } from './api-smoke-lib.mjs';
 
@@ -39,20 +40,26 @@ describe('API smoke-check helpers', () => {
 
   it('fails when a protected route is not rejecting anonymous access', () => {
     expect(protectedApiPaths).toContain('/v1/me/export');
-    expect(() => assertProtectedEndpointStatus('/v1/me/progress', 401)).not.toThrow();
-    expect(() => assertProtectedEndpointStatus('/v1/me/progress', 200)).toThrow(/expected 401/);
-    expect(() => assertProtectedEndpointStatus('/v1/me/progress', 503)).toThrow(/expected 401/);
-    expect(() => assertProtectedEndpointStatus('/v1/chart-dojo/scenarios', 404)).toThrow(/deployed API is behind the repository/);
+    expect(() => assertProtectedEndpointStatus('GET', '/v1/me/progress', 401)).not.toThrow();
+    expect(() => assertProtectedEndpointStatus('POST', '/v1/chart-dojo/attempts', 200)).toThrow(/expected 401/);
+    expect(() => assertProtectedEndpointStatus('GET', '/v1/chart-dojo/scenarios', 404)).toThrow(/deployed API is behind the repository/);
   });
 
-  it('covers every protected GET route declared by the API', () => {
+  it('covers every protected GET, POST, PATCH, and DELETE route declared by the API', () => {
     const apiSource = readFileSync(resolve(process.cwd(), 'server/src/index.ts'), 'utf8');
-    const declaredRoutes = [...apiSource.matchAll(/app[.]get[(]'([^']+)'/g)]
-      .map(match => match[1])
-      .filter(path => path.startsWith('/v1/'))
-      .map(path => path.replace(/:[a-zA-Z]+/g, '00000000-0000-4000-8000-000000000001'));
+    const declaredChecks = [...apiSource.matchAll(/app[.](get|post|patch|delete)[(]'([^']+)'/g)]
+      .map(match => ({
+        method: match[1].toUpperCase(),
+        path: match[2].replace(/:[a-zA-Z]+/g, '00000000-0000-4000-8000-000000000001'),
+      }))
+      .filter(check => check.path.startsWith('/v1/'));
 
-    const missing = declaredRoutes.filter(path => !protectedApiPaths.includes(path));
-    expect(missing, 'Every protected GET route must be probed by the read-only API smoke check').toEqual([]);
+    const coveredKeys = new Set(protectedApiChecks.map(check => check.method + ' ' + check.path));
+    const missing = declaredChecks
+      .map(check => check.method + ' ' + check.path)
+      .filter(key => !coveredKeys.has(key));
+
+    expect(coveredKeys.size, 'Smoke probes must not contain duplicate method/path pairs').toBe(protectedApiChecks.length);
+    expect(missing, 'Every protected route must be probed without authentication').toEqual([]);
   });
 });

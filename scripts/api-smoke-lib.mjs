@@ -1,27 +1,48 @@
-export const protectedApiPaths = [
-  '/v1/replay/synthetic-basics',
-  '/v1/paper-lab/sessions',
-  '/v1/paper-lab/sessions/00000000-0000-4000-8000-000000000001',
-  '/v1/paper-lab/sessions/00000000-0000-4000-8000-000000000001/fills',
-  '/v1/paper-lab/sessions/00000000-0000-4000-8000-000000000001/ledger',
-  '/v1/community/profile',
-  '/v1/community/profiles',
-  '/v1/community/challenges',
-  '/v1/community/challenges/entries/mine',
-  '/v1/community/challenges/entries',
-  '/v1/community/editorial/me',
-  '/v1/community/editorial/queue',
-  '/v1/community/moderation/me',
-  '/v1/community/moderation/queue',
-  '/v1/chart-dojo/scenarios',
-  '/v1/decision-journal',
-  '/v1/weekly-plan',
-  '/v1/me/export',
-  '/v1/me/progress',
-  '/v1/me/mastery',
-  '/v1/chart-dojo/attempts',
-  '/v1/chart-dojo/attempts/adaptive-summary',
-];
+const exampleId = '00000000-0000-4000-8000-000000000001';
+
+export const protectedApiChecks = [
+  ['GET', '/v1/replay/synthetic-basics'],
+  ['POST', '/v1/paper-lab/synthetic-basics/start'],
+  ['POST', '/v1/paper-lab/synthetic-basics/step'],
+  ['GET', '/v1/paper-lab/sessions'],
+  ['GET', '/v1/paper-lab/sessions/' + exampleId],
+  ['GET', '/v1/paper-lab/sessions/' + exampleId + '/fills'],
+  ['GET', '/v1/paper-lab/sessions/' + exampleId + '/ledger'],
+  ['GET', '/v1/community/profile'],
+  ['POST', '/v1/community/profile'],
+  ['DELETE', '/v1/community/profile'],
+  ['GET', '/v1/community/profiles'],
+  ['GET', '/v1/community/challenges'],
+  ['GET', '/v1/community/challenges/entries/mine'],
+  ['GET', '/v1/community/challenges/entries'],
+  ['POST', '/v1/community/challenges/entries'],
+  ['DELETE', '/v1/community/challenges/entries/' + exampleId],
+  ['POST', '/v1/community/challenges/entries/' + exampleId + '/report'],
+  ['GET', '/v1/community/editorial/me'],
+  ['GET', '/v1/community/editorial/queue'],
+  ['POST', '/v1/community/editorial/' + exampleId + '/review'],
+  ['GET', '/v1/community/moderation/me'],
+  ['GET', '/v1/community/moderation/queue'],
+  ['POST', '/v1/community/moderation/entries/' + exampleId + '/action'],
+  ['GET', '/v1/chart-dojo/scenarios'],
+  ['GET', '/v1/decision-journal'],
+  ['POST', '/v1/decision-journal'],
+  ['PATCH', '/v1/decision-journal/' + exampleId],
+  ['DELETE', '/v1/decision-journal/' + exampleId],
+  ['POST', '/v1/me/delete-learning-data'],
+  ['GET', '/v1/weekly-plan'],
+  ['GET', '/v1/me/export'],
+  ['GET', '/v1/me/progress'],
+  ['POST', '/v1/progress-events'],
+  ['GET', '/v1/me/mastery'],
+  ['POST', '/v1/chart-dojo/attempts'],
+  ['GET', '/v1/chart-dojo/attempts'],
+  ['GET', '/v1/chart-dojo/attempts/adaptive-summary'],
+  ['POST', '/v1/lesson-attempts'],
+  ['POST', '/v1/weekly-plan/session'],
+].map(([method, path]) => ({ method, path }));
+
+export const protectedApiPaths = protectedApiChecks.filter(check => check.method === 'GET').map(check => check.path);
 
 export function parseApiBaseUrl(value) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -66,8 +87,8 @@ export function assertApiSecurityHeaders(headers) {
   }
 }
 
-export function assertProtectedEndpointStatus(path, status) {
+export function assertProtectedEndpointStatus(method, path, status) {
   if (status !== 401) {
-    throw new Error(`Unauthenticated request to ${path} returned HTTP ${status}; expected 401. A 404 may indicate that the deployed API is behind the repository.`);
+    throw new Error(`Unauthenticated ${method} request to ${path} returned HTTP ${status}; expected 401. A 404 may indicate that the deployed API is behind the repository.`);
   }
 }
