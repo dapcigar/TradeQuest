@@ -27,7 +27,8 @@ describe('learner-authored challenge proposal migration contract', () => {
 
   it('moves drafts into the admin editorial queue without publishing them', () => {
     expect(migration).toMatch(/set editorial_status = 'in-review'[\s\S]*?created_by = v_user_id[\s\S]*?editorial_status = 'draft' and published = false/i);
-    expect(migration).toMatch(/where c\.editorial_status in \('draft', 'in-review', 'rejected', 'legacy-published'\)/i);
+    expect(migration).toMatch(/'editorialStatus', q\.editorial_status/i);
+    expect(migration).toMatch(/where q\.created_by = v_user_id/i);
     expect(migration).toMatch(/grant execute on function public\.create_community_challenge_draft[\s\S]*?to authenticated/i);
     expect(migration).toMatch(/grant execute on function public\.update_community_challenge_draft[\s\S]*?to authenticated/i);
     expect(migration).toMatch(/grant execute on function public\.submit_community_challenge_draft[\s\S]*?to authenticated/i);
