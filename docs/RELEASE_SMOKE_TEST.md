@@ -79,6 +79,7 @@ This check is intentionally narrow: it does not prove database migration status,
 - [ ] Submit a public reflection with an opted-in profile and confirm it remains hidden while pending, appears only after moderator approval, and disappears when the profile is made private.
 - [ ] Verify reports are private, an ordinary learner receives 403 from moderation endpoints, each moderation action requires a reason and creates an audit record, and cross-account entry deletion does not remove another learner's entry.
 - [ ] After applying `20261013060000_community_moderation_history.sql`, verify a trusted moderator can view the latest 100 audit actions newest first, with reason/status transition and no moderator account identifier; an ordinary learner must receive 403 from the history endpoint.
+- [ ] After applying `20261013070000_community_editorial_history.sql`, verify a trusted admin can view the latest 100 editorial decisions newest first, with reason, content version and publication transition; ordinary moderators and learners must receive 403 from the editorial history endpoint.
 - [ ] Verify account export includes the signed-in learner's community profile/entries/reports and learning-data deletion removes those records while preserving moderation audit history.
 - [ ] Confirm the final ledger event records the simulated outcome and post-session virtual equity without exposing an internal learner ID.
 - [ ] Refresh/reopen the saved session and confirm the revealed candle history and final outcome persist.
