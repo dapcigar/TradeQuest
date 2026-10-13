@@ -323,3 +323,6 @@
 
 /* Accessible recovery when a lazy-loaded learning route fails */
 .module-load-error{margin:24px auto;max-width:720px;padding:28px}.module-load-error h2{margin-top:0}.module-load-error p{max-width:62ch;line-height:1.6}
+
+/* Learner-authored community challenge drafts */
+.community-proposal-panel{margin-top:24px;padding:20px;min-width:0}.community-proposal-panel>.community-section-heading h3{margin:0;font:700 16px Manrope,sans-serif;color:#263549}.community-proposal-form{display:grid;gap:8px;max-width:760px;margin-top:14px}.community-proposal-form .community-label{margin-top:4px}.community-proposal-form .community-input{width:100%;min-width:0}.community-proposal-list{margin-top:22px;padding-top:16px;border-top:1px solid #e8ece8}.community-proposal-list h4{margin:0 0 10px;font:700 13px Manrope,sans-serif;color:#263549}.community-proposal-item{padding:14px 0;border-top:1px solid #e8ece8;overflow-wrap:anywhere}.community-proposal-item>p{margin:8px 0;font-size:11px;line-height:1.65;color:#667386}.community-proposal-item .community-actions{margin-top:10px}
