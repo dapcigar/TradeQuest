@@ -9,6 +9,7 @@ type PublicEntry = { entryId: string; challengeId: string; title: string; handle
 type QueueEntry = { entryId: string; challengeId: string; title: string; handle: string; displayName: string; reflection: string; rubricMet: boolean; createdAt: string };
 type Report = { reportId: string; entryId: string; category: string; details: string; createdAt: string; handle: string; entryReflection: string };
 type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
+type ModerationAction = { actionId: string; entryId: string; action: 'approve' | 'hide' | 'remove'; previousStatus: string | null; newStatus: string; reason: string; createdAt: string };
 type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
@@ -31,6 +32,7 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [isEditor, setIsEditor] = useState(false);
   const [editorialQueue, setEditorialQueue] = useState<EditorialChallenge[]>([]);
   const [queue, setQueue] = useState<ModerationQueue>({ entries: [], reports: [] });
+  const [moderationHistory, setModerationHistory] = useState<ModerationAction[]>([]);
   const [challengeId, setChallengeId] = useState('QUEST-001');
   const [attemptId, setAttemptId] = useState('');
   const [reflection, setReflection] = useState('');
@@ -81,12 +83,21 @@ export default function CommunityChallenges({ session }: { session: Session | nu
       setIsModerator(moderatorBody.isModerator === true);
       setIsEditor(editorialBody.isEditor === true);
       if (moderatorBody.isModerator === true) {
-        const queueResponse = await fetch(apiBase() + '/v1/community/moderation/queue', { headers, cache: 'no-store' });
-        const queueBody = await queueResponse.json() as { queue?: ModerationQueue; error?: string };
+        const [queueResponse, historyResponse] = await Promise.all([
+          fetch(apiBase() + '/v1/community/moderation/queue', { headers, cache: 'no-store' }),
+          fetch(apiBase() + '/v1/community/moderation/history', { headers, cache: 'no-store' }),
+        ]);
+        const [queueBody, historyBody] = await Promise.all([
+          queueResponse.json() as Promise<{ queue?: ModerationQueue; error?: string }>,
+          historyResponse.json() as Promise<{ actions?: ModerationAction[]; error?: string }>,
+        ]);
         if (!queueResponse.ok) throw new Error(queueBody.error || 'Moderation queue could not be loaded.');
+        if (!historyResponse.ok) throw new Error(historyBody.error || 'Moderation history could not be loaded.');
         setQueue(queueBody.queue ?? { entries: [], reports: [] });
+        setModerationHistory(Array.isArray(historyBody.actions) ? historyBody.actions : []);
       } else {
         setQueue({ entries: [], reports: [] });
+        setModerationHistory([]);
       }
       if (editorialBody.isEditor === true) {
         const editorialResponse = await fetch(apiBase() + '/v1/community/editorial/queue', { headers, cache: 'no-store' });
@@ -267,6 +278,16 @@ export default function CommunityChallenges({ session }: { session: Session | nu
           {queue.entries.map(entry => <article className="community-moderation-item" key={entry.entryId}><strong>{entry.title} · @{entry.handle}</strong><p>{entry.reflection}</p><div className="community-actions"><button className="btn-primary" disabled={busy} onClick={() => void moderate(entry.entryId,'approve')}>Approve</button><button className="btn-outline" disabled={busy} onClick={() => void moderate(entry.entryId,'hide')}>Hide</button><button className="btn-outline" disabled={busy} onClick={() => void moderate(entry.entryId,'remove')}>Remove</button></div></article>)}
           {queue.reports.map(report => <article className="community-moderation-item" key={report.reportId}><strong>Report: {report.category} · @{report.handle}</strong><p>{report.details || 'No additional details supplied.'}</p><blockquote>{report.entryReflection}</blockquote><div className="community-actions"><button className="btn-primary" disabled={busy} onClick={() => void moderate(report.entryId,'hide')}>Hide reported entry</button><button className="btn-outline" disabled={busy} onClick={() => void moderate(report.entryId,'remove')}>Remove entry</button><button className="btn-outline" disabled={busy} onClick={() => void moderate(report.entryId,'approve')}>Dismiss / approve</button></div></article>)}
         </>}
+        <div className="community-moderation-history">
+          <h4>Recent moderation history</h4>
+          {moderationHistory.length === 0
+            ? <p className="community-help">No moderation actions have been recorded yet.</p>
+            : <ol aria-label="Recent moderation audit history">{moderationHistory.map(item => <li key={item.actionId}>
+                <strong>{item.action.toUpperCase()} · {item.previousStatus ?? 'unreviewed'} → {item.newStatus}</strong>
+                <p>{item.reason}</p>
+                <small>Entry {item.entryId} · {new Date(item.createdAt).toLocaleString('en-GB')}</small>
+              </li>)}</ol>}
+        </div>
       </section>}
     </>}
   </section>;
