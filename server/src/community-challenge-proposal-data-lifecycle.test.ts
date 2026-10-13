@@ -19,6 +19,7 @@ describe('challenge proposal account data lifecycle', () => {
     expect(migration).toMatch(/grant execute on function public\.delete_own_learning_data\(\) to authenticated/i);
     expect(api).toMatch(/db\.rpc\('list_my_community_challenge_proposals'\)/);
     expect(api).toMatch(/communityChallengeProposals:/);
-    expect(api).toMatch(/Community challenge proposals/);
+    expect(api).toMatch(/communityChallengeProposals:/);
+    expect(api).toMatch(/challenge proposals for the signed-in account only/);
   });
 });
