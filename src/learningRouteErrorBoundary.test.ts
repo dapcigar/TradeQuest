@@ -17,7 +17,6 @@ describe('learning route loading recovery', () => {
     expect(boundary).toContain('Reload TradeQuest');
     expect(boundary).toContain('window.location.reload()');
     expect(boundary).not.toContain('error.message');
-    expect(boundary).not.toContain('this.props');
   });
 
   it('keeps diagnostics minimal and avoids learner content or props', () => {
