@@ -67,6 +67,8 @@ const masteryHistoryTests = read('server/src/masteryHistory.test.ts');
 const adaptivePracticeUi = read('src/AdaptivePractice.tsx');
 const masteryApi = read('server/src/index.ts');
 const communityEditorialMigration = read('supabase/migrations/20261012280000_community_challenge_editorial_review.sql');
+const communityModerationHistoryMigration = read('supabase/migrations/20261013060000_community_moderation_history.sql');
+const communityModerationHistoryContractTests = read('server/src/community-moderation-history-migration.test.ts');
 const communityEditorialContractTests = read('server/src/community-editorial-migration.test.ts');
 const paperExecutionMigration = read('supabase/migrations/20261012290000_paper_trade_execution_assumptions.sql');
 const paperExecutionContractTests = read('server/src/paper-trade-execution-assumptions.test.ts');
@@ -143,8 +145,11 @@ for (const [label, content, phrases] of [
   ['Adaptive Practice aggregate evidence contract', adaptivePracticeUi, ['nextAdaptiveVariantFromSummary', 'adaptiveEvidenceFromSummary', 'historyComplete !== true']],
   ['Challenge editorial provenance and publication gate', communityEditorialMigration, ['source_reference text not null', 'editorial_status text not null default \'draft\'', 'is_community_admin', 'community_challenge_reviews', 'editorial_status in (\'approved\', \'legacy-published\')']],
   ['Challenge editorial migration tests', communityEditorialContractTests, ['records provenance', 'requires an admin role', 'hides draft, rejected and retired content']],
+  ['Community moderation history migration', communityModerationHistoryMigration, ['create or replace function public.list_community_moderation_history()', 'is_community_moderator()', 'limit 100', 'revoke all on function public.list_community_moderation_history()', 'grant execute on function public.list_community_moderation_history()']],
+  ['Community moderation history contract tests', communityModerationHistoryContractTests, ['limits history access', 'newest-first', 'moderator identifiers']],
   ['Editorial admin UI and routes', communityChallengesUi + communityProfileApi, ['Editorial review queue', 'Approve &amp; publish', "app.get('/v1/community/editorial/queue'", "app.post('/v1/community/editorial/:id/review'"]],
   ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']],
+  ['Community moderation history API/UI/docs', communityChallengesUi + communityProfileApi + communityModerationDocs, ["app.get('/v1/community/moderation/history'", 'Recent moderation history', 'latest 100 moderation decisions', '20261013060000_community_moderation_history.sql']],
   ['Paper-trade execution assumptions migration', paperExecutionMigration, ['tick_size numeric not null default 1', 'estimated_stop_loss', 'margin_required', 'start_paper_trade_session_with_specs', 'v_exit_fill_price', 'exclude adverse gap-through']],
   ['Paper-trade execution assumptions tests', paperExecutionContractTests, ['bounded user-defined execution assumptions', 'lot step and limits risk and margin', 'effective fill prices']],
   ['Paper-trade execution UI/API contract', paperTradeUi + masteryApi, ['Execution assumptions', 'estimatedStopLoss', 'marginRequired', 'start_paper_trade_session_with_specs']],
