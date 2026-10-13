@@ -55,11 +55,13 @@ describe('API smoke-check helpers', () => {
       .filter(check => check.path.startsWith('/v1/'));
 
     const coveredKeys = new Set(protectedApiChecks.map(check => check.method + ' ' + check.path));
-    const missing = declaredChecks
-      .map(check => check.method + ' ' + check.path)
-      .filter(key => !coveredKeys.has(key));
+    const declaredKeys = new Set(declaredChecks.map(check => check.method + ' ' + check.path));
+    const coveredList = protectedApiChecks.map(check => check.method + ' ' + check.path);
+    const missing = [...declaredKeys].filter(key => !coveredKeys.has(key));
+    const unexpected = [...coveredKeys].filter(key => !declaredKeys.has(key));
 
     expect(coveredKeys.size, 'Smoke probes must not contain duplicate method/path pairs').toBe(protectedApiChecks.length);
     expect(missing, 'Every protected route must be probed without authentication').toEqual([]);
+    expect(unexpected, 'Smoke probes must not reference undeclared routes').toEqual([]);
   });
 });
