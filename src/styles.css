@@ -317,3 +317,6 @@
 .paper-lab-assumptions input{width:100%;min-width:0}
 .paper-lab-position dl div{align-items:flex-start}
 .paper-lab-position dd{max-width:65%;text-align:right;overflow-wrap:anywhere}
+
+/* Route-level lazy chunk fallback */
+.module-loading{min-height:10rem;display:grid;place-items:center;text-align:center}
