@@ -627,7 +627,7 @@ app.put('/v1/weekly-plan/session', requireLearner, async (req: AuthedRequest, re
 // excludes auth credentials, tokens, service-role data, and browser-local records.
 app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Response) => {
   const db = req.learnerDb!;
-  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult] = await Promise.all([
+  const [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult, communityProposalsResult] = await Promise.all([
     db.from('learner_progress').select('xp, lessons_completed, updated_at').eq('user_id', req.learnerId!).maybeSingle(),
     db.from('progress_events').select('event_id, event_key, xp_awarded, recorded_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('recorded_at', { ascending: true }).limit(10000),
     db.from('lesson_attempts').select('attempt_id, lesson_id, lesson_version, answers, score, passed, xp_awarded, submitted_at', { count: 'exact' }).eq('user_id', req.learnerId!).order('submitted_at', { ascending: true }).limit(10000),
@@ -641,8 +641,9 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     db.rpc('get_my_community_profile'),
     db.rpc('list_my_community_challenge_entries'),
     db.rpc('list_my_community_reports'),
+    db.rpc('list_my_community_challenge_proposals'),
   ]);
-  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult];
+  const results = [progressResult, eventsResult, lessonsResult, dojoResult, journalResult, paperResult, paperLedgerResult, paperFillsResult, weeklyPlansResult, weeklySessionsResult, communityProfileResult, communityEntriesResult, communityReportsResult, communityProposalsResult];
   const failed = results.find(result => result.error);
   if (failed?.error) {
     logError('Account learning data export failed.', failed.error);
@@ -660,7 +661,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
     product: 'TradeQuest',
     formatVersion: 1,
     exportedAt,
-    scope: 'Server-stored learning data and community profile/contribution records for the signed-in account only. Authentication credentials, access tokens, private data belonging to other learners, and browser-local records are not included.',
+    scope: 'Server-stored learning data, community profile/contribution records, and challenge proposals for the signed-in account only. Authentication credentials, access tokens, private data belonging to other learners, and browser-local records are not included.',
     data: {
       progress: progressResult.data ?? { xp: 0, lessons_completed: [], updated_at: null },
       progressEvents: eventsResult.data ?? [],
@@ -675,6 +676,7 @@ app.get('/v1/me/export', requireLearner, async (req: AuthedRequest, res: Respons
       communityProfile: communityProfileResult.data ?? null,
       communityChallengeEntries: Array.isArray(communityEntriesResult.data) ? communityEntriesResult.data : [],
       communityReports: Array.isArray(communityReportsResult.data) ? communityReportsResult.data : [],
+      communityChallengeProposals: Array.isArray(communityProposalsResult.data?.proposals) ? communityProposalsResult.data.proposals : [],
     },
   });
 });
