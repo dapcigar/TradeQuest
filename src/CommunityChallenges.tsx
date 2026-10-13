@@ -12,7 +12,7 @@ type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
 type ModerationAction = { actionId: string; entryId: string; action: 'approve' | 'hide' | 'remove'; previousStatus: string | null; newStatus: string; reason: string; createdAt: string };
 type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
 type EditorialReviewAction = { reviewId: string; challengeId: string; decision: 'approve' | 'revision-needed' | 'retire'; previousStatus: string; newStatus: string; previousPublished: boolean; newPublished: boolean; contentVersion: number; reason: string; createdAt: string };
-type ChallengeProposal = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null; createdAt: string };
+type ChallengeProposal = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; estimatedMinutes: number; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null; createdAt: string };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 const categories = [
