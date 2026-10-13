@@ -48,6 +48,8 @@ const contentRegister = read('docs/CONTENT_REVIEW_REGISTER.md');
 const contentReviewRegisterTests = read('src/contentReviewRegister.test.ts');
 const appSource = read('src/App.tsx');
 const appCodeSplittingTests = read('src/appCodeSplitting.test.ts');
+const routeErrorBoundary = read('src/LearningRouteErrorBoundary.tsx');
+const routeErrorBoundaryTests = read('src/learningRouteErrorBoundary.test.ts');
 const styles = read('src/styles.css');
 const riskSource = read('src/risk.ts');
 const riskTests = read('src/risk.test.ts');
@@ -131,6 +133,7 @@ for (const [label, content, phrases] of [
   ['Accessibility focus styles', styles, ['a:focus-visible', 'select:focus-visible', '.skip-link:focus', 'prefers-reduced-motion:reduce']],
   ['Accessibility manual audit', accessibility, ['Keyboard only', 'Screen reader', '200% zoom', '320 CSS-pixel viewport width']],
   ['Route-level code splitting', appSource + appCodeSplittingTests, ["lazy(() => import('./PaperTradeLab'))", "lazy(() => import('./CommunityChallenges'))", 'Loading learning module', 'loads heavy learning routes on demand']],
+  ['Learning route loading recovery', appSource + routeErrorBoundary + routeErrorBoundaryTests + accessibility, ['LearningRouteErrorBoundary', 'This learning module could not load', 'Reload TradeQuest', 'role="alert"', 'failed to render', 'failed route chunk']],
   ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
