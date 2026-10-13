@@ -54,6 +54,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Provision a trusted community moderator through the documented database-admin procedure before enabling public entries; test reporting, 403 denial for ordinary learners, reason-required moderation actions, and immutable action history.
 - [ ] Apply `20261013060000_community_moderation_history.sql` before using the moderator history panel; verify only provisioned moderators/admins can read the latest 100 actions, ordinary learners receive 403, the response is no-store, and moderator account identifiers are not exposed.
 - [ ] Provision a trusted community admin, review the legacy-published challenge definitions in the editorial queue, and record human sign-off. Verify new drafts remain unpublished, revision/retire decisions withdraw public entries, and each decision is preserved in `community_challenge_reviews`.
+- [ ] Apply `20261013070000_community_editorial_history.sql` before using the editorial history panel; verify only admins can read the latest 100 decisions, ordinary moderators/learners receive 403, responses are no-store, and reviewer identifiers are not exposed.
 - [ ] Confirm profile opt-out withdraws public entries and account learning-data deletion removes community entries/reports/profile while preserving the moderation audit trail.
 - [ ] Review third-party logging, analytics, and hosting data handling.
 
