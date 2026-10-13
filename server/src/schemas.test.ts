@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSchema, communityChallengeEntrySchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, paperTradePlanSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
+import { attemptSchema, communityChallengeEntrySchema, communityChallengeProposalSchema, communityReportSchema, communityModerationActionSchema, communityEditorialReviewSchema, communityProfileSchema, chartDojoAttemptSchema, deleteLearningDataSchema, progressEventSchema, paperTradePlanSchema, weeklyPracticePlanQuerySchema, weeklyPracticeSessionSchema, weeklyPracticeTargetSchema } from './schemas.js';
 
 describe('progressEventSchema', () => {
   const valid = {
@@ -152,6 +152,22 @@ describe('community challenge schemas', () => {
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, attemptId: 'bad' }).success).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, reflection: 'Too short' }).success).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({ ...validEntry, rubricMet: true, outcome: 'evidence-led' }).success).toBe(false);
+  });
+
+  it('accepts bounded challenge proposals and rejects malformed or client-scored input', () => {
+    const proposal = {
+      scenarioId: 'TQ-SYN-001',
+      title: 'Wait for evidence',
+      description: 'A short synthetic scenario proposal with a clear decision point.',
+      rubric: 'Reward defined evidence and a stated invalidation level before any decision.',
+      positiveOutcome: 'disciplined',
+      estimatedMinutes: 8,
+    };
+    expect(communityChallengeProposalSchema.safeParse(proposal).success).toBe(true);
+    expect(communityChallengeProposalSchema.safeParse({ ...proposal, scenarioId: 'XAUUSD' }).success).toBe(false);
+    expect(communityChallengeProposalSchema.safeParse({ ...proposal, title: 'x' }).success).toBe(false);
+    expect(communityChallengeProposalSchema.safeParse({ ...proposal, estimatedMinutes: 121 }).success).toBe(false);
+    expect(communityChallengeProposalSchema.safeParse({ ...proposal, score: 100 }).success).toBe(false);
   });
 
   it('allowlists report categories and moderator actions with bounded reasons', () => {
