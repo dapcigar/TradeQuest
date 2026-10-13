@@ -39,7 +39,6 @@ export const protectedApiChecks = [
   ['GET', '/v1/chart-dojo/attempts'],
   ['GET', '/v1/chart-dojo/attempts/adaptive-summary'],
   ['POST', '/v1/lesson-attempts'],
-  ['POST', '/v1/weekly-plan/session'],
 ].map(([method, path]) => ({ method, path }));
 
 export const protectedApiPaths = protectedApiChecks.filter(check => check.method === 'GET').map(check => check.path);
