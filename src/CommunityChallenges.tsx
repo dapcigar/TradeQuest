@@ -129,6 +129,20 @@ export default function CommunityChallenges({ session }: { session: Session | nu
         setEditorialQueue([]);
         setEditorialHistory([]);
       }
+      // Proposal support is migration-gated; keep the existing community experience
+      // usable and surface a local proposal error if that optional endpoint is unavailable.
+      try {
+        setProposalError('');
+        const proposalsResponse = await fetch(apiBase() + '/v1/community/challenges/proposals/mine', { headers, cache: 'no-store' });
+        const proposalsBody = await proposalsResponse.json() as { proposals?: ChallengeProposal[]; error?: string };
+        if (!proposalsResponse.ok || !Array.isArray(proposalsBody.proposals)) {
+          throw new Error(proposalsBody.error || 'Your proposals could not be loaded. The challenge proposal migration may not be applied yet.');
+        }
+        setProposals(proposalsBody.proposals);
+      } catch (proposalLoadError) {
+        setProposals([]);
+        setProposalError(proposalLoadError instanceof Error ? proposalLoadError.message : 'Your challenge proposals are temporarily unavailable.');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Community challenges could not be loaded.');
     } finally { setLoading(false); }
