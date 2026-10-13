@@ -27,21 +27,16 @@ export function parseApiBaseUrl(value) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error('Set TRADEQUEST_SMOKE_API_URL to the API base URL.');
   }
-
   let url;
   try {
     url = new URL(value);
   } catch {
     throw new Error('TRADEQUEST_SMOKE_API_URL must be a valid absolute URL.');
   }
-
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('The API base URL must use HTTP or HTTPS.');
-  }
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('The API base URL must use HTTP or HTTPS.');
   if (url.username || url.password || url.search || url.hash) {
     throw new Error('The API base URL must not contain credentials, a query string, or a fragment.');
   }
-
   return url.toString().replace(/\/$/, '');
 }
 
@@ -59,14 +54,12 @@ export function assertApiSecurityHeaders(headers) {
     ['referrer-policy', 'no-referrer'],
     ['permissions-policy', 'camera=(), microphone=(), geolocation=()'],
   ];
-
   for (const [name, value] of expected) {
     const actual = headers.get(name);
     if (actual?.toLowerCase() !== value.toLowerCase()) {
       throw new Error(`Security header ${name} was ${actual ?? 'missing'}; expected ${value}.`);
     }
   }
-
   const csp = headers.get('content-security-policy') ?? '';
   if (!csp.includes("default-src 'none'") || !csp.includes("frame-ancestors 'none'")) {
     throw new Error('API Content-Security-Policy is missing its deny-by-default directives.');
