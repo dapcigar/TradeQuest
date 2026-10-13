@@ -339,6 +339,18 @@ app.get('/v1/community/editorial/queue', requireLearner, async (req: AuthedReque
   return res.json({ challenges: Array.isArray(data) ? data : [] });
 });
 
+app.get('/v1/community/editorial/history', requireLearner, async (req: AuthedRequest, res: Response) => {
+  const { data, error } = await req.learnerDb!.rpc('list_community_challenge_review_history');
+  if (error) {
+    if (error.code === '42501' && /Editorial admin access required/i.test(error.message)) return res.status(403).json({ error: 'Editorial admin access required.' });
+    if (error.code === '42501') return res.status(401).json({ error: 'Authentication required.' });
+    logError('Community editorial history could not be loaded.', error);
+    return res.status(503).json({ error: 'Community editorial history is temporarily unavailable.' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ reviews: Array.isArray(data?.reviews) ? data.reviews : [] });
+});
+
 app.post('/v1/community/editorial/:id/review', requireLearner, async (req: AuthedRequest, res: Response) => {
   const challengeId = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
   if (typeof challengeId !== 'string' || !/^QUEST-[0-9]{3}$/.test(challengeId)) {
