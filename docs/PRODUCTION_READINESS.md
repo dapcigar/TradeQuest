@@ -56,6 +56,7 @@ This checklist is an operational gate, not a claim that TradeQuest is production
 - [ ] Provision a trusted community admin, review the legacy-published challenge definitions in the editorial queue, and record human sign-off. Verify new drafts remain unpublished, revision/retire decisions withdraw public entries, and each decision is preserved in `community_challenge_reviews`.
 - [ ] Apply `20261013070000_community_editorial_history.sql` before using the editorial history panel; verify only admins can read the latest 100 decisions, ordinary moderators/learners receive 403, responses are no-store, and reviewer identifiers are not exposed.
 - [ ] Apply `20261013080000_community_challenge_proposals.sql` before enabling learner-authored proposals. Verify proposals remain unpublished until admin approval, only owners can list/edit their drafts, submitted drafts appear in the admin queue, server-side validation binds each proposal to a published synthetic scenario/outcome, and an ordinary learner cannot approve or publish content.
+- [ ] Apply `20261013100000_server_own_proposal_outcome.sql`; verify public challenge responses omit the internal positive outcome, proposal requests with client-supplied outcome/score fields are rejected, and the database derives a valid outcome from the published scenario rubric.
 - [ ] Confirm profile opt-out withdraws public entries and account learning-data deletion removes community entries/reports/profile while preserving the moderation audit trail.
 - [ ] Review third-party logging, analytics, and hosting data handling.
 

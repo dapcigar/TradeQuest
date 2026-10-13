@@ -87,6 +87,8 @@ const communityChallengeProposalMigration = read('supabase/migrations/2026101308
 const communityChallengeProposalContractTests = read('server/src/community-challenge-proposals-migration.test.ts');
 const privateProposalQueueMigration = read('supabase/migrations/20261013090000_hide_unsubmitted_challenge_drafts.sql');
 const privateProposalQueueTests = read('server/src/community-challenge-proposal-queue-migration.test.ts');
+const serverOwnedProposalOutcomeMigration = read('supabase/migrations/20261013100000_server_own_proposal_outcome.sql');
+const serverOwnedProposalOutcomeTests = read('server/src/community-challenge-proposal-outcome-migration.test.ts');
 const apiSchemas = read('server/src/schemas.ts');
 const apiSchemaTests = read('server/src/schemas.test.ts');
 const apiSmokeRoutes = read('scripts/api-smoke-lib.mjs');
@@ -177,6 +179,7 @@ for (const [label, content, phrases] of [
   ['Community editorial history contract tests', communityEditorialHistoryContractTests, ['requires an authenticated community admin', 'newest-first', 'reviewer identifiers']],
   ['Learner-authored challenge proposal migration', communityChallengeProposalMigration + communityChallengeProposalContractTests, ['create_community_challenge_draft', 'list_my_community_challenge_proposals', 'published = false', 'only draft proposals can be edited']],
   ['Private challenge proposal queue migration', privateProposalQueueMigration + privateProposalQueueTests, ['create or replace function public.list_community_editorial_queue()', 'c.created_by is null or c.editorial_status <> \'draft\'', 'keeps unsubmitted learner drafts out of the editorial queue']],
+  ['Server-owned challenge proposal outcomes', serverOwnedProposalOutcomeMigration + serverOwnedProposalOutcomeTests + apiSchemas + apiSchemaTests + communityChallengesUi + communityProfileApi + communityModerationDocs + readiness + smoke + readme + plan, ['create or replace function public.list_community_challenges()', 'select c.positive_outcome into v_positive_outcome', 'removes the outcome from public challenge payloads', 'server-owned challenge proposal outcome migration', '20261013100000_server_own_proposal_outcome.sql']],
   ['Challenge proposal API/UI/schema contract', communityChallengesUi + communityProfileApi + apiSchemas + apiSchemaTests + apiSmokeRoutes, ["app.post('/v1/community/challenges/proposals'", "app.patch('/v1/community/challenges/proposals/:id'", "app.post('/v1/community/challenges/proposals/:id/submit'", 'Create a challenge proposal', 'communityChallengeProposalSchema', "['PATCH', '/v1/community/challenges/proposals/' + exampleId]"]],
   ['Editorial admin UI and routes', communityChallengesUi + communityProfileApi, ['Editorial review queue', 'Approve &amp; publish', "app.get('/v1/community/editorial/queue'", "app.post('/v1/community/editorial/:id/review'"]],
   ['Editorial review runbook', communityModerationDocs, ['source reference', 'Only a community admin', 'community_challenge_reviews', 'increment `content_version`']],

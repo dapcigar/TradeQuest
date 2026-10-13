@@ -259,7 +259,7 @@ app.post('/v1/community/challenges/proposals', requireLearner, async (req: Authe
   const { data, error } = await req.learnerDb!.rpc('create_community_challenge_draft', {
     p_scenario_id: parsed.data.scenarioId, p_title: parsed.data.title,
     p_description: parsed.data.description, p_rubric: parsed.data.rubric,
-    p_positive_outcome: parsed.data.positiveOutcome, p_estimated_minutes: parsed.data.estimatedMinutes,
+    p_estimated_minutes: parsed.data.estimatedMinutes,
   });
   if (error) {
     if (error.code === 'P0002') return res.status(404).json({ error: 'The selected published synthetic scenario was not found.' });
@@ -280,7 +280,7 @@ app.patch('/v1/community/challenges/proposals/:id', requireLearner, async (req: 
   const { data, error } = await req.learnerDb!.rpc('update_community_challenge_draft', {
     p_challenge_id: challengeId, p_scenario_id: parsed.data.scenarioId, p_title: parsed.data.title,
     p_description: parsed.data.description, p_rubric: parsed.data.rubric,
-    p_positive_outcome: parsed.data.positiveOutcome, p_estimated_minutes: parsed.data.estimatedMinutes,
+    p_estimated_minutes: parsed.data.estimatedMinutes,
   });
   if (error) {
     if (error.code === 'P0002') return res.status(404).json({ error: 'The selected published synthetic scenario was not found.' });
