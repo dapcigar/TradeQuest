@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import JournalView from './JournalView';
-import ReviewQueue from './ReviewQueue';
-import AdaptivePractice from './AdaptivePractice';
-import WeeklyPracticePlan from './WeeklyPracticePlan';
-import GlossaryView from './GlossaryView';
-import CandleLiteracy from './CandleLiteracy';
-import SupportResistanceLiteracy from './SupportResistanceLiteracy';
-import TrendStructureLiteracy from './TrendStructureLiteracy';
-import BreakoutLiteracy from './BreakoutLiteracy';
-import RiskRewardLiteracy from './RiskRewardLiteracy';
-import LeverageMarginLiteracy from './LeverageMarginLiteracy';
-import PositionSizingLiteracy from './PositionSizingLiteracy';
-import DrawdownLiteracy from './DrawdownLiteracy';
-import PsychologyLiteracy from './PsychologyLiteracy';
-import ExecutionLiteracy from './ExecutionLiteracy';
-import MarketConditionsLiteracy from './MarketConditionsLiteracy';
-import BacktestingEvidenceLiteracy from './BacktestingEvidenceLiteracy';
-import AssetClassLiteracy from './AssetClassLiteracy';
-import TradePlanLiteracy from './TradePlanLiteracy';
-import ReplayLab from './ReplayLab';
-import PaperTradeLab from './PaperTradeLab';
-import CommunityProfile from './CommunityProfile';
-import CommunityChallenges from './CommunityChallenges';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+const JournalView = lazy(() => import('./JournalView'));
+const ReviewQueue = lazy(() => import('./ReviewQueue'));
+const AdaptivePractice = lazy(() => import('./AdaptivePractice'));
+const WeeklyPracticePlan = lazy(() => import('./WeeklyPracticePlan'));
+const GlossaryView = lazy(() => import('./GlossaryView'));
+const CandleLiteracy = lazy(() => import('./CandleLiteracy'));
+const SupportResistanceLiteracy = lazy(() => import('./SupportResistanceLiteracy'));
+const TrendStructureLiteracy = lazy(() => import('./TrendStructureLiteracy'));
+const BreakoutLiteracy = lazy(() => import('./BreakoutLiteracy'));
+const RiskRewardLiteracy = lazy(() => import('./RiskRewardLiteracy'));
+const LeverageMarginLiteracy = lazy(() => import('./LeverageMarginLiteracy'));
+const PositionSizingLiteracy = lazy(() => import('./PositionSizingLiteracy'));
+const DrawdownLiteracy = lazy(() => import('./DrawdownLiteracy'));
+const PsychologyLiteracy = lazy(() => import('./PsychologyLiteracy'));
+const ExecutionLiteracy = lazy(() => import('./ExecutionLiteracy'));
+const MarketConditionsLiteracy = lazy(() => import('./MarketConditionsLiteracy'));
+const BacktestingEvidenceLiteracy = lazy(() => import('./BacktestingEvidenceLiteracy'));
+const AssetClassLiteracy = lazy(() => import('./AssetClassLiteracy'));
+const TradePlanLiteracy = lazy(() => import('./TradePlanLiteracy'));
+const ReplayLab = lazy(() => import('./ReplayLab'));
+const PaperTradeLab = lazy(() => import('./PaperTradeLab'));
+const CommunityProfile = lazy(() => import('./CommunityProfile'));
+const CommunityChallenges = lazy(() => import('./CommunityChallenges'));
 import {
   Activity, ArrowRight, ArrowUpRight, Award, BarChart3, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, CircleHelp, Compass, Flame, GraduationCap,
@@ -552,6 +552,7 @@ function App() {
         </header>
 
         <div className="page-content">
+          <Suspense fallback={<div className="panel module-loading" role="status">Loading learning module…</div>}>
           {view === 'overview' && <Overview
             progress={dashboardProgress} completion={completion} onStart={() => setLessonOpen(true)}
             onNavigate={setView} onPractice={() => setView('practice')}
@@ -583,6 +584,7 @@ function App() {
           {view === 'risk' && <RiskView equity={riskEquity} setEquity={setRiskEquity} riskPercent={riskPercent} setRiskPercent={setRiskPercent} entry={entry} setEntry={setEntry} stop={stop} setStop={setStop} target={target} setTarget={setTarget} risk={risk} rewardRisk={rewardRisk} error={riskError} onCalculate={calculateAndSaveRisk} />}
           {view === 'challenges' && <ChallengesView attempts={dojoHistory} signedIn={Boolean(session)} onSignIn={() => { setAuthOpen(true); setAuthMessage(''); }} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
           {view === 'progress' && <ProgressView progress={progress} accountProgress={session ? accountProgress : null} mastery={session ? mastery : null} masteryMessage={session ? masteryMessage : ''} onPractice={scenarioId => { setActiveScenarioId(scenarioId); setScenarioChoice(null); setScenarioRevealed(false); setDojoResult(null); setDojoError(''); setView('practice'); }} />}
+          </Suspense>
         </div>
         {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setAuthOpen(false); }}><section ref={authDialogRef} tabIndex={-1} className="lesson-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div className="modal-top"><span className="modal-kicker"><LockKeyhole size={15} /> FREE LEARNER ACCOUNT</span><button className="icon-button" onClick={() => setAuthOpen(false)} aria-label="Close sign in"><X size={19} /></button></div><div className="modal-content"><div className="eyebrow small-eyebrow">{authMode === 'signin' ? 'WELCOME BACK' : authMode === 'signup' ? 'START YOUR JOURNEY' : authMode === 'recovery' ? 'ACCOUNT RECOVERY' : 'SET NEW PASSWORD'}</div><h2 id="auth-title">{authMode === 'signin' ? 'Sign in to TradeQuest.' : authMode === 'signup' ? 'Create your learner account.' : authMode === 'recovery' ? 'Reset your password.' : 'Choose a new password.'}</h2><p>{authMode === 'recovery' ? 'Enter the email address for your account and we will send a secure reset link if it exists.' : authMode === 'reset' ? 'Use a new password with at least 8 characters.' : 'Account progress is separate from browser demo progress. Supabase Auth handles your password.'}</p>{!supabaseConfigured ? <p className="feedback" role="alert">Authentication is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your local environment.</p> : <form className="auth-form" onSubmit={handleAuthSubmit}>{authMode !== 'reset' && <><label className="field-label" htmlFor="auth-email">Email address</label><input id="auth-email" type="email" autoComplete="email" required value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></>}{authMode !== 'recovery' && <><label className="field-label" htmlFor="auth-password">{authMode === 'reset' ? 'New password' : 'Password'}</label><input id="auth-password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={authPassword} onChange={e => setAuthPassword(e.target.value)} /></>}<button className="btn-primary full-button" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : authMode === 'signup' ? 'Create account' : authMode === 'recovery' ? 'Send reset link' : 'Update password'} <ArrowRight size={15} /></button></form>}{authMessage && <p className="feedback" role="status">{authMessage}</p>}{authMode === 'signin' && <button className="text-link auth-switch" onClick={() => { setAuthMode('recovery'); setAuthMessage(''); setAuthPassword(''); }}>Forgot your password?</button>}{authMode !== 'reset' && <button className="text-link auth-switch" onClick={() => { setAuthMode(mode => mode === 'signin' ? 'signup' : 'signin'); setAuthMessage(''); setAuthPassword(''); }}>{authMode === 'signin' ? 'New to TradeQuest? Create an account' : authMode === 'signup' ? 'Already registered? Sign in' : 'Back to sign in'}</button>}</div></section></div>}
       <footer className="site-footer"><span>TRADEQUEST <span className="footer-sep">/</span> LEARN THE PROCESS, NOT THE HYPE.</span><span>Educational simulation · No live market data · Not financial advice</span></footer>
