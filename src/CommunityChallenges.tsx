@@ -172,6 +172,68 @@ export default function CommunityChallenges({ session }: { session: Session | nu
     finally { setBusy(false); }
   }
 
+  async function saveProposal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!headers || !selectedProposalScenario) return;
+    setBusy(true); setProposalError(''); setError(''); setMessage('');
+    try {
+      const payload = {
+        scenarioId: selectedProposalScenario.scenarioId,
+        title: proposalTitle.trim(),
+        description: proposalDescription.trim(),
+        rubric: proposalRubric.trim(),
+        positiveOutcome: selectedProposalScenario.positiveOutcome,
+        estimatedMinutes: Number(proposalMinutes),
+      };
+      const editing = editingProposalId !== null;
+      const response = await fetch(
+        apiBase() + '/v1/community/challenges/proposals' + (editing ? '/' + editingProposalId : ''),
+        {
+          method: editing ? 'PATCH' : 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          cache: 'no-store',
+        },
+      );
+      const body = await response.json() as { proposal?: ChallengeProposal; error?: string };
+      if (!response.ok || !body.proposal) throw new Error(body.error || 'Challenge proposal could not be saved.');
+      setProposalTitle(''); setProposalDescription(''); setProposalRubric('');
+      setProposalMinutes('8'); setEditingProposalId(null);
+      setMessage('Challenge draft saved privately. It is not published; submit it for editorial review when ready.');
+      await load();
+    } catch (e) {
+      setProposalError(e instanceof Error ? e.message : 'Challenge proposal could not be saved.');
+    } finally { setBusy(false); }
+  }
+
+  function editProposal(proposal: ChallengeProposal) {
+    if (proposal.editorialStatus !== 'draft') return;
+    setEditingProposalId(proposal.challengeId);
+    setProposalScenarioId(proposal.scenarioId);
+    setProposalTitle(proposal.title);
+    setProposalDescription(proposal.description);
+    setProposalRubric(proposal.rubric);
+    setProposalMinutes(String(proposal.estimatedMinutes));
+    setProposalError('');
+    setMessage('Editing your private draft.');
+  }
+
+  async function submitProposal(challengeId: string) {
+    if (!headers) return;
+    setBusy(true); setProposalError(''); setError(''); setMessage('');
+    try {
+      const response = await fetch(apiBase() + '/v1/community/challenges/proposals/' + challengeId + '/submit', {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+      });
+      const body = await response.json() as { proposal?: { editorialStatus?: string }; error?: string };
+      if (!response.ok || !body.proposal) throw new Error(body.error || 'Challenge proposal could not be submitted.');
+      setMessage('Proposal submitted for admin editorial review. It remains unpublished until approved.');
+      await load();
+    } catch (e) {
+      setProposalError(e instanceof Error ? e.message : 'Challenge proposal could not be submitted.');
+    } finally { setBusy(false); }
+  }
+
   async function deleteEntry(entryId: string) {
     if (!headers || !window.confirm('Delete this challenge entry? Your original practice attempt will remain in your learning history.')) return;
     setBusy(true); setError(''); setMessage('');
