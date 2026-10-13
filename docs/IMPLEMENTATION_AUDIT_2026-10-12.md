@@ -40,6 +40,10 @@ TradeQuest has a working React/Vite/TypeScript learner experience, a Node/Expres
 | #109 | Merged | Updated the implementation audit and added release checks for moderator history while keeping live Supabase integration owner-run. |
 | #110 | Merged | Added admin-only history of the latest 100 editorial decisions, an editorial history panel, migration/API tests, smoke coverage, and release gates. |
 | #111 | Merged | Lazy-loaded route-specific learning modules with an accessible loading status. The production build's main JS chunk is now 441.01 kB (gzip 125.60 kB), below Vite's 500 kB warning threshold, with separate small route chunks. |
+| #112 | Merged | Updated the implementation audit after editorial history and bundle splitting, and clarified remaining product-policy and owner-run release gaps. |
+| #113 | Merged | Registered all learner-facing curriculum routes and added tests/preflight checks for route and evidence-file coverage while keeping human approval pending. |
+| #114 | Merged | Added an accessible runtime error boundary and reload recovery for failed lazy-loaded learning routes. |
+| #115 | Merged | Removed an argument-spread limit from mastery aggregation and added a 150,000-attempt regression test plus release-preflight coverage. |
 
 The latest lockfile-refresh run passed tests, frontend build, API build, and release preflight. Its final npm audit summary was **0 vulnerabilities**. The standard CI workflow now repeats the tests/builds/preflight with `npm ci` and `npm audit --audit-level=high`.
 
@@ -56,6 +60,9 @@ The latest lockfile-refresh run passed tests, frontend build, API build, and rel
 - CI now uses a committed lockfile and blocks high/critical npm advisories.
 - Community moderators and admins have separate read-only history views for the latest 100 moderation/editorial decisions; both omit staff account identifiers and are protected by database role checks.
 - Route-specific learning modules are code-split and load on demand with an accessible status fallback, reducing the initial JavaScript chunk below the 500 kB warning threshold.
+- Failed lazy-loaded routes now show an accessible recovery state with a reload action rather than leaving the app shell blank; internal exception messages are not shown to learners.
+- The curriculum review register now tracks all 18 learner-facing educational routes, and automated tests plus release preflight ensure route components and supporting evidence files remain registered. Human editorial sign-off is still pending.
+- Mastery aggregation no longer spreads unbounded timestamp arrays into `Math.max`; a regression test covers 150,000 retained attempts. This protects against argument-count overflow but is not a substitute for live latency/retention validation.
 - Live market feeds, broker connectivity, real-money execution, and personalised financial advice remain out of scope.
 
 ## Remaining implementation and release gaps
@@ -71,7 +78,7 @@ The latest lockfile-refresh run passed tests, frontend build, API build, and rel
 
 ### P1 — Product completeness
 
-1. **Long-term mastery operations.** Current mastery uses all retained relevant attempts, but retention/aggregation and confidence behaviour need validation at scale.
+1. **Long-term mastery operations.** Current mastery uses all retained relevant attempts, and a 150,000-attempt regression covers JavaScript argument-count safety. Retention/confidence behaviour and real API/database latency still need validation at scale.
 2. **Full simulation engine.** User-defined tick/cost/lot/margin assumptions are implemented. The model is not a verified instrument preset and still lacks pending orders, partial fills, margin calls/liquidation, currency conversion, contract-specific gap handling, broker connectivity, and contract-accurate P/L.
 3. **Broader community product.** Opt-in profiles, private reflections, public-entry moderation/reporting, editorial review, and moderator/admin history views are implemented. Community leaderboards, user-authored challenge creation, moderator appeals, and a wider administration console remain incomplete. Do not introduce P/L-based rankings or direct messaging; appeal policy must be agreed before implementation.
 4. **Licensed historical datasets.** No historical dataset should be imported or presented as history until rights, storage, redistribution, symbol mapping, timezone, and data validation requirements are confirmed.
