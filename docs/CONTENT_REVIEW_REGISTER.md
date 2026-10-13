@@ -28,6 +28,32 @@ This register tracks source-controlled learning content. TradeQuest does not cur
 | Community challenge rubrics and publication rules | `supabase/migrations/20261012270000_community_challenge_lifecycle.sql` | `server/src/community-challenge-migration.test.ts` and two-account integration test | Pending |
 | Community challenge provenance and editorial review workflow | `supabase/migrations/20261012280000_community_challenge_editorial_review.sql` | `server/src/community-editorial-migration.test.ts` and editorial admin workflow | Pending |
 
+
+## Learner-facing content route coverage
+
+These route components are part of the shipped learning experience and must remain linked to the reviewed source content above. Route-level UI changes require a relevant automated test and human editorial review before release.
+
+| Learning route | Route component | Supporting content/test | Human editorial sign-off |
+|---|---|---|---|
+| Adaptive practice | `src/AdaptivePractice.tsx` | `src/adaptivePractice.test.ts` | Pending |
+| Glossary | `src/GlossaryView.tsx` | `src/glossary.test.ts` | Pending |
+| Candle literacy | `src/CandleLiteracyLab.tsx` | `src/candleLiteracy.test.ts` | Pending |
+| Support and resistance | `src/SupportResistanceLiteracy.tsx` | `src/supportResistance.test.ts` | Pending |
+| Trend structure | `src/TrendStructureLiteracy.tsx` | `src/trendStructure.test.ts` | Pending |
+| Breakouts | `src/BreakoutLiteracyLab.tsx` | `src/breakoutLiteracy.test.ts` | Pending |
+| Risk/reward | `src/RiskRewardLiteracyLab.tsx` | `src/riskRewardLiteracy.test.ts` | Pending |
+| Leverage and margin | `src/LeverageMarginLiteracyLab.tsx` | `src/leverageMarginLiteracy.test.ts` | Pending |
+| Position sizing | `src/PositionSizingLiteracyLab.tsx` | `src/positionSizingLiteracy.test.ts` | Pending |
+| Drawdown | `src/DrawdownLiteracyLab.tsx` | `src/drawdownLiteracy.test.ts` | Pending |
+| Trading psychology | `src/PsychologyLiteracyLab.tsx` | `src/psychologyLiteracy.test.ts` | Pending |
+| Execution and order types | `src/ExecutionLiteracyLab.tsx` | `src/executionLiteracy.test.ts` | Pending |
+| Market conditions | `src/MarketConditionsLiteracyLab.tsx` | `src/marketConditionsLiteracy.test.ts` | Pending |
+| Backtesting and evidence | `src/BacktestingEvidenceLiteracyLab.tsx` | `src/backtestingEvidenceLiteracy.test.ts` | Pending |
+| Asset-class literacy | `src/AssetClassLiteracyLab.tsx` | `src/assetClassLiteracy.test.ts` | Pending |
+| Trade planning | `src/TradePlanLiteracyLab.tsx` | `src/tradePlanLiteracy.test.ts` | Pending |
+| Synthetic replay | `src/ReplayLab.tsx` | `src/replayCheckpoint.test.ts` | Pending |
+| Synthetic paper-trade lab | `src/PaperTradeLab.tsx` | `docs/PAPER_TRADE_LAB.md` and release smoke test | Pending |
+
 ## Editorial checklist
 
 For each area, the reviewer should record reviewer identity, date, content version/commit, and any corrections before changing the sign-off status:
