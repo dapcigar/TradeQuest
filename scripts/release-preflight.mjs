@@ -53,6 +53,12 @@ const routeErrorBoundaryTests = read('src/learningRouteErrorBoundary.test.ts');
 const styles = read('src/styles.css');
 const riskSource = read('src/risk.ts');
 const riskTests = read('src/risk.test.ts');
+const calendarDateKey = read('src/dateKey.ts');
+const calendarDateKeyTests = read('src/dateKey.test.ts');
+const learningImport = read('src/learningImport.ts');
+const learningImportTests = read('src/learningImport.test.ts');
+const weeklyPracticePlanUi = read('src/WeeklyPracticePlan.tsx');
+const weeklyPracticePlanTests = read('src/weeklyPracticePlan.test.ts');
 const workflow = read('.github/workflows/ci.yml');
 const integrationWorkflow = read('.github/workflows/integration.yml');
 const legacySupabaseIntegrationWorkflow = read('.github/workflows/supabase-integration.yml');
@@ -138,6 +144,7 @@ for (const [label, content, phrases] of [
   ['Learning route loading recovery', appSource + routeErrorBoundary + routeErrorBoundaryTests + accessibility, ['LearningRouteErrorBoundary', 'This learning module could not load', 'Reload TradeQuest', 'role="alert"', 'failed to render', 'failed route chunk']],
   ['Risk calculator numeric bounds', riskSource, ['Number.isFinite', 'safe numeric range']],
   ['Risk calculator regression tests', riskTests, ['Number.MAX_VALUE', 'Number.MIN_VALUE', 'ratios that overflow']],
+  ['Calendar date validation and learning-data imports', calendarDateKey + calendarDateKeyTests + learningImport + learningImportTests + weeklyPracticePlanUi + weeklyPracticePlanTests, ['isValidDateKey', '2026-02-30', '2026-04-31', 'rejects impossible calendar dates', 'drops impossible calendar dates']],
   ['Content review register', contentRegister, ['Human editorial approval', 'Editorial checklist', 'Do not change']],
   ['Curriculum route review coverage', contentRegister + appSource + contentReviewRegisterTests, ['Learner-facing content route coverage', 'src/PaperTradeLab.tsx', 'src/AdaptivePractice.tsx', 'registers every learner-facing curriculum route component', 'keeps human editorial sign-off explicitly pending']],
   ['Paper trade fill ledger', paperFillMigration, ['create table if not exists public.paper_trade_fills', 'enable row level security', 'revoke all on public.paper_trade_fills', 'unique (session_id, fill_sequence)', 'on conflict (session_id, fill_type) do nothing', 'paper_trade_fills_on_session_change']],
