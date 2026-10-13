@@ -109,7 +109,6 @@ export const communityChallengeProposalSchema = z.object({
   title: z.string().trim().min(3).max(100),
   description: z.string().trim().min(10).max(500),
   rubric: z.string().trim().min(10).max(1000),
-  positiveOutcome: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
   estimatedMinutes: z.number().int().min(1).max(120),
 }).strict();
 
