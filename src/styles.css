@@ -320,3 +320,6 @@
 
 /* Route-level lazy chunk fallback */
 .module-loading{min-height:10rem;display:grid;place-items:center;text-align:center}
+
+/* Accessible recovery when a lazy-loaded learning route fails */
+.module-load-error{margin:24px auto;max-width:720px;padding:28px}.module-load-error h2{margin-top:0}.module-load-error p{max-width:62ch;line-height:1.6}

@@ -5,6 +5,7 @@
 - A keyboard-reachable “Skip to main content” link, a focusable main landmark, and focus transfer to the labelled main landmark when the learner changes views.
 - Named primary navigation, an accessible mobile menu state with aria-expanded and aria-controls, and current-page semantics on the active navigation item.
 - Visible keyboard focus indicators for buttons, links, inputs, selects, and textareas.
+- Lazy-loaded learning routes are wrapped in a runtime error boundary; a failed route chunk presents a labelled alert and a reload action instead of leaving the app shell blank. The fallback avoids displaying internal exception text.
 - Reduced-motion styling via prefers-reduced-motion.
 - Existing modal focus management and labelled scenario charts/controls are retained.
 
