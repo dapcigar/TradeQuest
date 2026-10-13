@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import type { Session } from '@supabase/supabase-js';
 import { AlertTriangle, CheckCircle2, Flag, LockKeyhole, Send, ShieldCheck, Trash2, Users } from 'lucide-react';
 
-type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; estimatedMinutes: number };
+type Challenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number };
 type Attempt = { attemptId: string; scenarioId: string; choiceId: string; outcome: string; feedback: string; submittedAt: string };
 type Entry = { entryId: string; challengeId: string; scenarioId: string; outcome: string; rubricMet: boolean; reflection: string; isPublic: boolean; moderationStatus: string; createdAt: string };
 type PublicEntry = { entryId: string; challengeId: string; title: string; handle: string; displayName: string; reflection: string; rubricMet: boolean; createdAt: string };
@@ -12,6 +12,7 @@ type ModerationQueue = { entries: QueueEntry[]; reports: Report[] };
 type ModerationAction = { actionId: string; entryId: string; action: 'approve' | 'hide' | 'remove'; previousStatus: string | null; newStatus: string; reason: string; createdAt: string };
 type EditorialChallenge = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; sourceReference: string; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null };
 type EditorialReviewAction = { reviewId: string; challengeId: string; decision: 'approve' | 'revision-needed' | 'retire'; previousStatus: string; newStatus: string; previousPublished: boolean; newPublished: boolean; contentVersion: number; reason: string; createdAt: string };
+type ChallengeProposal = { challengeId: string; scenarioId: string; title: string; description: string; rubric: string; positiveOutcome: string; estimatedMinutes: number; contentVersion: number; editorialStatus: string; published: boolean; reviewedAt: string | null; reviewReason: string | null; createdAt: string };
 type Profile = { isPublic: boolean };
 const apiBase = () => import.meta.env.VITE_TRADEQUEST_API_URL || 'http://localhost:4000';
 const categories = [
@@ -33,6 +34,14 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [isEditor, setIsEditor] = useState(false);
   const [editorialQueue, setEditorialQueue] = useState<EditorialChallenge[]>([]);
   const [editorialHistory, setEditorialHistory] = useState<EditorialReviewAction[]>([]);
+  const [proposals, setProposals] = useState<ChallengeProposal[]>([]);
+  const [proposalError, setProposalError] = useState('');
+  const [proposalScenarioId, setProposalScenarioId] = useState('TQ-SYN-001');
+  const [proposalTitle, setProposalTitle] = useState('');
+  const [proposalDescription, setProposalDescription] = useState('');
+  const [proposalRubric, setProposalRubric] = useState('');
+  const [proposalMinutes, setProposalMinutes] = useState('8');
+  const [editingProposalId, setEditingProposalId] = useState<string | null>(null);
   const [queue, setQueue] = useState<ModerationQueue>({ entries: [], reports: [] });
   const [moderationHistory, setModerationHistory] = useState<ModerationAction[]>([]);
   const [challengeId, setChallengeId] = useState('QUEST-001');
@@ -48,6 +57,8 @@ export default function CommunityChallenges({ session }: { session: Session | nu
   const [error, setError] = useState('');
 
   const selectedChallenge = challenges.find(item => item.challengeId === challengeId) ?? challenges[0];
+  const proposalScenarios = [...new Map(challenges.map(item => [item.scenarioId, item])).values()];
+  const selectedProposalScenario = proposalScenarios.find(item => item.scenarioId === proposalScenarioId) ?? proposalScenarios[0];
   const eligibleAttempts = useMemo(() => selectedChallenge ? attempts.filter(item => item.scenarioId === selectedChallenge.scenarioId) : [], [attempts, selectedChallenge]);
   const selectedAttempt = eligibleAttempts.find(item => item.attemptId === attemptId) ?? eligibleAttempts[0];
 
