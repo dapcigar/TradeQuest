@@ -8,7 +8,7 @@ describe('route-level module loading', () => {
   it('loads heavy learning routes on demand instead of in the initial app bundle', () => {
     for (const moduleName of [
       'JournalView', 'AdaptivePractice', 'WeeklyPracticePlan', 'GlossaryView',
-      'BacktestingEvidenceLiteracy', 'ReplayLab', 'PaperTradeLab',
+      'BacktestingEvidenceLiteracyLab', 'ReplayLab', 'PaperTradeLab',
       'CommunityProfile', 'CommunityChallenges',
     ]) {
       expect(app, moduleName + ' should be lazy-loaded').toContain(
