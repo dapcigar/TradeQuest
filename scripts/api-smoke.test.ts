@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   assertApiSecurityHeaders,
@@ -40,5 +42,17 @@ describe('API smoke-check helpers', () => {
     expect(() => assertProtectedEndpointStatus('/v1/me/progress', 401)).not.toThrow();
     expect(() => assertProtectedEndpointStatus('/v1/me/progress', 200)).toThrow(/expected 401/);
     expect(() => assertProtectedEndpointStatus('/v1/me/progress', 503)).toThrow(/expected 401/);
+    expect(() => assertProtectedEndpointStatus('/v1/chart-dojo/scenarios', 404)).toThrow(/deployed API is behind the repository/);
+  });
+
+  it('covers every protected GET route declared by the API', () => {
+    const apiSource = readFileSync(resolve(process.cwd(), 'server/src/index.ts'), 'utf8');
+    const declaredRoutes = [...apiSource.matchAll(/app[.]get[(]'([^']+)'/g)]
+      .map(match => match[1])
+      .filter(path => path.startsWith('/v1/'))
+      .map(path => path.replace(/:[a-zA-Z]+/g, '00000000-0000-4000-8000-000000000001'));
+
+    const missing = declaredRoutes.filter(path => !protectedApiPaths.includes(path));
+    expect(missing, 'Every protected GET route must be probed by the read-only API smoke check').toEqual([]);
   });
 });
