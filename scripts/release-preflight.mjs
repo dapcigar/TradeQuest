@@ -66,6 +66,8 @@ const communityChallengeMigration = read('supabase/migrations/20261012270000_com
 const communityChallengeContractTests = read('server/src/community-challenge-migration.test.ts');
 const communityChallengesUi = read('src/CommunityChallenges.tsx');
 const communityModerationDocs = read('docs/COMMUNITY_MODERATION.md');
+const masteryCore = read('server/src/mastery.ts');
+const masteryCoreTests = read('server/src/mastery.test.ts');
 const masteryHistoryHelper = read('server/src/masteryHistory.ts');
 const masteryHistoryTests = read('server/src/masteryHistory.test.ts');
 const adaptivePracticeUi = read('src/AdaptivePractice.tsx');
@@ -150,6 +152,7 @@ for (const [label, content, phrases] of [
   ['Community moderation runbook', communityModerationDocs, ['REPLACE_WITH_VERIFIED_AUTH_USER_UUID', 'assign a moderator automatically', 'no direct messages', 'trusted moderator is provisioned']],
   ['Complete mastery history pagination', masteryHistoryHelper, ['collectAllPages', 'Invalid page size.']],
   ['Mastery pagination regression tests', masteryHistoryTests, ['across page boundaries', 'does not return a partial history', 'invalid page sizes']],
+  ['Mastery large-history safety', masteryCore + masteryCoreTests, ['timestamps.reduce<number | null>', 'large retained histories without argument-count overflow', '150_000']],
   ['Mastery API all-retained-history contract', masteryApi, ["historyScope: 'all-retained-server-attempts'", 'historyComplete: true', "attempts/adaptive-summary", "historyScope: 'all-retained-adaptive-attempts'", 'Complete mastery history could not be loaded']],
   ['Adaptive Practice aggregate evidence contract', adaptivePracticeUi, ['nextAdaptiveVariantFromSummary', 'adaptiveEvidenceFromSummary', 'historyComplete !== true']],
   ['Challenge editorial provenance and publication gate', communityEditorialMigration, ['source_reference text not null', 'editorial_status text not null default \'draft\'', 'is_community_admin', 'community_challenge_reviews', 'editorial_status in (\'approved\', \'legacy-published\')']],

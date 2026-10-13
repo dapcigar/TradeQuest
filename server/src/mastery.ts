@@ -60,7 +60,12 @@ export function buildMastery(
     const positive = relevant.filter(attempt => positiveOutcomes.includes(attempt.outcome)).length;
     const count = relevant.length;
     const timestamps = chronological.map(attempt => attempt.timestamp);
-    const lastPractisedMs = timestamps.length ? Math.max(...timestamps) : null;
+    // Avoid spreading unbounded account history into a function call: large retained
+    // histories can exceed the JavaScript engine's argument-count limit.
+    const lastPractisedMs = timestamps.reduce<number | null>(
+      (latest, timestamp) => latest === null || timestamp > latest ? timestamp : latest,
+      null,
+    );
     const lastPractisedAt = lastPractisedMs === null ? null : new Date(lastPractisedMs).toISOString();
     const reviewStatus = count === 0 ? 'not-yet-practised'
       : lastPractisedMs === null ? 'date-unavailable'

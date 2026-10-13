@@ -138,6 +138,20 @@ describe('buildMastery', () => {
     expect(planning.application.transferConfidence).toBe('early-signal');
   });
 
+  it('handles very large retained histories without argument-count overflow', () => {
+    const submittedAt = '2026-10-01T00:00:00.000Z';
+    const attempts = Array.from({ length: 150_000 }, (_, index) => ({
+      scenario_id: 'TQ-SYN-001',
+      outcome: index % 2 === 0 ? 'disciplined' : 'undefined-risk',
+      submitted_at: submittedAt,
+    }));
+    const result = buildMastery(attempts, [], [], new Date('2026-10-13T00:00:00.000Z'));
+    const planning = result.skills.find(skill => skill.skillId === 'planning');
+    expect(planning?.attempts).toBe(150_000);
+    expect(planning?.lastPractisedAt).toBe(submittedAt);
+    expect(result.sampleSize).toBe(150_000);
+  });
+
   it('returns all skills with unknown rates when there is no history', () => {
     const result = buildMastery([]);
     expect(result.skills).toHaveLength(3);
